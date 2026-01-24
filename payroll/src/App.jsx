@@ -4,7 +4,6 @@ import { Route, Routes, Navigate, Outlet, useLocation } from 'react-router-dom';
 import Dashboard from "./pages/Dashboard";
 import Tasks from "./pages/Tasks";
 import Users from "./pages/Users";
-
 import FileReceived from "./pages/FileReceived";
 import SendFile from "./pages/SendFile";
 import ReceiveFile from "./pages/ReceiveFile";
@@ -13,6 +12,9 @@ import { useSelector } from 'react-redux';
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
 import FileSend from "./pages/FileSend";
+import PrintView from './pages/printView';
+import Payslip from './pages/payslip'; // ADD THIS IMPORT
+import VoucherGenerator from './pages/slip';
 
 // Create a context to share sidebar state
 export const SidebarContext = React.createContext();
@@ -61,12 +63,12 @@ function Layout() {
     <SidebarContext.Provider value={{ isSidebarCollapsed, setIsSidebarCollapsed }}>
       <div className="w-full h-screen flex flex-col md:flex-row">
         {/* Sidebar - wala'y padding diri */}
-        <div className={`h-screen bg-white sticky top-0 ${isSidebarCollapsed ? 'w-20' : 'w-64'} hidden md:block transition-all duration-500 ease-out overflow-hidden`}>
+        <div className={`h-screen bg-green-300 sticky top-0 ${isSidebarCollapsed ? 'w-20' : 'w-64'} hidden md:block transition-all duration-500 ease-out overflow-hidden rounded-br-2xl`}>
           <Sidebar userOffice={currentUser.office} onToggleSidebar={setIsSidebarCollapsed} />
         </div>
 
         {/* Main Content - wala'y extra margin */}
-        <div className="flex-1 overflow-y-auto bg-gray-100">
+        <div className="flex-1 overflow-y-auto bg-green-100">
           <Navbar userOffice={currentUser.office} />
           <div className="p-0"> {/* Remove padding here */}
             <Outlet />
@@ -153,6 +155,12 @@ function App() {
               accountingComponent={<FileSend />}
             />
           }/>
+          <Route path='/print' element={<PrintView />} />
+          
+          {/* ADD THIS PAYSLIP ROUTE */}
+          <Route path='/payslip/:id' element={<Payslip />} />
+
+          <Route path='/voucher' element={<VoucherGenerator />} />
           
           <Route path='/team' element={<Users/>}/>
           <Route path='/file' element={<FileReceived/>}/>
