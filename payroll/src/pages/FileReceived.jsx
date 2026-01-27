@@ -1,50 +1,35 @@
-// FileReceived.jsx - Replace everything with this:
 import React, { useState, useEffect, useRef } from 'react';
 import { saveAs } from 'file-saver';
 import { db } from '../config/firebase';
-import { collection, getDocs, deleteDoc, doc, onSnapshot, query, orderBy, updateDoc } from 'firebase/firestore';
-import ModalSend from './modalSend';
-import { useNavigate } from 'react-router-dom';
+import { collection, getDocs, onSnapshot, query, orderBy } from 'firebase/firestore';
+import * as XLSX from 'xlsx';
+import { useNavigate } from 'react-router-dom'; // Added for navigation
 
 const FileReceived = () => {
-  const navigate = useNavigate();
   const [receivedFiles, setReceivedFiles] = useState([]);
-  const [filteredFiles, setFilteredFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const [showFileDetails, setShowFileDetails] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(null);
-  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'sent', 'received', 'checked'
-  const [showStatusFilter, setShowStatusFilter] = useState(false);
-  const [showModalSend, setShowModalSend] = useState(false);
+  
+  // PRINT PREVIEW STATES (Excel only, no PDF)
+  const [excelData, setExcelData] = useState(null);
+  const [excelSheets, setExcelSheets] = useState([]);
+  const [activeSheet, setActiveSheet] = useState(0);
+  const [showPrintPreview, setShowPrintPreview] = useState(false);
+  const [previewError, setPreviewError] = useState('');
   
   const dropdownRefs = useRef({});
-  const statusFilterRef = useRef(null);
+  
+  const navigate = useNavigate(); // For navigation to payslip page
 
-  // Filter files based on selected status
+  // Load only checked files from Firestore
   useEffect(() => {
-    if (statusFilter === 'all') {
-      setFilteredFiles(receivedFiles);
-    } else {
-      const filtered = receivedFiles.filter(file => {
-        if (statusFilter === 'sent') return file.status === 'sent';
-        if (statusFilter === 'received') return file.status === 'received' || file.status === 'mark as received';
-        if (statusFilter === 'checked') return file.status === 'checked';
-        return true;
-      });
-      setFilteredFiles(filtered);
-    }
-  }, [receivedFiles, statusFilter]);
-
-  // Load received files from Firestore
-  useEffect(() => {
-    const loadReceivedFiles = async () => {
+    const loadCheckedFiles = async () => {
       try {
         setLoading(true);
         setError('');
-        
-        console.log('Loading files from Firestore...');
         
         const q = query(
           collection(db, 'sentFiles'), 
@@ -56,40 +41,51 @@ const FileReceived = () => {
         
         querySnapshot.forEach((doc) => {
           const fileData = doc.data();
-          console.log('Found document:', doc.id, fileData);
           
-          files.push({
-            id: doc.id,
-            fileName: fileData.fileName || 'Unknown File',
-            fileData: fileData.fileData,
-            timestamp: fileData.timestamp?.toDate?.() || new Date(fileData.createdAt || Date.now()),
-            updatedEmployees: fileData.updatedEmployees || [],
-            status: fileData.status || 'sent', // Default to 'sent'
-            originalFileName: fileData.originalFileName || '',
-            fileSize: fileData.fileSize || 0,
-            senderName: fileData.senderName || 'Unknown Sender',
-            senderEmail: fileData.senderEmail || '',
-            senderId: fileData.senderId || '',
-            markedAsReceived: fileData.markedAsReceived || false,
-            checked: fileData.checked || false
-          });
+          if (fileData.status === 'checked') {
+            const senderInfo = fileData.sender || {};
+            const receiverInfo = fileData.receivedBy || {};
+            const checkerInfo = fileData.checkedBy || {};
+            
+            files.push({
+              id: doc.id,
+              fileName: fileData.fileName || 'Unknown File',
+              fileData: fileData.fileData, // IMPORTANTE: Base64 Excel data
+              timestamp: fileData.timestamp?.toDate?.() || new Date(fileData.createdAt || Date.now()),
+              updatedEmployees: fileData.updatedEmployees || [],
+              status: fileData.status || 'checked',
+              originalFileName: fileData.originalFileName || '',
+              fileSize: fileData.fileSize || 0,
+              
+              senderName: senderInfo.name || fileData.senderName || 'Unknown Sender',
+              senderEmail: senderInfo.email || fileData.senderEmail || '',
+              senderOffice: senderInfo.office || fileData.senderOffice || '',
+              senderId: senderInfo.id || fileData.senderId || '',
+              
+              receivedBy: fileData.receivedBy || null,
+              receivedAt: fileData.receivedAt || null,
+              
+              checkedBy: receiverInfo.id ? receiverInfo : checkerInfo,
+              checkedAt: fileData.checkedAt || fileData.receivedAt || null,
+              
+              markedAsReceived: fileData.markedAsReceived || false,
+              checked: fileData.checked || true
+            });
+          }
         });
 
-        console.log('Total files loaded:', files.length);
         setReceivedFiles(files);
         
       } catch (error) {
-        console.error('Error loading files from Firestore:', error);
-        setError('Error loading files from Firestore. Please check your connection.');
-        alert('Error loading files from Firestore. Please check your Firebase configuration.');
+        console.error('Error loading checked files from Firestore:', error);
+        setError('Error loading checked files from Firestore. Please check your connection.');
       } finally {
         setLoading(false);
       }
     };
 
-    loadReceivedFiles();
+    loadCheckedFiles();
 
-    // Real-time listener for new files
     try {
       const q = query(
         collection(db, 'sentFiles'), 
@@ -98,25 +94,40 @@ const FileReceived = () => {
       
       const unsubscribe = onSnapshot(q, 
         (snapshot) => {
-          console.log('Real-time update received from Firestore');
           const files = [];
           snapshot.forEach((doc) => {
             const fileData = doc.data();
-            files.push({
-              id: doc.id,
-              fileName: fileData.fileName || 'Unknown File',
-              fileData: fileData.fileData,
-              timestamp: fileData.timestamp?.toDate?.() || new Date(fileData.createdAt || Date.now()),
-              updatedEmployees: fileData.updatedEmployees || [],
-              status: fileData.status || 'sent',
-              originalFileName: fileData.originalFileName || '',
-              fileSize: fileData.fileSize || 0,
-              senderName: fileData.senderName || 'Unknown Sender',
-              senderEmail: fileData.senderEmail || '',
-              senderId: fileData.senderId || '',
-              markedAsReceived: fileData.markedAsReceived || false,
-              checked: fileData.checked || false
-            });
+            
+            if (fileData.status === 'checked') {
+              const senderInfo = fileData.sender || {};
+              const receiverInfo = fileData.receivedBy || {};
+              const checkerInfo = fileData.checkedBy || {};
+              
+              files.push({
+                id: doc.id,
+                fileName: fileData.fileName || 'Unknown File',
+                fileData: fileData.fileData,
+                timestamp: fileData.timestamp?.toDate?.() || new Date(fileData.createdAt || Date.now()),
+                updatedEmployees: fileData.updatedEmployees || [],
+                status: fileData.status || 'checked',
+                originalFileName: fileData.originalFileName || '',
+                fileSize: fileData.fileSize || 0,
+                
+                senderName: senderInfo.name || fileData.senderName || 'Unknown Sender',
+                senderEmail: senderInfo.email || fileData.senderEmail || '',
+                senderOffice: senderInfo.office || fileData.senderOffice || '',
+                senderId: senderInfo.id || fileData.senderId || '',
+                
+                receivedBy: fileData.receivedBy || null,
+                receivedAt: fileData.receivedAt || null,
+                
+                checkedBy: receiverInfo.id ? receiverInfo : checkerInfo,
+                checkedAt: fileData.checkedAt || fileData.receivedAt || null,
+                
+                markedAsReceived: fileData.markedAsReceived || false,
+                checked: fileData.checked || true
+              });
+            }
           });
           
           setReceivedFiles(files);
@@ -134,47 +145,135 @@ const FileReceived = () => {
     }
   }, []);
 
-  // Toggle dropdown for a specific file
-  const toggleDropdown = (fileId, e) => {
-    if (e) e.stopPropagation();
-    setDropdownOpen(dropdownOpen === fileId ? null : fileId);
-    setShowStatusFilter(false); // Close status filter dropdown
-  };
-
-  // Toggle status filter dropdown
-  const toggleStatusFilter = (e) => {
-    if (e) e.stopPropagation();
-    setShowStatusFilter(!showStatusFilter);
-    setDropdownOpen(null); // Close all action dropdowns
-  };
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      // Check if click is outside any action dropdown
-      const isClickInsideActionDropdown = Object.values(dropdownRefs.current).some(ref => 
-        ref && ref.contains(event.target)
-      );
-      
-      // Check if click is outside status filter dropdown
-      const isClickInsideStatusFilter = statusFilterRef.current && statusFilterRef.current.contains(event.target);
-      
-      if (!isClickInsideActionDropdown && !isClickInsideStatusFilter) {
-        setDropdownOpen(null);
-        setShowStatusFilter(false);
+  // Function to parse Excel file from Firebase base64 data
+  const parseExcelFile = (base64Data) => {
+    try {
+      if (!base64Data) {
+        console.error('No file data found');
+        return null;
       }
-    };
 
-    document.addEventListener('click', handleClickOutside);
-    return () => {
-      document.removeEventListener('click', handleClickOutside);
-    };
-  }, []);
+      // Convert base64 to binary
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      
+      // Create workbook from Excel data
+      const workbook = XLSX.read(bytes, { type: 'array' });
+      
+      // Get sheet names
+      const sheetNames = workbook.SheetNames;
+      setExcelSheets(sheetNames);
+      
+      // Get data from active sheet
+      const sheet = workbook.Sheets[sheetNames[activeSheet]];
+      const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+      
+      console.log(`Parsed Excel data from sheet ${sheetNames[activeSheet]}:`, jsonData);
+      setExcelData(jsonData);
+      return jsonData;
+      
+    } catch (error) {
+      console.error('Error parsing Excel file:', error);
+      setPreviewError(`Error parsing Excel file: ${error.message}`);
+      return null;
+    }
+  };
 
-  // Download file function
+  // Function to print Excel data as table
+  const handlePrintExcel = () => {
+    if (!excelData || excelData.length === 0) {
+      alert('No Excel data available to print');
+      return;
+    }
+
+    try {
+      // Create a printable HTML table
+      const headers = excelData[0] || [];
+      const rows = excelData.slice(1);
+      
+      let html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Print Excel: ${selectedFile?.fileName || 'File'}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            h1 { color: #333; margin-bottom: 10px; }
+            .file-info { margin-bottom: 20px; color: #666; font-size: 14px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th { background-color: #2b6cb0; color: white; padding: 10px; text-align: left; }
+            td { padding: 8px; border: 1px solid #ddd; }
+            tr:nth-child(even) { background-color: #f8f9fa; }
+            .print-footer { margin-top: 30px; font-size: 12px; color: #888; text-align: center; }
+            @media print {
+              body { margin: 0; padding: 10px; }
+              .no-print { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <h1>${selectedFile?.fileName || 'Excel File'}</h1>
+          <div class="file-info">
+            <p><strong>Sender:</strong> ${selectedFile?.senderName || 'N/A'}</p>
+            <p><strong>Checked By:</strong> ${selectedFile?.checkedBy?.name || selectedFile?.receivedBy?.name || 'N/A'}</p>
+            <p><strong>Date:</strong> ${selectedFile ? formatDate(selectedFile.timestamp) : new Date().toLocaleDateString()}</p>
+            <p><strong>Sheet:</strong> ${excelSheets[activeSheet] || 'Sheet1'}</p>
+            <p><strong>Rows:</strong> ${rows.length} | <strong>Columns:</strong> ${headers.length}</p>
+          </div>
+      `;
+      
+      if (headers.length > 0) {
+        html += `
+          <table>
+            <thead>
+              <tr>
+                ${headers.map(header => `<th>${header || ''}</th>`).join('')}
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map(row => `
+                <tr>
+                  ${headers.map((_, index) => `<td>${row[index] !== undefined ? row[index] : ''}</td>`).join('')}
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } else {
+        html += '<p>No data available in this sheet.</p>';
+      }
+      
+      html += `
+          <div class="print-footer">
+            Printed on ${new Date().toLocaleString()} | Excel Print Preview
+          </div>
+          <div class="no-print" style="margin-top: 20px;">
+            <button onclick="window.print()" style="padding: 10px 20px; background: #2b6cb0; color: white; border: none; cursor: pointer;">Print Now</button>
+            <button onclick="window.close()" style="padding: 10px 20px; background: #666; color: white; border: none; cursor: pointer; margin-left: 10px;">Close</button>
+          </div>
+        </body>
+        </html>
+      `;
+      
+      // Open print window
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(html);
+      printWindow.document.close();
+      printWindow.focus();
+      
+    } catch (error) {
+      console.error('Error printing Excel:', error);
+      alert('Error printing Excel data. Please try again.');
+    }
+  };
+
+  // Download original Excel file function
   const handleDownloadFile = (file) => {
     try {
-      console.log('Downloading file:', file.fileName);
+      console.log('Downloading Excel file:', file.fileName);
       
       if (!file.fileData) {
         alert('Error: File data is missing. Cannot download.');
@@ -193,7 +292,7 @@ const FileReceived = () => {
       
       saveAs(blob, file.fileName);
       
-      alert(`✅ File "${file.fileName}" downloaded successfully!`);
+      alert(`✅ Excel file "${file.fileName}" downloaded successfully!`);
       setDropdownOpen(null);
       
     } catch (error) {
@@ -202,121 +301,119 @@ const FileReceived = () => {
     }
   };
 
-  // Handle View Assessment (View File Details)
-  const handleViewAssessment = (file) => {
+  // Function to switch Excel sheet
+  const handleSwitchSheet = async (index, file) => {
+    if (!file || !file.fileData) return;
+
+    try {
+      setActiveSheet(index);
+      
+      // Parse the new sheet
+      const binaryString = atob(file.fileData);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      
+      const workbook = XLSX.read(bytes, { type: 'array' });
+      const sheetName = workbook.SheetNames[index];
+      const sheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+      
+      setExcelData(jsonData);
+      
+    } catch (error) {
+      console.error('Error switching sheet:', error);
+      setPreviewError(`Error switching sheet: ${error.message}`);
+    }
+  };
+
+  // Handle View Print Preview - OPEN PRINT PREVIEW MODAL (Excel only)
+  const handleViewPrintPreview = (file) => {
+    setSelectedFile(file);
+    setShowPrintPreview(true);
+    setDropdownOpen(null);
+    
+    // Reset states
+    setExcelData(null);
+    setExcelSheets([]);
+    setActiveSheet(0);
+    setPreviewError('');
+    
+    // Parse Excel data
+    setTimeout(() => {
+      parseExcelFile(file.fileData);
+    }, 300);
+  };
+
+  // Function to handle View Payslip - REDIRECT TO PAYSLIP PAGE
+  const handleViewPayslip = (file) => {
+    setSelectedFile(file);
+    setDropdownOpen(null);
+    
+    // Navigate to payslip page with file data
+    navigate(`/payslip/${file.id}`, {
+      state: {
+        fileData: file // Pass the file data via state
+      }
+    });
+  };
+
+  // Close Print Preview Modal
+  const handleClosePrintPreview = () => {
+    setShowPrintPreview(false);
+    setExcelData(null);
+    setPreviewError('');
+  };
+
+  // Toggle dropdown for a specific file
+  const toggleDropdown = (fileId, e) => {
+    if (e) e.stopPropagation();
+    setDropdownOpen(dropdownOpen === fileId ? null : fileId);
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      const isClickInsideActionDropdown = Object.values(dropdownRefs.current).some(ref => 
+        ref && ref.contains(event.target)
+      );
+      
+      if (!isClickInsideActionDropdown) {
+        setDropdownOpen(null);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, []);
+
+  // Update ang handleCreateVoucher function:
+  const handleCreateVoucher = (file) => {
+    setSelectedFile(file);
+    setDropdownOpen(null);
+    
+    // Navigate to the voucher/payslip generator page
+    navigate('/voucher', {
+      state: {
+        fileData: file // Pass the file data via state
+      }
+    });
+  };
+
+  // Handle View File Details
+  const handleViewFileDetails = (file) => {
     setSelectedFile(file);
     setShowFileDetails(true);
     setDropdownOpen(null);
-  };
-
-  // Open ModalSend with file data
-  const handleOpenModalSend = (file) => {
-    setSelectedFile(file);
-    setShowModalSend(true);
-    setDropdownOpen(null);
-  };
-
-  // Close ModalSend
-  const handleCloseModalSend = () => {
-    setShowModalSend(false);
-    setSelectedFile(null);
   };
 
   // Close file details modal
   const handleCloseFileDetails = () => {
     setShowFileDetails(false);
     setSelectedFile(null);
-  };
-
-  // Update file status
-  const handleUpdateStatus = async (fileId, newStatus) => {
-    try {
-      console.log('Updating file status:', fileId, newStatus);
-      
-      const updateData = {
-        status: newStatus
-      };
-      
-      // Add additional fields based on status
-      if (newStatus === 'received' || newStatus === 'mark as received') {
-        updateData.markedAsReceived = true;
-        updateData.receivedAt = new Date();
-      } else if (newStatus === 'checked') {
-        updateData.checked = true;
-        updateData.checkedAt = new Date();
-      }
-      
-      await updateDoc(doc(db, 'sentFiles', fileId), updateData);
-
-      setReceivedFiles(prevFiles => 
-        prevFiles.map(file => 
-          file.id === fileId 
-            ? { 
-                ...file, 
-                status: newStatus,
-                markedAsReceived: newStatus === 'received' || newStatus === 'mark as received' ? true : file.markedAsReceived,
-                checked: newStatus === 'checked' ? true : file.checked
-              }
-            : file
-        )
-      );
-
-      alert(`✅ File status updated to "${newStatus}"!`);
-      setDropdownOpen(null);
-    } catch (error) {
-      console.error('Error updating file status:', error);
-      alert('❌ Error updating file status.');
-    }
-  };
-
-  // Delete file function
-  const handleDeleteFile = async (fileId) => {
-    if (!window.confirm('Are you sure you want to delete this file from Firestore?')) {
-      return;
-    }
-
-    try {
-      console.log('Deleting file from Firestore:', fileId);
-      await deleteDoc(doc(db, 'sentFiles', fileId));
-      
-      // Remove from local state
-      setReceivedFiles(prevFiles => prevFiles.filter(file => file.id !== fileId));
-      
-      alert('✅ File deleted successfully from Firestore!');
-      setDropdownOpen(null);
-      setShowFileDetails(false);
-    } catch (error) {
-      console.error('Error deleting file:', error);
-      alert('❌ Error deleting file from Firestore.');
-    }
-  };
-
-  // Clear all files
-  const handleClearAllFiles = async () => {
-    if (receivedFiles.length === 0) {
-      alert('No files to clear.');
-      return;
-    }
-
-    if (!window.confirm('Are you sure you want to delete ALL files from Firestore? This action cannot be undone.')) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const deletePromises = receivedFiles.map(file => 
-        deleteDoc(doc(db, 'sentFiles', file.id))
-      );
-      
-      await Promise.all(deletePromises);
-      setReceivedFiles([]);
-      alert('✅ All files deleted successfully from Firestore!');
-    } catch (error) {
-      console.error('Error clearing files:', error);
-      alert('❌ Error clearing files from Firestore.');
-    } finally {
-      setLoading(false);
-    }
   };
 
   // Refresh files
@@ -331,37 +428,48 @@ const FileReceived = () => {
       
       querySnapshot.forEach((doc) => {
         const fileData = doc.data();
-        files.push({
-          id: doc.id,
-          fileName: fileData.fileName || 'Unknown File',
-          fileData: fileData.fileData,
-          timestamp: fileData.timestamp?.toDate?.() || new Date(fileData.createdAt || Date.now()),
-          updatedEmployees: fileData.updatedEmployees || [],
-          status: fileData.status || 'sent',
-          originalFileName: fileData.originalFileName || '',
-          fileSize: fileData.fileSize || 0,
-          senderName: fileData.senderName || 'Unknown Sender',
-          senderEmail: fileData.senderEmail || '',
-          senderId: fileData.senderId || '',
-          markedAsReceived: fileData.markedAsReceived || false,
-          checked: fileData.checked || false
-        });
+        
+        if (fileData.status === 'checked') {
+          const senderInfo = fileData.sender || {};
+          const receiverInfo = fileData.receivedBy || {};
+          const checkerInfo = fileData.checkedBy || {};
+          
+          files.push({
+            id: doc.id,
+            fileName: fileData.fileName || 'Unknown File',
+            fileData: fileData.fileData,
+            timestamp: fileData.timestamp?.toDate?.() || new Date(fileData.createdAt || Date.now()),
+            updatedEmployees: fileData.updatedEmployees || [],
+            status: fileData.status || 'checked',
+            originalFileName: fileData.originalFileName || '',
+            fileSize: fileData.fileSize || 0,
+            
+            senderName: senderInfo.name || fileData.senderName || 'Unknown Sender',
+            senderEmail: senderInfo.email || fileData.senderEmail || '',
+            senderOffice: senderInfo.office || fileData.senderOffice || '',
+            senderId: senderInfo.id || fileData.senderId || '',
+            
+            receivedBy: fileData.receivedBy || null,
+            receivedAt: fileData.receivedAt || null,
+            
+            checkedBy: receiverInfo.id ? receiverInfo : checkerInfo,
+            checkedAt: fileData.checkedAt || fileData.receivedAt || null,
+            
+            markedAsReceived: fileData.markedAsReceived || false,
+            checked: fileData.checked || true
+          });
+        }
       });
 
       setReceivedFiles(files);
-      alert(`✅ Refreshed! Found ${files.length} file(s).`);
+      alert(`✅ Refreshed! Found ${files.length} checked file(s).`);
       
     } catch (error) {
       console.error('Error refreshing files:', error);
-      setError('Error refreshing files from Firestore.');
+      setError('Error refreshing checked files from Firestore.');
     } finally {
       setLoading(false);
     }
-  };
-
-  // Add back to dashboard function
-  const handleBackToDashboard = () => {
-    navigate('/dashboard');
   };
 
   const formatDate = (timestamp) => {
@@ -385,26 +493,16 @@ const FileReceived = () => {
   // Get status badge class based on status
   const getStatusBadgeClass = (status) => {
     switch (status) {
-      case 'sent':
-        return 'bg-gray-100 text-gray-800';
-      case 'received':
-      case 'mark as received':
-        return 'bg-green-100 text-green-800';
       case 'checked':
         return 'bg-blue-100 text-blue-800';
       default:
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
   // Get status display text
   const getStatusDisplayText = (status) => {
     switch (status) {
-      case 'sent':
-        return 'SENT';
-      case 'received':
-      case 'mark as received':
-        return 'MARK AS RECEIVED';
       case 'checked':
         return 'CHECKED';
       default:
@@ -412,209 +510,66 @@ const FileReceived = () => {
     }
   };
 
-  // Get filter display text
-  const getFilterDisplayText = (filter) => {
-    switch (filter) {
-      case 'all':
-        return 'ALL STATUS';
-      case 'sent':
-        return 'SENT';
-      case 'received':
-        return 'MARK AS RECEIVED';
-      case 'checked':
-        return 'CHECKED';
-      default:
-        return 'ALL STATUS';
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
-      {/* ModalSend Component */}
-      {showModalSend && selectedFile && (
-        <ModalSend 
-          file={selectedFile} 
-          onClose={handleCloseModalSend}
-          markedAsReceived={selectedFile.markedAsReceived}
-          onMarkAsReceived={() => handleUpdateStatus(selectedFile.id, 'received')}
-        />
-      )}
-
+    <div className="bg-green-100 p-6">
       <div className="max-w-6xl mx-auto">
-        {/* Header with Refresh and Back buttons */}
+        {/* Header with Refresh button on the side */}
         <div className="mb-8 flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">File Received</h1>
-            <p className="text-gray-600 mt-2">Download files that were sent from the Send File page (Firestore)</p>
+            <h1 className="text-3xl font-bold text-gray-800">Checked Files</h1>
+            <p className="text-gray-600 mt-2">Files that have been marked as "Checked" from the Receive File page</p>
           </div>
           
-          <div className="flex space-x-2">
-            <button 
-              onClick={handleBackToDashboard}
-              className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors font-medium flex items-center space-x-2"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              <span>Back to Dashboard</span>
-            </button>
-            
-            <button 
-              onClick={handleRefreshFiles}
-              disabled={loading}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors font-medium flex items-center space-x-2 disabled:bg-gray-400"
-              title="Refresh files"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              <span>Refresh</span>
-            </button>
-          </div>
+          <button 
+            onClick={handleRefreshFiles}
+            disabled={loading}
+            className="bg-green-700 text-white px-4 py-2 rounded-md hover:bg-[#0D3721] transition-colors font-medium flex items-center space-x-2 disabled:bg-gray-400"
+            title="Refresh checked files"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span>Refresh</span>
+          </button>
         </div>
 
-        {/* Rest of the code remains exactly the same as ReceiveFile.jsx */}
-        {/* ... (copy all the remaining JSX from ReceiveFile.jsx starting from "Files Count" section) ... */}
-        
         {/* Files Count */}
         <div className="mb-4 text-sm text-gray-600">
-          Showing {filteredFiles.length} of {receivedFiles.length} file(s)
-          {statusFilter !== 'all' && ` (Filtered by: ${getFilterDisplayText(statusFilter)})`}
+          Showing {receivedFiles.length} checked file(s)
         </div>
         
-        {/* Files Table - ALWAYS SHOW TABLE STRUCTURE */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          {/* Table Header - ALWAYS VISIBLE */}
-          <div className="grid grid-cols-12 bg-gray-50 border-b border-gray-200 px-6 py-4 text-sm font-semibold text-gray-700">
+        {/* Files Table */}
+        <div className="bg-white rounded-lg overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.2)] border border-gray-400">
+          {/* Table Header */}
+          <div className="grid grid-cols-12 bg-gray-50 border-b border-gray-400 px-6 py-4 text-sm font-semibold text-gray-700">
             <div className="col-span-1 text-center">NO.</div>
             <div className="col-span-3">FILE NAME</div>
             <div className="col-span-3">NAME OF SENDER</div>
-            <div className="col-span-2">DATE</div>
-            
-            {/* STATUS HEADER - NOW A DROPDOWN (OVERFLOW STYLE) */}
-            <div className="col-span-1 relative" ref={statusFilterRef}>
-              <button
-                onClick={toggleStatusFilter}
-                className="flex items-center justify-between w-full text-left hover:text-blue-600 transition-colors"
-              >
-                <span>STATUS</span>
-                <svg className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-
-              {/* Status Filter Dropdown Menu - FIXED POSITION LIKE ACTION DROPDOWN */}
-              {showStatusFilter && (
-                <div 
-                  className="fixed z-50 w-48 bg-white rounded-lg shadow-xl border border-gray-200"
-                  style={{
-                    position: 'fixed',
-                    zIndex: 9999
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="py-1">
-                    <button
-                      onClick={() => {
-                        setStatusFilter('all');
-                        setShowStatusFilter(false);
-                      }}
-                      className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center justify-between"
-                    >
-                      <span>ALL STATUS</span>
-                      {statusFilter === 'all' && (
-                        <svg className="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </button>
-                    
-                    <button
-                      onClick={() => {
-                        setStatusFilter('sent');
-                        setShowStatusFilter(false);
-                      }}
-                      className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center justify-between"
-                    >
-                      <span>SENT</span>
-                      {statusFilter === 'sent' && (
-                        <svg className="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </button>
-                    
-                    <button
-                      onClick={() => {
-                        setStatusFilter('received');
-                        setShowStatusFilter(false);
-                      }}
-                      className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center justify-between"
-                    >
-                      <span>RECEIVED</span>
-                      {statusFilter === 'received' && (
-                        <svg className="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </button>
-                    
-                    <button
-                      onClick={() => {
-                        setStatusFilter('checked');
-                        setShowStatusFilter(false);
-                      }}
-                      className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center justify-between"
-                    >
-                      <span>CHECKED</span>
-                      {statusFilter === 'checked' && (
-                        <svg className="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-            
-            <div className="col-span-2 text-center">ACTION</div>
+            <div className="col-span-2">DATE CHECKED</div>
+            <div className="col-span-2">CHECKED BY</div>
+            <div className="col-span-1 text-center">ACTION</div>
           </div>
           
           {/* Loading State */}
           {loading && (
             <div className="bg-white rounded-lg shadow-md p-12 text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="mt-4 text-gray-600">Loading files from Firestore...</p>
-              <p className="text-sm text-gray-500 mt-2">Checking for sent files...</p>
+              <p className="mt-4 text-gray-600">Loading checked files from Firestore...</p>
+              <p className="text-sm text-gray-500 mt-2">Looking for files marked as "Checked"...</p>
             </div>
           )}
 
-          {/* Table Body - SHOWS FILES OR EMPTY STATE */}
-          {!loading && filteredFiles.length === 0 ? (
+          {/* Table Body */}
+          {!loading && receivedFiles.length === 0 ? (
             <div className="py-16 text-center">
               <svg className="mx-auto h-16 w-16 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2z" />
               </svg>
-              <h3 className="mt-4 text-lg font-medium text-gray-900">No files found</h3>
+              <h3 className="mt-4 text-lg font-medium text-gray-900">No checked files found</h3>
               <p className="mt-2 text-gray-500 max-w-md mx-auto">
-                {statusFilter === 'all' ? (
-                  <>
-                    Files sent from the Send File page will appear here.<br />
-                    Go to the Send File page to create and send files to Firestore.
-                  </>
-                ) : (
-                  `No files found with status "${getFilterDisplayText(statusFilter)}".`
-                )}
+                Files marked as "Checked" in the Receive File page will appear here.<br />
+                Go to the Receive File page to mark files as "Checked".
               </p>
-              {statusFilter !== 'all' && (
-                <button 
-                  onClick={() => setStatusFilter('all')}
-                  className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors mr-2"
-                >
-                  Show All Files
-                </button>
-              )}
               <button 
                 onClick={handleRefreshFiles}
                 className="mt-4 bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors"
@@ -624,7 +579,7 @@ const FileReceived = () => {
             </div>
           ) : (
             <div className="divide-y divide-gray-200">
-              {filteredFiles.map((file, index) => (
+              {receivedFiles.map((file, index) => (
                 <div key={file.id} className="grid grid-cols-12 items-center px-6 py-4 hover:bg-gray-50 transition-colors relative">
                   {/* NO. */}
                   <div className="col-span-1 text-center text-gray-600 font-medium">
@@ -645,6 +600,9 @@ const FileReceived = () => {
                           {file.fileSize > 0 && (
                             <span className="mr-3">{formatFileSize(file.fileSize)}</span>
                           )}
+                          <span className={`px-2 py-0.5 rounded-full text-xs ${getStatusBadgeClass(file.status)}`}>
+                            {getStatusDisplayText(file.status)}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -653,30 +611,58 @@ const FileReceived = () => {
                   {/* NAME OF SENDER */}
                   <div className="col-span-3">
                     <div className="font-medium text-gray-900 truncate">{file.senderName}</div>
-                    {file.senderEmail && (
-                      <div className="text-sm text-gray-500 truncate">{file.senderEmail}</div>
-                    )}
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <span className="truncate">{file.senderEmail}</span>
+                      {file.senderOffice && (
+                        <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs">
+                          {file.senderOffice}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
-                  {/* DATE */}
+                  {/* DATE CHECKED */}
                   <div className="col-span-2">
-                    <div className="text-gray-700">{formatDate(file.timestamp)}</div>
+                    <div className="text-gray-700">
+                      {file.checkedAt ? formatDate(file.checkedAt) : 
+                       file.receivedAt ? formatDate(file.receivedAt) : 
+                       formatDate(file.timestamp)}
+                    </div>
                   </div>
 
-                  {/* STATUS (REGULAR BADGE) */}
-                  <div className="col-span-1">
-                    <span className={`px-3 py-1.5 rounded-full text-xs font-medium ${getStatusBadgeClass(file.status)}`}>
-                      {getStatusDisplayText(file.status)}
-                    </span>
-                    {file.markedAsReceived && file.status !== 'checked' && (
-                      <span className="ml-2 px-2 py-1 rounded-full text-xs ">
-                        
-                      </span>
+                  {/* CHECKED BY */}
+                  <div className="col-span-2">
+                    {file.checkedBy ? (
+                      <div>
+                        <div className="font-medium text-gray-900 truncate">
+                          {file.checkedBy.name || 'Unknown Checker'}
+                        </div>
+                        {file.checkedBy.office && (
+                          <div className="text-xs text-gray-500">{file.checkedBy.office}</div>
+                        )}
+                        <div className="text-xs text-gray-400 mt-1">
+                          (Receiver)
+                        </div>
+                      </div>
+                    ) : file.receivedBy ? (
+                      <div>
+                        <div className="font-medium text-gray-900 truncate">
+                          {file.receivedBy.name}
+                        </div>
+                        {file.receivedBy.office && (
+                          <div className="text-xs text-gray-500">{file.receivedBy.office}</div>
+                        )}
+                        <div className="text-xs text-gray-400 mt-1">
+                          (Receiver)
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-gray-400 italic">Not recorded</div>
                     )}
                   </div>
 
                   {/* ACTION - DROPDOWN BUTTON */}
-                  <div className="col-span-2 relative">
+                  <div className="col-span-1 relative">
                     <div className="flex justify-center">
                       <button
                         onClick={(e) => toggleDropdown(file.id, e)}
@@ -693,7 +679,7 @@ const FileReceived = () => {
                     {dropdownOpen === file.id && (
                       <div 
                         ref={el => dropdownRefs.current[file.id] = el}
-                        className="fixed z-50 mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200"
+                        className="fixed z-50 mt-1 w-56 bg-white rounded-lg shadow-xl border border-gray-200"
                         style={{
                           position: 'fixed',
                           zIndex: 9999
@@ -702,17 +688,46 @@ const FileReceived = () => {
                       >
                         <div className="py-1">
                           <button
-                            onClick={() => handleOpenModalSend(file)}
+                            onClick={() => handleViewPrintPreview(file)}
                             className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2"
                           >
                             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                             </svg>
-                            Assessment
+                            View Print Preview
+                          </button>
+                          
+                          {/* View Payslip Option - REDIRECTS TO PAYSLIP PAGE */}
+                          <button
+                            onClick={() => handleViewPayslip(file)}
+                            className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 flex items-center gap-2"
+                          >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                            View Payslip
                           </button>
                           
                           <button
-                            onClick={() => handleViewAssessment(file)}
+                            onClick={() => {
+                              // Navigate to voucher generator
+                              navigate('/voucher', {
+                                state: {
+                                  fileData: file // Pass file data
+                                }
+                              });
+                              setDropdownOpen(null);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2"
+                          >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Create Voucher / Payslip
+                          </button>
+                          
+                          <button
+                            onClick={() => handleViewFileDetails(file)}
                             className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2"
                           >
                             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -729,11 +744,8 @@ const FileReceived = () => {
                             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                             </svg>
-                            Download
+                            Download Excel
                           </button>
-
-                          {/* Update Status Options in Dropdown */}
-                          
                         </div>
                       </div>
                     )}
@@ -744,16 +756,75 @@ const FileReceived = () => {
           )}
         </div>
 
-        {/* File Details Modal - COPY FROM ReceiveFile.jsx */}
-        {/* ... (copy the entire File Details Modal section from ReceiveFile.jsx) ... */}
+        {/* PRINT PREVIEW MODAL (Excel only) */}
+        {/* PRINT PREVIEW MODAL (Excel only) */}
+{showPrintPreview && selectedFile && (
+  <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
+    <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl h-[90vh] flex flex-col">
+      {/* Modal Header */}
+      <div className="bg-blue-600 text-white px-6 py-4">
+        <h3 className="text-lg font-semibold text-center">PRINT PREVIEW</h3>
+      </div>
+      
+      {/* Main Content Area - Buttons at Top */}
+      <div className="p-6 flex flex-col flex-1">
+        {/* Top Section - Action Buttons */}
+        <div className="flex justify-end gap-4 mb-6">
+          <button
+            onClick={handlePrintExcel}
+            disabled={!excelData || excelData.length === 0}
+            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm disabled:bg-gray-400"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            PRINT EXCEL
+          </button>
+          
+          <button
+            onClick={() => handleDownloadFile(selectedFile)}
+            className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            DOWNLOAD EXCEL
+          </button>
+        </div>
+
         
+
+        
+
+        {/* Error Message */}
+        {previewError && (
+          <div className="mt-4 p-4 bg-red-50 text-red-700 rounded-lg">
+            <p className="font-medium">Error:</p>
+            <p className="text-sm">{previewError}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Close Button */}
+      <div className="border-t px-6 py-4 flex justify-end">
+        <button
+          onClick={handleClosePrintPreview}
+          className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
         {/* File Details Modal */}
         {showFileDetails && selectedFile && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
               {/* Modal Header */}
               <div className="bg-blue-600 text-white px-6 py-4 flex justify-between items-center">
-                <h3 className="text-lg font-semibold">File Assessment - {selectedFile.fileName}</h3>
+                <h3 className="text-lg font-semibold">File Details - {selectedFile.fileName}</h3>
                 <button 
                   onClick={handleCloseFileDetails}
                   className="text-white hover:text-gray-200 transition-colors"
@@ -788,11 +859,6 @@ const FileReceived = () => {
                         <span className={`mt-1 inline-block px-3 py-1 rounded-full text-sm ${getStatusBadgeClass(selectedFile.status)}`}>
                           {getStatusDisplayText(selectedFile.status)}
                         </span>
-                        {selectedFile.markedAsReceived && selectedFile.status !== 'checked' && (
-                          <span className="ml-2 px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800">
-                            
-                          </span>
-                        )}
                       </div>
                     </div>
 
@@ -808,113 +874,115 @@ const FileReceived = () => {
                           <p className="mt-1 text-gray-900">{selectedFile.senderEmail}</p>
                         </div>
                       )}
+                      {selectedFile.senderOffice && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-600">Sender Office:</label>
+                          <p className="mt-1 text-gray-900">{selectedFile.senderOffice}</p>
+                        </div>
+                      )}
                       <div>
                         <label className="text-sm font-medium text-gray-600">Sent Date:</label>
                         <p className="mt-1 text-gray-900">{formatDate(selectedFile.timestamp)}</p>
                       </div>
                     </div>
+
+                    {/* Checker Information */}
+                    {selectedFile.checkedBy && (
+                      <div className="mt-6">
+                        <h4 className="text-lg font-medium text-gray-800 mb-4">
+                          Checked By (Receiver)
+                        </h4>
+                        <div className="space-y-3 bg-blue-50 p-4 rounded-lg">
+                          <div>
+                            <label className="text-sm font-medium text-gray-600">Checker/Receiver Name:</label>
+                            <p className="mt-1 text-gray-900">{selectedFile.checkedBy.name || 'Unknown'}</p>
+                          </div>
+                          {selectedFile.checkedBy.email && (
+                            <div>
+                              <label className="text-sm font-medium text-gray-600">Checker/Receiver Email:</label>
+                              <p className="mt-1 text-gray-900">{selectedFile.checkedBy.email}</p>
+                            </div>
+                          )}
+                          {selectedFile.checkedBy.office && (
+                            <div>
+                              <label className="text-sm font-medium text-gray-600">Checker/Receiver Office:</label>
+                              <p className="mt-1 text-gray-900">{selectedFile.checkedBy.office}</p>
+                            </div>
+                          )}
+                          {selectedFile.checkedAt && (
+                            <div>
+                              <label className="text-sm font-medium text-gray-600">Checked Date:</label>
+                              <p className="mt-1 text-gray-900">{formatDate(selectedFile.checkedAt)}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Right Column - Actions & Updates */}
+                  {/* Right Column - Actions */}
                   <div>
                     <h4 className="text-lg font-medium text-gray-800 mb-4">File Actions</h4>
                     <div className="space-y-4">
                       <div className="bg-blue-50 p-4 rounded-lg">
-                        <p className="text-sm text-blue-800 mb-3">You can download this file or update its status.</p>
-                        <div className="flex space-x-3">
+                        <p className="text-sm text-blue-800 mb-3">You can perform the following actions on this checked file:</p>
+                        <div className="grid grid-cols-1 gap-2">
+                          <button 
+                            onClick={() => {
+                              handleViewPrintPreview(selectedFile);
+                              handleCloseFileDetails();
+                            }}
+                            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2"
+                          >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                            </svg>
+                            View Print Preview (Excel)
+                          </button>
+                          
+                          {/* View Payslip Button */}
+                          <button 
+                            onClick={() => {
+                              handleViewPayslip(selectedFile);
+                              handleCloseFileDetails();
+                            }}
+                            className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2"
+                          >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                            View Payslip
+                          </button>
+                          
+                          <button 
+                            onClick={() => {
+                              handleCreateVoucher(selectedFile);
+                              handleCloseFileDetails();
+                            }}
+                            className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2"
+                          >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Create Voucher
+                          </button>
+                          
                           <button 
                             onClick={() => {
                               handleDownloadFile(selectedFile);
                               handleCloseFileDetails();
                             }}
-                            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors font-medium flex-1"
+                            className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors font-medium flex items-center justify-center gap-2"
                           >
-                            Download File
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            Download Excel File
                           </button>
                         </div>
-                      </div>
-
-                      <div className="bg-yellow-50 p-4 rounded-lg">
-                        <h5 className="font-medium text-yellow-800 mb-2">Update Status</h5>
-                        <div className="space-y-2">
-                          <button
-                            onClick={() => handleUpdateStatus(selectedFile.id, 'sent')}
-                            className={`w-full px-4 py-2 rounded-md text-left flex items-center justify-between ${selectedFile.status === 'sent' ? 'bg-gray-200' : 'bg-gray-100 hover:bg-gray-200'}`}
-                          >
-                            <span>SENT</span>
-                            {selectedFile.status === 'sent' && (
-                              <svg className="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                            )}
-                          </button>
-                          <button
-                            onClick={() => handleUpdateStatus(selectedFile.id, 'received')}
-                            className={`w-full px-4 py-2 rounded-md text-left flex items-center justify-between ${(selectedFile.status === 'received' || selectedFile.status === 'mark as received') ? 'bg-green-100' : 'bg-gray-100 hover:bg-gray-200'}`}
-                          >
-                            <span>MARK AS RECEIVED</span>
-                            {(selectedFile.status === 'received' || selectedFile.status === 'mark as received') && (
-                              <svg className="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                            )}
-                          </button>
-                          <button
-                            onClick={() => handleUpdateStatus(selectedFile.id, 'checked')}
-                            className={`w-full px-4 py-2 rounded-md text-left flex items-center justify-between ${selectedFile.status === 'checked' ? 'bg-blue-100' : 'bg-gray-100 hover:bg-gray-200'}`}
-                          >
-                            <span>CHECKED</span>
-                            {selectedFile.status === 'checked' && (
-                              <svg className="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                            )}
-                          </button>
-                        </div>
-                      </div>
-
-                      {selectedFile.updatedEmployees && selectedFile.updatedEmployees.length > 0 && (
-                        <div className="bg-green-50 p-4 rounded-lg">
-                          <h5 className="font-medium text-green-800 mb-2">Updated Employees:</h5>
-                          <ul className="space-y-1">
-                            {selectedFile.updatedEmployees.map((employee, idx) => (
-                              <li key={idx} className="text-sm text-green-700 flex items-center">
-                                <svg className="h-4 w-4 mr-2 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                {employee}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      <div className="bg-yellow-50 p-4 rounded-lg">
-                        <h5 className="font-medium text-yellow-800 mb-2">Document Information:</h5>
-                        <p className="text-sm text-yellow-700">
-                          <strong>Document ID:</strong> {selectedFile.id}
-                        </p>
-                        <p className="text-sm text-yellow-700 mt-1">
-                          <strong>Collection:</strong> sentFiles
-                        </p>
                       </div>
                     </div>
                   </div>
-                </div>
-
-                {/* Delete Button */}
-                <div className="mt-8 pt-6 border-t border-gray-200">
-                  <button 
-                    onClick={() => {
-                      if (window.confirm('Are you sure you want to delete this file?')) {
-                        handleDeleteFile(selectedFile.id);
-                        handleCloseFileDetails();
-                      }
-                    }}
-                    className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors font-medium"
-                  >
-                    Delete File from Firestore
-                  </button>
                 </div>
               </div>
             </div>

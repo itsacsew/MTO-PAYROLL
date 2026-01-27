@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { setOpenSidebar } from "../redux/slices/authSlice";
 import UserAvatar from "./UserAvatar";
 import NotificationPanel from "./NotificationPanel";
-import bgImage from '../assets/pilipinas.png'; // adjust path if needed
+import bgImage from '../assets/back10.png'; // adjust path if needed
 
 const Navbar = () => {
   const { user } = useSelector((state) => state.auth);

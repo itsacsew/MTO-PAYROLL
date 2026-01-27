@@ -190,7 +190,7 @@ const Tasks = () => {
     switch (file.status) {
       case 'sent':
       case 'pending':
-        return 'File has been sent to Firestore and is pending receipt.'
+        return 'File has been sent to Accounting and is pending receipt.'
       case 'received':
         return 'File has been received and marked as received.'
       case 'checked':
@@ -352,11 +352,11 @@ const Tasks = () => {
   }
 
   return (
-    <div className="bg-gray-100 p-6">
+    <div className="bg-green-100 p-6">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-800">Accounting Dashboard</h1>
-        <p className="text-gray-600 mt-2">Financial management and task tracking</p>
+        <p className="text-gray-600 mt-2">Financial management and Payroll tracking</p>
       </div>
 
       {/* Main Content - CENTERED CONTAINERS */}
@@ -365,14 +365,14 @@ const Tasks = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
             {/* File Operations Container */}
-            <div className="flex justify-center">
-              <div className="bg-white rounded-lg shadow-md p-4 w-full max-w-md">
-                <h2 className="text-lg font-semibold text-gray-700 mb-3">File Operations</h2>
+            <div className="flex justify-center ">
+              <div className="bg-white rounded-lg shadow-[0_10px_30px_rgba(0,0,0,0.2)] p-6 w-full border border-gray-400 ">
+                <h2 className="text-xl font-semibold text-gray-700 mb-7">File Operations</h2>
                 <div>
                   {/* Receive File Button */}
                   <button 
                     onClick={handleReceiveFile}
-                    className="bg-green-50 hover:bg-green-100 text-green-800 rounded-lg p-4 transition duration-200 ease-in-out border border-green-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 w-full text-left relative"
+                    className="bg-green-50 hover:bg-green-100 text-green-800 rounded-lg p-11 transition duration-200 ease-in-out border border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 w-full text-left relative"
                   >
                     {/* Notification Badge - Only show for pending files */}
                     {pendingFilesCount > 0 && (
@@ -382,13 +382,13 @@ const Tasks = () => {
                     )}
                     <div className="flex items-center space-x-3">
                       <div className="bg-green-100 p-2 rounded-lg">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
                         </svg>
                       </div>
                       <div>
-                        <h3 className="text-md font-medium">Receive File</h3>
-                        <p className="text-green-600 text-sm mt-1">Get files sent to you safely</p>
+                        <h3 className="text-lg font-medium">Receive File</h3>
+                        <p className="text-green-600 text-md mt-1">Get files sent to you safely</p>
                       </div>
                     </div>
                   </button>
@@ -398,7 +398,7 @@ const Tasks = () => {
 
             {/* File Processing Status Container */}
             <div className="flex justify-center">
-              <div className="bg-white rounded-lg shadow-md p-6 w-full">
+            <div className="bg-white rounded-lg shadow-[0_10px_30px_rgba(0,0,0,0.2)] p-6 border border-gray-400">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-semibold text-gray-700">File Processing Status</h2>
                   {allFiles.length > 0 && (
@@ -503,7 +503,7 @@ const Tasks = () => {
             <div className="flex justify-end p-6 border-t bg-gray-50">
               <button 
                 onClick={() => setShowAllFilesModal(false)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+                className="bg-green-700 text-white px-4 py-2 rounded-md hover:bg-[#0D3721] transition-colors"
               >
                 Close
               </button>

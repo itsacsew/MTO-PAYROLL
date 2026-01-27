@@ -216,10 +216,10 @@ const Sidebar = ({ userOffice, onToggleSidebar }) => {
           <button
             onClick={toggleSidebar}
             disabled={isAnimating}
-            className="p-2 rounded-md bg-gray-700 hover:bg-gray-600 transition-colors duration-200"
+            className="p-2 rounded-md bg-[#80ed997a] hover:bg-[#1d6c2f] transition-colors duration-200"
             title="Expand Sidebar"
           >
-            <MdChevronRight size={20} className="text-white" />
+            <MdChevronRight size={20} className="text-[#80ED99]" />
           </button>
         </div>
       )}

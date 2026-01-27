@@ -19,7 +19,7 @@ const ReceiveFile = () => {
   const dropdownRefs = useRef({});
   const statusFilterRef = useRef(null);
 
-  // Get current logged-in user
+  // Get current logged-in user from localStorage (same as Tasks.jsx)
   const getCurrentUser = () => {
     try {
       const userData = localStorage.getItem('auth_user_v1');
@@ -88,6 +88,10 @@ const ReceiveFile = () => {
             senderOffice: senderInfo.office || fileData.senderOffice || '',
             senderId: senderInfo.id || fileData.senderId || '',
             
+            // Receiver information (who marked as received)
+            receivedBy: fileData.receivedBy || null,
+            receivedAt: fileData.receivedAt || null,
+            
             // Checker information
             checkedBy: fileData.checkedBy || null,
             checkedAt: fileData.checkedAt || null,
@@ -143,6 +147,10 @@ const ReceiveFile = () => {
               senderEmail: senderInfo.email || fileData.senderEmail || '',
               senderOffice: senderInfo.office || fileData.senderOffice || '',
               senderId: senderInfo.id || fileData.senderId || '',
+              
+              // Receiver information (who marked as received)
+              receivedBy: fileData.receivedBy || null,
+              receivedAt: fileData.receivedAt || null,
               
               // Checker information
               checkedBy: fileData.checkedBy || null,
@@ -273,6 +281,18 @@ const ReceiveFile = () => {
       
       // Add additional fields based on status
       if (newStatus === 'received' || newStatus === 'mark as received') {
+        // Get current logged-in user for receiver information
+        const currentUser = getCurrentUser();
+        if (currentUser) {
+          updateData.receivedBy = {
+            id: currentUser.id,
+            name: currentUser.name,
+            email: currentUser.email,
+            office: currentUser.office,
+            role: currentUser.role,
+            receivedAt: new Date()
+          };
+        }
         updateData.markedAsReceived = true;
         updateData.receivedAt = new Date();
       } else if (newStatus === 'checked') {
@@ -304,6 +324,21 @@ const ReceiveFile = () => {
               markedAsReceived: newStatus === 'received' || newStatus === 'mark as received' ? true : file.markedAsReceived,
               checked: newStatus === 'checked' ? true : file.checked
             };
+            
+            // Add receiver information if status is received
+            if (newStatus === 'received' || newStatus === 'mark as received') {
+              const currentUser = getCurrentUser();
+              if (currentUser) {
+                updatedFile.receivedBy = {
+                  id: currentUser.id,
+                  name: currentUser.name,
+                  email: currentUser.email,
+                  office: currentUser.office,
+                  role: currentUser.role
+                };
+                updatedFile.receivedAt = new Date();
+              }
+            }
             
             // Add checker information if status is checked
             if (newStatus === 'checked') {
@@ -417,6 +452,10 @@ const ReceiveFile = () => {
           senderOffice: senderInfo.office || fileData.senderOffice || '',
           senderId: senderInfo.id || fileData.senderId || '',
           
+          // Receiver information (who marked as received)
+          receivedBy: fileData.receivedBy || null,
+          receivedAt: fileData.receivedAt || null,
+          
           // Checker information
           checkedBy: fileData.checkedBy || null,
           checkedAt: fileData.checkedAt || null,
@@ -502,7 +541,7 @@ const ReceiveFile = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
+    <div className=" bg-green-100 p-6">
       {/* ModalSend Component */}
       {showModalSend && selectedFile && (
         <ModalSend 
@@ -524,7 +563,7 @@ const ReceiveFile = () => {
           <button 
             onClick={handleRefreshFiles}
             disabled={loading}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors font-medium flex items-center space-x-2 disabled:bg-gray-400"
+            className="bg-green-700 text-white px-4 py-2 rounded-md hover:bg-[#0D3721] transition-colors font-medium flex items-center space-x-2 disabled:bg-gray-400"
             title="Refresh files"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -541,9 +580,9 @@ const ReceiveFile = () => {
         </div>
         
         {/* Files Table - ALWAYS SHOW TABLE STRUCTURE */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="bg-white rounded-lg overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.2)] border border-gray-400">
           {/* Table Header - ALWAYS VISIBLE */}
-          <div className="grid grid-cols-12 bg-gray-50 border-b border-gray-200 px-6 py-4 text-sm font-semibold text-gray-700">
+          <div className="grid grid-cols-12 bg-gray-50 border-b border-gray-400 px-6 py-4 text-sm font-semibold text-gray-700">
             <div className="col-span-1 text-center">NO.</div>
             <div className="col-span-3">FILE NAME</div>
             <div className="col-span-3">NAME OF SENDER</div>
@@ -890,6 +929,37 @@ const ReceiveFile = () => {
                         <p className="mt-1 text-gray-900">{formatDate(selectedFile.timestamp)}</p>
                       </div>
                     </div>
+
+                    {/* Receiver Information */}
+                    {selectedFile.receivedBy && (
+                      <div className="mt-6">
+                        <h4 className="text-lg font-medium text-gray-800 mb-4">Received By</h4>
+                        <div className="space-y-3 bg-green-50 p-4 rounded-lg">
+                          <div>
+                            <label className="text-sm font-medium text-gray-600">Receiver Name:</label>
+                            <p className="mt-1 text-gray-900">{selectedFile.receivedBy.name}</p>
+                          </div>
+                          {selectedFile.receivedBy.email && (
+                            <div>
+                              <label className="text-sm font-medium text-gray-600">Receiver Email:</label>
+                              <p className="mt-1 text-gray-900">{selectedFile.receivedBy.email}</p>
+                            </div>
+                          )}
+                          {selectedFile.receivedBy.office && (
+                            <div>
+                              <label className="text-sm font-medium text-gray-600">Receiver Office:</label>
+                              <p className="mt-1 text-gray-900">{selectedFile.receivedBy.office}</p>
+                            </div>
+                          )}
+                          {selectedFile.receivedAt && (
+                            <div>
+                              <label className="text-sm font-medium text-gray-600">Received Date:</label>
+                              <p className="mt-1 text-gray-900">{formatDate(selectedFile.receivedAt)}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Checker Information */}
                     {selectedFile.checkedBy && (

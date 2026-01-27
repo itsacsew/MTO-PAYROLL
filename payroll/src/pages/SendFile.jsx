@@ -226,7 +226,11 @@ const SendFile = () => {
   const calculateAmountAccrued = useCallback((monthlyRate) => {
     try {
       if (monthlyRate) {
-        return (parseFloat(monthlyRate) / 2).toFixed(2);
+        const amount = (parseFloat(monthlyRate) / 2).toFixed(2);
+        return parseFloat(amount).toLocaleString('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        });
       }
       return '';
     } catch (error) {
@@ -241,8 +245,14 @@ const SendFile = () => {
         const rate = parseFloat(monthlyRate);
         const share = (rate * 0.025).toFixed(2);
         return {
-          personal: share,
-          government: share
+          personal: parseFloat(share).toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          }),
+          government: parseFloat(share).toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          })
         };
       }
       return { personal: '0.00', government: '0.00' };
@@ -257,8 +267,14 @@ const SendFile = () => {
       if (monthlyRate && citizenType === 'non-senior') {
         const rate = parseFloat(monthlyRate);
         return {
-          personal: (rate * 0.09).toFixed(2),
-          government: (rate * 0.12).toFixed(2)
+          personal: parseFloat((rate * 0.09).toFixed(2)).toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          }),
+          government: parseFloat((rate * 0.12).toFixed(2)).toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          })
         };
       }
       return { personal: '0.00', government: '0.00' };
@@ -273,7 +289,10 @@ const SendFile = () => {
       if (monthlyRate && citizenType === 'non-senior') {
         const rate = parseFloat(monthlyRate);
         return {
-          personal: (rate * 0.02).toFixed(2),
+          personal: parseFloat((rate * 0.02).toFixed(2)).toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          }),
           government: '200.00'
         };
       }
@@ -303,73 +322,170 @@ const SendFile = () => {
   }, [allEmployeeChanges, lastFocusedInput]);
 
   // Memoized EditableCell component
-  const EditableCell = useCallback(({ 
-    value, 
-    onChange, 
-    type = 'text', 
-    className = '', 
-    placeholder = '',
-    employeeName,
-    field
-  }) => {
-    const inputKey = `${employeeName}-${field}`;
+  // Memoized EditableCell component
+const EditableCell = useCallback(({ 
+  value, 
+  onChange, 
+  type = 'text', 
+  className = '', 
+  placeholder = '',
+  employeeName,
+  field
+}) => {
+  const inputKey = `${employeeName}-${field}`;
+  const [displayValue, setDisplayValue] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
+  
+  // Function to format number with commas
+  const formatWithCommas = (numStr) => {
+    if (!numStr) return '';
     
-    const handleFocus = (e) => {
-      try {
-        setLastFocusedInput({ employeeName, field });
-      } catch (error) {
-        console.error('Error in handleFocus:', error);
+    // Remove existing commas for processing
+    const cleanStr = numStr.replace(/,/g, '');
+    
+    // If it's empty or invalid, return as is
+    if (cleanStr === '' || cleanStr === '.') return cleanStr;
+    
+    // Check if it's a valid number
+    const num = parseFloat(cleanStr);
+    if (isNaN(num)) return cleanStr;
+    
+    // Format with commas
+    return num.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  };
+  
+  // Function to remove commas for editing
+  const removeCommas = (formattedStr) => {
+    return formattedStr.replace(/,/g, '');
+  };
+  
+  // Initialize display value - Start with commas if not focused
+  useEffect(() => {
+    if (type === 'number') {
+      if (isFocused) {
+        // Show raw value without commas when focused
+        setDisplayValue(removeCommas(value || ''));
+      } else {
+        // Show formatted value with commas when not focused
+        setDisplayValue(formatWithCommas(value || ''));
       }
-    };
-
-    const handleChange = (e) => {
-      try {
-        if (type === 'number') {
-          const inputValue = e.target.value;
-          if (inputValue === '' || /^\d*\.?\d*$/.test(inputValue)) {
-            onChange(e);
-            setLastFocusedInput({ employeeName, field });
-          }
-        } else {
-          onChange(e);
+    } else {
+      setDisplayValue(value || '');
+    }
+  }, [value, type, isFocused]);
+  
+  const handleFocus = (e) => {
+    try {
+      setIsFocused(true);
+      setLastFocusedInput({ employeeName, field });
+      
+      // Remove commas when focused for editing
+      if (type === 'number') {
+        const rawValue = removeCommas(value || '');
+        setDisplayValue(rawValue);
+      }
+    } catch (error) {
+      console.error('Error in handleFocus:', error);
+    }
+  };
+  
+  const handleBlur = (e) => {
+    try {
+      setIsFocused(false);
+      
+      if (type === 'number') {
+        // Format with commas when blur
+        const formatted = formatWithCommas(displayValue);
+        setDisplayValue(formatted);
+        
+        // Send raw value (without commas) to parent
+        const rawValue = removeCommas(displayValue);
+        if (rawValue !== value) {
+          onChange({ target: { value: rawValue } });
+        }
+      }
+    } catch (error) {
+      console.error('Error in handleBlur:', error);
+    }
+  };
+  
+  const handleChange = (e) => {
+    try {
+      const inputValue = e.target.value;
+      
+      if (type === 'number') {
+        // Allow only numbers and decimal point
+        if (inputValue === '' || /^\d*\.?\d*$/.test(inputValue)) {
+          setDisplayValue(inputValue);
+          
+          // Update parent only with raw value (without commas)
+          onChange({ target: { value: inputValue } });
           setLastFocusedInput({ employeeName, field });
         }
-      } catch (error) {
-        console.error('Error in handleChange:', error);
-        setHasError(true);
-        setErrorMessage(`Error updating ${field}: ${error.message}`);
+      } else {
+        setDisplayValue(inputValue);
+        onChange(e);
+        setLastFocusedInput({ employeeName, field });
       }
-    };
-
-    const handleKeyDown = (e) => {
+    } catch (error) {
+      console.error('Error in handleChange:', error);
+      setHasError(true);
+      setErrorMessage(`Error updating ${field}: ${error.message}`);
+    }
+  };
+  
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      // Format with commas and blur the input when Enter is pressed
       if (type === 'number') {
-        const allowedKeys = [
-          '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-          '.', 'Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight',
-          'Home', 'End'
-        ];
+        const formatted = formatWithCommas(displayValue);
+        setDisplayValue(formatted);
         
-        if (!allowedKeys.includes(e.key) && !e.ctrlKey && !e.metaKey) {
-          e.preventDefault();
+        // Send raw value to parent
+        const rawValue = removeCommas(displayValue);
+        if (rawValue !== value) {
+          onChange({ target: { value: rawValue } });
         }
       }
-    };
-
-    return (
-      <input
-        ref={el => inputRefs.current[inputKey] = el}
-        type={type === 'number' ? 'text' : type}
-        inputMode={type === 'number' ? 'decimal' : 'text'}
-        value={value || ''}
-        onChange={handleChange}
-        onFocus={handleFocus}
-        onKeyDown={handleKeyDown}
-        placeholder={placeholder}
-        className={`w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-base focus:outline-none focus:ring-4 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 ${className}`}
-        style={{ minWidth: '120px' }}
-      />
-    );
-  }, []);
+      
+      // Blur the input
+      e.target.blur();
+    }
+    
+    if (type === 'number') {
+      const allowedKeys = [
+        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+        '.', 'Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight',
+        'Home', 'End', 'Enter'
+      ];
+      
+      if (!allowedKeys.includes(e.key) && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+      }
+    }
+  };
+  
+  return (
+    <input
+      ref={el => inputRefs.current[inputKey] = el}
+      type="text"
+      inputMode={type === 'number' ? 'decimal' : 'text'}
+      value={displayValue}
+      onChange={handleChange}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+      placeholder={placeholder}
+      className={`w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-base focus:outline-none focus:ring-4 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 ${className} ${
+        type === 'number' ? 'text-right' : ''
+      } ${isFocused ? 'border-blue-500' : ''}`}
+      style={{ minWidth: '120px' }}
+    />
+  );
+}, []);
 
   // Memoized Checkbox component
   const SeniorCheckbox = useCallback(({ employeeName }) => {
@@ -394,11 +510,36 @@ const SendFile = () => {
   }, [getCitizenType, handleCheckboxChange]);
 
   // Memoized DisplayCell component
-  const DisplayCell = useCallback(({ value, className = '' }) => (
-    <div className={`w-full px-4 py-3 bg-gray-100 rounded-lg text-base font-medium ${className}`}>
-      {value}
-    </div>
-  ), []);
+  const DisplayCell = useCallback(({ value, className = '' }) => {
+    // Function to format number with commas
+    const formatNumberWithCommas = (val) => {
+      if (!val) return '';
+      
+      // Try to parse as number
+      const num = parseFloat(val);
+      if (isNaN(num)) return val;
+      
+      // Format with commas
+      return num.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    };
+    
+    // Check if value looks like a number
+    const isNumeric = (str) => {
+      if (typeof str !== 'string') return false;
+      return !isNaN(str) && !isNaN(parseFloat(str));
+    };
+    
+    const displayValue = isNumeric(value) ? formatNumberWithCommas(value) : value;
+    
+    return (
+      <div className={`w-full px-4 py-3 bg-gray-100 rounded-lg text-base font-medium ${className}`}>
+        {displayValue}
+      </div>
+    );
+  }, []);
 
   const updateExcelWithInputs = async () => {
     if (!excelData) return null;
@@ -841,7 +982,7 @@ const SendFile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
+    <div className=" bg-green-100 p-6">
       <FilenameModal />
       
       <div className="flex justify-between items-center mb-8">
@@ -850,7 +991,7 @@ const SendFile = () => {
           <p className="text-gray-600 mt-2">Upload payroll Excel file and update employee data</p>
         </div>
         <div className="flex items-center gap-4">
-          <label htmlFor="file-upload" className="cursor-pointer bg-blue-600 text-white px-8 py-4 rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-lg text-lg">
+          <label htmlFor="file-upload" className="cursor-pointer bg-green-700 text-white px-8 py-4 rounded-lg hover:bg-[#0D3721] transition-colors font-medium shadow-lg text-lg">
             📁 Choose Excel File
           </label>
           <input 
@@ -894,7 +1035,7 @@ const SendFile = () => {
             {/* Main Table */}
             <div className="overflow-x-auto border-2 border-gray-400 rounded-xl bg-white">
               <table className="min-w-full border-collapse text-base">
-                <thead className="bg-gray-300">
+                <thead className=" bg-green-100">
                   <tr>
                     <th className="border-2 border-gray-500 px-4 py-4 font-extrabold text-gray-900 text-center text-lg" rowSpan="2" style={{ minWidth: '60px' }}>SENIOR</th>
                     <th className="border-2 border-gray-500 px-6 py-4 font-extrabold text-gray-900 text-center text-lg" rowSpan="2" style={{ minWidth: '80px' }}>NO.</th>
@@ -908,10 +1049,10 @@ const SendFile = () => {
                     <th className="border-2 border-gray-500 px-6 py-4 font-extrabold text-gray-900 text-center text-lg" colSpan="2" style={{ minWidth: '250px' }}>GSIS PREMIUMS</th>
                     <th className="border-2 border-gray-500 px-6 py-4 font-extrabold text-gray-900 text-center text-lg" colSpan="2" style={{ minWidth: '250px' }}>PAG-IBIG</th>
                     <th className="border-2 border-gray-500 px-6 py-4 font-extrabold text-gray-900 text-center text-lg" colSpan="5" style={{ minWidth: '600px' }}>OTHER DEDUCTIONS</th>
-                    <th className="border-2 border-gray-500 px-6 py-4 font-extrabold text-gray-900 text-center text-lg" rowSpan="2" style={{ minWidth: '150px' }}>PAID IN CASH</th>
+                    <th className=" bg-green-200 border-2 border-gray-500 px-6 py-4 font-extrabold text-gray-900 text-center text-lg" rowSpan="2" style={{ minWidth: '150px' }}>PAID IN CASH</th>
                   </tr>
                   <tr>
-                    <th className="border-2 border-gray-500 px-5 py-3 font-bold text-gray-800 text-center" style={{ minWidth: '150px' }}>FROM</th>
+                    <th className=" border-2 border-gray-500 px-5 py-3 font-bold text-gray-800 text-center" style={{ minWidth: '150px' }}>FROM</th>
                     <th className="border-2 border-gray-500 px-5 py-3 font-bold text-gray-800 text-center" style={{ minWidth: '150px' }}>TO</th>
                     <th className="border-2 border-gray-500 px-5 py-3 font-bold text-gray-800 text-center" style={{ minWidth: '125px' }}>EDUC LOAN</th>
                     <th className="border-2 border-gray-500 px-5 py-3 font-bold text-gray-800 text-center" style={{ minWidth: '125px' }}>MPL LOAN</th>
@@ -951,7 +1092,7 @@ const SendFile = () => {
                         </td>
                         
                         {/* Number */}
-                        <td className="border-2 border-gray-400 px-6 py-4 text-center font-bold bg-gray-200 text-lg">
+                        <td className="border-2 border-gray-400 px-6 py-4 text-center font-bold bg-green-100 text-lg">
                           {employee.number}
                         </td>
                         
@@ -1003,8 +1144,8 @@ const SendFile = () => {
                         </td>
                         
                         {/* Amount Accrued */}
-                        <td className="border-2 border-gray-400 p-2 bg-gray-200">
-                          <DisplayCell value={amountAccrued} className="text-right text-lg font-bold" />
+                        <td className="border-2 border-gray-400 p-2 bg-green-100">
+                          <DisplayCell value={amountAccrued} className="text-right text-lg font-bold bg-[#ffffff]" />
                         </td>
                         
                         {/* GSIS Loans */}
@@ -1032,38 +1173,38 @@ const SendFile = () => {
                         </td>
                         
                         {/* PhilHealth */}
-                        <td className="border-2 border-gray-400 p-2 bg-gray-200">
-                          <DisplayCell value={philhealth.personal} className="text-right text-lg font-bold" />
+                        <td className="border-2 border-gray-400 p-2 bg-green-100">
+                          <DisplayCell value={philhealth.personal} className="text-right text-lg font-bold bg-[#ffffff]" />
                         </td>
-                        <td className="border-2 border-gray-400 p-2 bg-gray-200">
-                          <DisplayCell value={philhealth.government} className="text-right text-lg font-bold" />
+                        <td className="border-2 border-gray-400 p-2 bg-green-100">
+                          <DisplayCell value={philhealth.government} className="text-right text-lg font-bold bg-[#ffffff]" />
                         </td>
                         
                         {/* GSIS Premiums */}
-                        <td className="border-2 border-gray-400 p-2 bg-gray-200">
+                        <td className="border-2 border-gray-400 p-2 bg-green-100">
                           <DisplayCell 
                             value={gsisPremiums.personal} 
-                            className={`text-right text-lg font-bold ${isSeniorRow ? 'text-red-600 line-through' : ''}`}
+                            className={`text-right text-lg font-bold ${isSeniorRow ? 'text-red-600 line-through' : ''} bg-[#ffffff]`}
                           />
                         </td>
-                        <td className="border-2 border-gray-400 p-2 bg-gray-200">
+                        <td className="border-2 border-gray-400 p-2 bg-green-100">
                           <DisplayCell 
                             value={gsisPremiums.government} 
-                            className={`text-right text-lg font-bold ${isSeniorRow ? 'text-red-600 line-through' : ''}`}
+                            className={`text-right text-lg font-bold ${isSeniorRow ? 'text-red-600 line-through' : ''} bg-[#ffffff]`}
                           />
                         </td>
                         
                         {/* Pag-IBIG */}
-                        <td className="border-2 border-gray-400 p-2 bg-gray-200">
+                        <td className="border-2 border-gray-400 p-2 bg-green-100">
                           <DisplayCell 
                             value={pagibig.personal} 
-                            className={`text-right text-lg font-bold ${isSeniorRow ? 'text-red-600 line-through' : ''}`}
+                            className={`text-right text-lg font-bold ${isSeniorRow ? 'text-red-600 line-through' : ''} bg-[#ffffff]`}
                           />
                         </td>
-                        <td className="border-2 border-gray-400 p-2 bg-gray-200">
+                        <td className="border-2 border-gray-400 p-2 bg-green-100">
                           <DisplayCell 
                             value={pagibig.government} 
-                            className={`text-right text-lg font-bold ${isSeniorRow ? 'text-red-600 line-through' : ''}`}
+                            className={`text-right text-lg font-bold ${isSeniorRow ? 'text-red-600 line-through' : ''} bg-[#ffffff]`}
                           />
                         </td>
                         
@@ -1125,7 +1266,7 @@ const SendFile = () => {
                         </td>
                         
                         {/* Paid in Cash */}
-                        <td className="border-2 border-gray-400 p-2 bg-gray-200">
+                        <td className="border-2 border-gray-400 p-2 bg-green-200">
                           <DisplayCell value={employee.paidInCash} className="text-right text-lg font-bold" />
                         </td>
                       </tr>
@@ -1145,8 +1286,8 @@ const SendFile = () => {
                     <li><strong>Click on any white input box</strong> to edit the value</li>
                     <li><strong>Check the SENIOR checkbox</strong> to exempt from GSIS & Pag-IBIG</li>
                     <li><strong>Gray boxes are auto-calculated</strong> and cannot be edited</li>
-                    <li><strong>Changes are saved automatically</strong> as you type</li>
-                    <li>Use <strong>Tab key</strong> to navigate between fields quickly</li>
+                    <li><strong>Numbers automatically format with commas</strong> (e.g., 1,000.00)</li>
+                    <li>Press <strong>Enter key</strong> to format number and lose focus</li>
                   </ul>
                 </div>
                 <div>

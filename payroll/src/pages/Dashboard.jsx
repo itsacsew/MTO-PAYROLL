@@ -340,10 +340,11 @@ const handleReceiveFile = () => {
   }
 
   return (
-    <div className="bg-gray-100 p-6">
+    <div className="bg-green-100 p-6">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
+        <h1 className="text-3xl font-bold text-gray-800">MTO Dashboard</h1>
+        <p className="text-gray-600 mt-2">Financial management and Payroll tracking</p>
       </div>
 
       {/* Main Content Grid */}
@@ -352,13 +353,13 @@ const handleReceiveFile = () => {
         {/* Left Column - Services */}
         <div className="lg:col-span-2 space-y-6">
           {/* Services Section */}
-          <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="bg-white rounded-lg shadow-[0_10px_30px_rgba(0,0,0,0.2)] p-6 border border-gray-400">
             <h2 className="text-xl font-semibold text-gray-700 mb-4">File Operations</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Send File Button */}
               <button 
                 onClick={handleSendFile}
-                className="bg-blue-50 hover:bg-blue-100 text-blue-800 rounded-lg p-6 transition duration-200 ease-in-out border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 w-full text-left"
+                className="bg-blue-50 hover:bg-blue-100 text-blue-800 rounded-lg p-6 transition duration-200 ease-in-out border border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 w-full text-left"
               >
                 <div className="flex items-start space-x-4">
                   <div className="bg-blue-100 p-3 rounded-lg">
@@ -376,7 +377,7 @@ const handleReceiveFile = () => {
               {/* Receive File Button */}
               <button 
                 onClick={handleReceiveFile}
-                className="bg-green-50 hover:bg-green-100 text-green-800 rounded-lg p-6 transition duration-200 ease-in-out border border-green-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 w-full text-left relative"
+                className="bg-green-50 hover:bg-green-100 text-green-800 rounded-lg p-6 transition duration-200 ease-in-out border border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 w-full text-left relative"
               >
                 {/* Notification Badge - Only show for pending files */}
                 {pendingFilesCount > 0 && (
@@ -423,7 +424,7 @@ const handleReceiveFile = () => {
         {/* Right Column - Search and File Status */}
         <div className="space-y-6">
           {/* File Processing Status Section */}
-          <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="bg-white rounded-lg shadow-[0_10px_30px_rgba(0,0,0,0.2)] p-6 border border-gray-400">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold text-gray-700">Latest File Status</h2>
               {allFiles.length > 0 && (
