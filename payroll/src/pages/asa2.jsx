@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../config/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -7,25 +7,20 @@ import {
   MdUpload, 
   MdSend, 
   MdBusiness,
-  MdCheckCircle,
   MdWarning,
   MdFolder,
   MdPerson,
-  MdClose
+  MdClose,
+  MdEdit
 } from 'react-icons/md';
 
 const SendFile = () => {
   const navigate = useNavigate();
   
-  // State for office selection
-  const [showOfficeModal, setShowOfficeModal] = useState(false);
-  const [selectedOfficeCategory, setSelectedOfficeCategory] = useState('');
-  const [selectedOffice, setSelectedOffice] = useState('');
-  const [isOfficeSelected, setIsOfficeSelected] = useState(false);
-  
   // State for file handling
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileName, setFileName] = useState('');
+  const [editableFileName, setEditableFileName] = useState('');
   const [excelData, setExcelData] = useState(null);
   const [isSending, setIsSending] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -33,14 +28,9 @@ const SendFile = () => {
   
   // State for send modal
   const [showSendModal, setShowSendModal] = useState(false);
-
-  // Office categories (buttons)
-  const officeCategories = [
-    'SB/MTO/MENRO',
-    'MDDRMO/MEO/MPDO/MSWDO',
-    'RHU/MASO/MCR/HRMO',
-    'MAYOR/ACCT/MBO/MASSO'
-  ];
+  
+  // State for office input inside modal
+  const [officeInput, setOfficeInput] = useState('');
 
   // Get current logged-in user from localStorage
   const getCurrentUser = () => {
@@ -56,33 +46,9 @@ const SendFile = () => {
     }
   };
 
-  // Handle select office button click
-  const handleSelectOfficeClick = () => {
-    setShowOfficeModal(true);
-    setSelectedOfficeCategory('');
-    setSelectedOffice('');
-  };
-
-  // Handle office category button click
-  const handleOfficeCategorySelect = (category) => {
-    setSelectedOfficeCategory(category);
-    setSelectedOffice(category);
-  };
-
-  // Handle confirm office selection
-  const handleConfirmOffice = () => {
-    if (!selectedOfficeCategory) {
-      alert('Please select an office category first.');
-      return;
-    }
-    
-    setIsOfficeSelected(true);
-    setShowOfficeModal(false);
-    
-    // After confirming office, automatically open file picker
-    setTimeout(() => {
-      document.getElementById('file-upload').click();
-    }, 100);
+  // Handle select file button click
+  const handleSelectFileClick = () => {
+    document.getElementById('file-upload').click();
   };
 
   // Handle file upload
@@ -93,6 +59,7 @@ const SendFile = () => {
 
       setSelectedFile(file);
       setFileName(file.name);
+      setEditableFileName(file.name); // Set initial editable filename
       
       const reader = new FileReader();
       reader.onload = async (e) => {
@@ -125,15 +92,30 @@ const SendFile = () => {
     }
   }, []);
 
-  // Handle send file directly to Firestore
+  // Handle cancel/close modal - RESET ALL FILE STATES
+  const handleCancelSend = () => {
+    setShowSendModal(false);
+    setSelectedFile(null);
+    setFileName('');
+    setEditableFileName('');
+    setExcelData(null);
+    setOfficeInput('');
+  };
+
+  // Handle send file to Firestore
   const handleSendFile = async () => {
     if (!excelData) {
       alert('No file data to send.');
       return;
     }
 
-    if (!selectedOfficeCategory) {
-      alert('Office category is missing. Please select an office first.');
+    if (!officeInput.trim()) {
+      alert('Please enter an office category.');
+      return;
+    }
+
+    if (!editableFileName.trim()) {
+      alert('Please enter a filename.');
       return;
     }
 
@@ -147,12 +129,12 @@ const SendFile = () => {
     setIsSending(true);
 
     try {
-      // Write buffer directly from the loaded workbook
+      // Write buffer from the loaded workbook
       const buffer = await excelData.workbook.xlsx.writeBuffer();
       const base64String = arrayBufferToBase64(buffer);
       
-      // Use the original filename
-      const finalFileName = fileName;
+      // Use the editable filename
+      const finalFileName = editableFileName.endsWith('.xlsx') ? editableFileName : `${editableFileName}.xlsx`;
       
       const fileData = {
         fileName: finalFileName,
@@ -163,10 +145,10 @@ const SendFile = () => {
         fileSize: base64String.length,
         originalFileName: fileName,
         
-        // Office information - send all three fields as requested
-        officeCategory: selectedOfficeCategory,
-        office: selectedOffice,
-        officeDisplay: selectedOfficeCategory,
+        // Office information - from text input
+        officeCategory: officeInput,
+        office: officeInput,
+        officeDisplay: officeInput,
         
         sender: {
           id: currentUser.id,
@@ -185,20 +167,14 @@ const SendFile = () => {
       // Close modal and show success message
       setShowSendModal(false);
       
-      let alertMessage = `✅ File "${finalFileName}" sent successfully to Firestore!\n\n`;
-      alertMessage += `Document ID: ${docRef.id}\n`;
-      alertMessage += `Office: ${selectedOfficeCategory}\n`;
-      alertMessage += `Sender: ${currentUser.name} (${currentUser.office})`;
-      
-      alert(alertMessage);
+      alert(`✅ File "${finalFileName}" sent successfully to Firestore!\n\nOffice: ${officeInput}\nSender: ${currentUser.name}`);
       
       // Reset states after successful send
       setSelectedFile(null);
       setFileName('');
+      setEditableFileName('');
       setExcelData(null);
-      setSelectedOfficeCategory('');
-      setSelectedOffice('');
-      setIsOfficeSelected(false);
+      setOfficeInput('');
       
     } catch (error) {
       console.error('Error sending file to Firestore:', error);
@@ -218,143 +194,24 @@ const SendFile = () => {
     return btoa(binary);
   };
 
-  // Office Selection Modal Component
-  const OfficeSelectionModal = () => {
-    if (!showOfficeModal) return null;
-
-    return (
-      <>
-        <div 
-          onClick={() => setShowOfficeModal(false)}
-          className="fixed inset-0 bg-black/70 z-50"
-        />
-
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="w-full max-w-2xl rounded-2xl overflow-hidden"
-            style={{
-              background: 'linear-gradient(145deg, #1a2535, #0f1a2a)',
-              boxShadow: '30px 30px 60px -10px #0a0f1a, -30px -30px 60px -10px #1e2a3a, inset 0 1px 2px rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.03)'
-            }}
-          >
-            <div className="flex items-center gap-4 p-6 border-b border-white/5">
-              <div
-                className="w-12 h-12 rounded-xl flex items-center justify-center"
-                style={{
-                  background: 'linear-gradient(135deg, #8b5cf6, #3b82f6)',
-                  boxShadow: '0 10px 20px -5px rgba(139, 92, 246, 0.3)'
-                }}
-              >
-                <MdBusiness className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h2 className="text-2xl font-bold text-white">Select Office Category</h2>
-                <p className="text-gray-400 text-sm mt-1">Choose which office this file belongs to</p>
-              </div>
-            </div>
-
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                {officeCategories.map((category, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleOfficeCategorySelect(category)}
-                    className={`p-6 text-left rounded-xl transition-all duration-200 ${
-                      selectedOfficeCategory === category
-                        ? 'ring-2 ring-blue-500'
-                        : ''
-                    }`}
-                    style={{
-                      background: selectedOfficeCategory === category
-                        ? 'linear-gradient(145deg, #2563eb20, #1e293b)'
-                        : 'linear-gradient(145deg, #1e293b, #0f172a)',
-                      boxShadow: selectedOfficeCategory === category
-                        ? '15px 15px 30px #0a0f1a, -15px -15px 30px #1e2a3a, 0 0 20px rgba(37, 99, 235, 0.2)'
-                        : '10px 10px 20px #0a0f1a, -10px -10px 20px #1e2a3a',
-                      border: '1px solid rgba(255,255,255,0.03)'
-                    }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg flex items-center justify-center"
-                        style={{
-                          background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
-                          boxShadow: '0 5px 15px -5px #3b82f6'
-                        }}
-                      >
-                        <MdBusiness className="w-5 h-5 text-white" />
-                      </div>
-                      <span className="text-white font-semibold">{category}</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-
-              {selectedOfficeCategory && (
-                <div className="p-4 rounded-xl mb-6"
-                  style={{
-                    background: 'linear-gradient(145deg, #2563eb10, #1e293b)',
-                    border: '1px solid rgba(59, 130, 246, 0.2)'
-                  }}
-                >
-                  <p className="text-blue-400 flex items-center gap-2">
-                    <MdCheckCircle className="w-5 h-5" />
-                    <span className="font-semibold">Selected:</span>
-                    <span className="text-white">{selectedOfficeCategory}</span>
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-end gap-4 p-6 border-t border-white/5">
-              <button
-                onClick={() => setShowOfficeModal(false)}
-                className="px-6 py-3 rounded-xl text-gray-300 font-medium"
-                style={{
-                  background: 'linear-gradient(145deg, #1e293b, #0f172a)',
-                  boxShadow: '5px 5px 10px #0a0f1a, -5px -5px 10px #1e2a3a',
-                  border: '1px solid rgba(255,255,255,0.03)'
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmOffice}
-                disabled={!selectedOfficeCategory}
-                className={`px-6 py-3 rounded-xl font-medium flex items-center gap-2 ${
-                  selectedOfficeCategory
-                    ? 'text-white'
-                    : 'opacity-50 cursor-not-allowed'
-                }`}
-                style={{
-                  background: selectedOfficeCategory
-                    ? 'linear-gradient(145deg, #10b981, #059669)'
-                    : 'linear-gradient(145deg, #374151, #1f2937)',
-                  boxShadow: selectedOfficeCategory
-                    ? '0 10px 20px -5px #10b981'
-                    : '5px 5px 10px #0a0f1a, -5px -5px 10px #1e2a3a',
-                }}
-              >
-                <MdCheckCircle className="w-5 h-5" />
-                Confirm & Select File
-              </button>
-            </div>
-          </div>
-        </div>
-      </>
-    );
-  };
-
   // Send File Modal Component
   const SendFileModal = () => {
     if (!showSendModal) return null;
     
     const currentUser = getCurrentUser();
 
+    // Add .xlsx extension if not present
+    const ensureXlsxExtension = (filename) => {
+      if (!filename.toLowerCase().endsWith('.xlsx')) {
+        return `${filename}.xlsx`;
+      }
+      return filename;
+    };
+
     return (
       <>
         <div 
-          onClick={() => setShowSendModal(false)}
+          onClick={handleCancelSend}
           className="fixed inset-0 bg-black/70 z-50"
         />
 
@@ -382,7 +239,7 @@ const SendFile = () => {
                 <h2 className="text-xl font-bold text-white">Send File</h2>
               </div>
               <button
-                onClick={() => setShowSendModal(false)}
+                onClick={handleCancelSend}
                 className="text-gray-400 hover:text-white transition-colors"
               >
                 <MdClose className="w-6 h-6" />
@@ -391,32 +248,44 @@ const SendFile = () => {
 
             {/* Modal Body */}
             <div className="p-6 space-y-4">
-              {/* Office Information */}
-              <div className="p-4 rounded-xl"
-                style={{
-                  background: 'linear-gradient(145deg, #2563eb10, #1e293b)',
-                  border: '1px solid rgba(59, 130, 246, 0.2)'
-                }}
-              >
-                <div className="flex items-center gap-2 text-blue-400 mb-2">
-                  <MdBusiness className="w-4 h-4" />
-                  <span className="text-xs font-semibold">OFFICE</span>
-                </div>
-                <p className="text-white font-medium">{selectedOfficeCategory}</p>
+              {/* Office Input - TEXT INPUT not dropdown */}
+              <div>
+                 <label className="block text-gray-300 text-sm font-medium mb-2 flex items-center gap-1">
+                  <MdEdit className="w-4 h-4" />
+                  Office Name <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={officeInput}
+                  onChange={(e) => setOfficeInput(e.target.value)}
+                  placeholder="e.g., SB/MTO/MENRO, MAYOR/ACCT, etc."
+                  className="w-full px-4 py-3 bg-[#1a2535] border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  style={{
+                    boxShadow: 'inset 5px 5px 10px #0a0f1a, inset -5px -5px 10px #1e2a3a'
+                  }}
+                />
+                
               </div>
 
-              {/* File Information */}
-              <div className="p-4 rounded-xl"
-                style={{
-                  background: 'linear-gradient(145deg, #8b5cf610, #1e293b)',
-                  border: '1px solid rgba(139, 92, 246, 0.2)'
-                }}
-              >
-                <div className="flex items-center gap-2 text-purple-400 mb-2">
-                  <MdFolder className="w-4 h-4" />
-                  <span className="text-xs font-semibold">FILE</span>
+              {/* File Information - EDITABLE FILENAME */}
+              <div>
+                <label className="block text-gray-300 text-sm font-medium mb-2 flex items-center gap-1">
+                  <MdEdit className="w-4 h-4" />
+                  File Name <span className="text-red-400">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={editableFileName}
+                    onChange={(e) => setEditableFileName(e.target.value)}
+                    placeholder="Enter filename"
+                    className="w-full px-4 py-3 bg-[#1a2535] border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    style={{
+                      boxShadow: 'inset 5px 5px 10px #0a0f1a, inset -5px -5px 10px #1e2a3a'
+                    }}
+                  />
                 </div>
-                <p className="text-white font-medium break-all">{fileName}</p>
+                
               </div>
 
               {/* Sender Information */}
@@ -452,7 +321,7 @@ const SendFile = () => {
             {/* Modal Footer */}
             <div className="flex justify-end gap-3 p-6 border-t border-white/5">
               <button
-                onClick={() => setShowSendModal(false)}
+                onClick={handleCancelSend}
                 className="px-4 py-2 rounded-lg text-gray-300 font-medium"
                 style={{
                   background: 'linear-gradient(145deg, #1e293b, #0f172a)',
@@ -464,16 +333,17 @@ const SendFile = () => {
               </button>
               <button
                 onClick={handleSendFile}
-                disabled={isSending}
+                disabled={isSending || !officeInput.trim() || !editableFileName.trim()}
                 className="px-6 py-2 rounded-lg font-medium flex items-center gap-2 text-white"
                 style={{
-                  background: isSending
+                  background: (isSending || !officeInput.trim() || !editableFileName.trim())
                     ? 'linear-gradient(145deg, #6b7280, #4b5563)'
                     : 'linear-gradient(145deg, #10b981, #059669)',
-                  boxShadow: isSending
+                  boxShadow: (isSending || !officeInput.trim() || !editableFileName.trim())
                     ? '5px 5px 10px #0a0f1a, -5px -5px 10px #1e2a3a'
                     : '0 10px 20px -5px #10b981',
-                  opacity: isSending ? 0.5 : 1
+                  opacity: (isSending || !officeInput.trim() || !editableFileName.trim()) ? 0.5 : 1,
+                  cursor: (isSending || !officeInput.trim() || !editableFileName.trim()) ? 'not-allowed' : 'pointer'
                 }}
               >
                 {isSending ? (
@@ -550,7 +420,9 @@ const SendFile = () => {
                 setErrorMessage('');
                 setSelectedFile(null);
                 setFileName('');
+                setEditableFileName('');
                 setExcelData(null);
+                setOfficeInput('');
               }}
               className="px-6 py-3 rounded-xl font-medium text-white"
               style={{
@@ -575,7 +447,6 @@ const SendFile = () => {
         }}
       />
 
-      <OfficeSelectionModal />
       <SendFileModal />
 
       <div className="relative z-10">
@@ -591,91 +462,45 @@ const SendFile = () => {
             <p className="text-gray-400 mt-2">Send payroll Excel files directly to Firestore</p>
           </div>
 
-          <div className="flex flex-wrap gap-4">
-            
-          </div>
+         
         </div>
 
-        {/* Office Selection Status */}
-        {isOfficeSelected && selectedOfficeCategory && (
-          <div className="mb-6 p-4 rounded-xl inline-block"
-            style={{
-              background: 'linear-gradient(145deg, #2563eb10, #1e293b)',
-              border: '1px solid rgba(59, 130, 246, 0.2)'
-            }}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-                style={{
-                  background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
-                  boxShadow: '0 5px 10px -3px #3b82f6'
-                }}
-              >
-                <MdBusiness className="w-4 h-4 text-white" />
-              </div>
-              <div>
-                <span className="text-gray-400 text-sm">Selected Office:</span>
-                <span className="ml-2 text-white font-semibold">{selectedOfficeCategory}</span>
-              </div>
-              <button
-                onClick={() => {
-                  setIsOfficeSelected(false);
-                  setSelectedOfficeCategory('');
-                  setSelectedOffice('');
-                  setSelectedFile(null);
-                  setFileName('');
-                  setExcelData(null);
-                }}
-                className="ml-4 text-xs text-red-400 hover:text-red-300 font-medium"
-              >
-                Change
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!selectedFile && (
+        {/* Empty State - Laging naka-display kung walang file */}
+        <div
+          className="rounded-2xl p-12 text-center"
+          style={{
+            background: 'linear-gradient(145deg, #1a2535, #0f1a2a)',
+            boxShadow: '30px 30px 60px -10px #0a0f1a, -30px -30px 60px -10px #1e2a3a, inset 0 1px 2px rgba(255,255,255,0.05)',
+            border: '1px solid rgba(255,255,255,0.03)'
+          }}
+        >
           <div
-            className="rounded-2xl p-12 text-center"
+            className="w-24 h-24 rounded-2xl flex items-center justify-center mx-auto mb-6"
             style={{
-              background: 'linear-gradient(145deg, #1a2535, #0f1a2a)',
-              boxShadow: '30px 30px 60px -10px #0a0f1a, -30px -30px 60px -10px #1e2a3a, inset 0 1px 2px rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.03)'
+              background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+              boxShadow: '0 20px 30px -10px #3b82f6'
             }}
           >
-            <div
-              className="w-24 h-24 rounded-2xl flex items-center justify-center mx-auto mb-6"
-              style={{
-                background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
-                boxShadow: '0 20px 30px -10px #3b82f6'
-              }}
-            >
-              <MdUpload className="w-12 h-12 text-white" />
-            </div>
-            
-            <h2 className="text-2xl font-bold text-white mb-2">No File Selected</h2>
-            <p className="text-gray-400 mb-6 max-w-md mx-auto">
-              {isOfficeSelected 
-                ? 'Click "Choose Excel File" to select a payroll Excel file to send.'
-                : 'Please select an office category first, then choose your Excel file.'}
-            </p>
-
-            {!isOfficeSelected && (
-              <button
-                onClick={handleSelectOfficeClick}
-                className="px-8 py-4 rounded-xl font-medium inline-flex items-center gap-2 text-white mx-auto"
-                style={{
-                  background: 'linear-gradient(145deg, #8b5cf6, #7c3aed)',
-                  boxShadow: '0 10px 20px -5px #8b5cf6'
-                }}
-              >
-                <MdBusiness className="w-5 h-5" />
-                Select Office First
-              </button>
-            )}
+            <MdUpload className="w-12 h-12 text-white" />
           </div>
-        )}
+          
+          <h2 className="text-2xl font-bold text-white mb-2">No File Selected</h2>
+          <p className="text-gray-400 mb-6 max-w-md mx-auto">
+            Click the "Select File" button to choose a payroll Excel file to send.
+          </p>
+
+          <button
+            onClick={handleSelectFileClick}
+            className="px-8 py-4 rounded-xl font-medium inline-flex items-center gap-2 text-white mx-auto"
+            style={{
+              background: 'linear-gradient(145deg, #3b82f6, #2563eb)',
+              boxShadow: '0 10px 20px -5px #3b82f6'
+            }}
+          >
+            <MdUpload className="w-5 h-5" />
+            Select File Now
+          </button>
+        </div>
       </div>
 
       {/* Hidden File Input */}

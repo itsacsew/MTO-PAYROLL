@@ -2,6 +2,18 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../config/firebase'
 import { collection, getDocs, query, orderBy, onSnapshot } from 'firebase/firestore'
+import { motion, AnimatePresence } from 'framer-motion'
+import { 
+  MdDownload, 
+  MdInsertDriveFile,
+  MdCheckCircle,
+  MdSchedule,
+  MdArrowForward,
+  MdClose,
+  MdVisibility,
+  MdPending,
+  MdAnalytics
+} from 'react-icons/md'
 
 const Tasks = () => {
   const navigate = useNavigate()
@@ -9,6 +21,7 @@ const Tasks = () => {
   const [latestFile, setLatestFile] = useState(null)
   const [allFiles, setAllFiles] = useState([])
   const [showAllFilesModal, setShowAllFilesModal] = useState(false)
+  const [hoveredCard, setHoveredCard] = useState(null)
 
   // Load files and latest file status from Firestore
   useEffect(() => {
@@ -16,7 +29,6 @@ const Tasks = () => {
       try {
         console.log('Loading file status from Firestore...')
         
-        // Create query with ordering by timestamp (newest first)
         const q = query(
           collection(db, 'sentFiles'), 
           orderBy('timestamp', 'desc')
@@ -39,19 +51,15 @@ const Tasks = () => {
           })
         })
         
-        // Count only files with status 'pending' or no status
         const pendingCount = files.filter(file => 
           file.status === 'pending' || !file.status
         ).length
         
         console.log('Pending files found:', pendingCount)
-        console.log('Total files:', files.length)
-        console.log('Latest file:', files[0])
         
         setPendingFilesCount(pendingCount)
         setAllFiles(files)
         
-        // Get the latest file (most recent)
         if (files.length > 0) {
           setLatestFile(files[0])
         } else {
@@ -65,7 +73,6 @@ const Tasks = () => {
 
     loadFileStatus()
 
-    // Real-time listener for new files
     try {
       const q = query(
         collection(db, 'sentFiles'), 
@@ -89,19 +96,13 @@ const Tasks = () => {
             })
           })
           
-          // Count only files with status 'pending' or no status
           const pendingCount = files.filter(file => 
             file.status === 'pending' || !file.status
           ).length
           
-          console.log('Real-time update - pending files count:', pendingCount)
-          console.log('Real-time update - total files:', files.length)
-          console.log('Real-time update - latest file:', files[0])
-          
           setPendingFilesCount(pendingCount)
           setAllFiles(files)
           
-          // Get the latest file (most recent)
           if (files.length > 0) {
             setLatestFile(files[0])
           } else {
@@ -113,7 +114,6 @@ const Tasks = () => {
         }
       )
 
-      // Cleanup
       return () => unsubscribe()
     } catch (listenerError) {
       console.error('Error setting up real-time listener:', listenerError)
@@ -125,29 +125,6 @@ const Tasks = () => {
     navigate('/receive-file')
   }
 
-  const handleSendFile = () => {
-    console.log('Send File clicked')
-    navigate('/file-send') // Changed from '/send-file' to '/file-send'
-  }
-  const handlePrintFile = () => {
-    console.log('Print File clicked')
-  }
-
-  const handleCreateTask = () => {
-    console.log('Create Task clicked')
-    navigate('/create-task')
-  }
-
-  const handleViewReports = () => {
-    console.log('View Reports clicked')
-    navigate('/reports')
-  }
-
-  const handleManageInvoices = () => {
-    console.log('Manage Invoices clicked')
-    navigate('/invoices')
-  }
-
   // Determine which steps are completed based on file status
   const getStepStatus = (fileStatus) => {
     if (!fileStatus) {
@@ -157,20 +134,20 @@ const Tasks = () => {
     switch (fileStatus) {
       case 'sent':
       case 'pending':
-        return [true, false, false, false] // File Sent only
+        return [true, false, false, false]
       case 'received':
-        return [true, true, false, false] // Sent + Received
+        return [true, true, false, false]
       case 'checked':
-      case 'updated': // 'updated' status from ModalSend Check File
-        return [true, true, true, false] // Sent + Received + Checked
+      case 'updated':
+        return [true, true, true, false]
       case 'processed':
-        return [true, true, true, true] // All steps completed
+        return [true, true, true, true]
       default:
         return [true, false, false, false]
     }
   }
 
-  const [fileSent, pending, received, processed] = latestFile ? getStepStatus(latestFile.status) : [false, false, false, false]
+  const [fileSent, received, checked, processed] = latestFile ? getStepStatus(latestFile.status) : [false, false, false, false]
 
   // Format date for display
   const formatDate = (timestamp) => {
@@ -185,12 +162,12 @@ const Tasks = () => {
 
   // Get status description text
   const getStatusDescription = (file) => {
-    if (!file) return 'No files have been sent yet. Go to Send File to start.'
+    if (!file) return 'No files have been sent yet.'
     
     switch (file.status) {
       case 'sent':
       case 'pending':
-        return 'File has been sent to Accounting and is pending receipt.'
+        return 'File has been sent to Firestore and is pending receipt.'
       case 'received':
         return 'File has been received and marked as received.'
       case 'checked':
@@ -209,16 +186,46 @@ const Tasks = () => {
     switch (status) {
       case 'sent':
       case 'pending':
-        return { icon: '📤', color: 'text-blue-600', bgColor: 'bg-blue-50', borderColor: 'border-blue-200' }
+        return { 
+          icon: <MdSchedule size={18} />, 
+          color: 'text-blue-400', 
+          bgColor: 'bg-blue-500/10',
+          borderColor: 'border-blue-500/20',
+          gradient: 'from-blue-500 to-cyan-500'
+        }
       case 'received':
-        return { icon: '📥', color: 'text-green-600', bgColor: 'bg-green-50', borderColor: 'border-green-200' }
+        return { 
+          icon: <MdDownload size={18} />, 
+          color: 'text-green-400', 
+          bgColor: 'bg-green-500/10',
+          borderColor: 'border-green-500/20',
+          gradient: 'from-green-500 to-emerald-500'
+        }
       case 'checked':
       case 'updated':
-        return { icon: '✓', color: 'text-purple-600', bgColor: 'bg-purple-50', borderColor: 'border-purple-200' }
+        return { 
+          icon: <MdCheckCircle size={18} />, 
+          color: 'text-purple-400', 
+          bgColor: 'bg-purple-500/10',
+          borderColor: 'border-purple-500/20',
+          gradient: 'from-purple-500 to-pink-500'
+        }
       case 'processed':
-        return { icon: '✅', color: 'text-teal-600', bgColor: 'bg-teal-50', borderColor: 'border-teal-200' }
+        return { 
+          icon: <MdCheckCircle size={18} />, 
+          color: 'text-teal-400', 
+          bgColor: 'bg-teal-500/10',
+          borderColor: 'border-teal-500/20',
+          gradient: 'from-teal-500 to-emerald-500'
+        }
       default:
-        return { icon: '📄', color: 'text-gray-600', bgColor: 'bg-gray-50', borderColor: 'border-gray-200' }
+        return { 
+          icon: <MdInsertDriveFile size={18} />, 
+          color: 'text-gray-400', 
+          bgColor: 'bg-gray-500/10',
+          borderColor: 'border-gray-500/20',
+          gradient: 'from-gray-500 to-slate-500'
+        }
     }
   }
 
@@ -228,123 +235,184 @@ const Tasks = () => {
     const statusInfo = getStatusInfo(file?.status)
     
     return (
-      <div className="mb-4">
+      <div className="space-y-4">
         {showFileName && (
-          <div className={`mb-3 p-3 rounded-lg border ${statusInfo.bgColor} ${statusInfo.borderColor}`}>
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`p-4 rounded-xl ${statusInfo.bgColor} border ${statusInfo.borderColor}`}
+            style={{
+              boxShadow: '0 10px 30px -10px rgba(0,0,0,0.2), inset 0 1px 2px rgba(255,255,255,0.05)',
+              backdropFilter: 'blur(10px)'
+            }}
+          >
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-700 truncate">
-                  {file.fileName}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Sent: {formatDate(file.timestamp)}
-                </p>
-                {file.lastCheckedAt && (
-                  <p className="text-xs text-purple-600 mt-1">
-                    Checked: {formatDate(file.lastCheckedAt)}
-                  </p>
-                )}
-                {file.lastUpdatedAt && (
-                  <p className="text-xs text-blue-600 mt-1">
-                    Updated: {formatDate(file.lastUpdatedAt)}
-                  </p>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={`text-lg ${statusInfo.color}`}>
-                  {statusInfo.icon}
-                </span>
-                <span className={`text-xs font-medium px-2 py-1 rounded-full ${statusInfo.bgColor} ${statusInfo.color} ${statusInfo.borderColor} border`}>
-                  {file.status?.toUpperCase() || 'PENDING'}
-                </span>
+              <div className="flex-1">
+                <div className="flex items-center gap-3">
+                  <motion.div 
+                    whileHover={{ scale: 1.1, rotate: 5 }}
+                    className={`w-10 h-10 rounded-lg flex items-center justify-center ${statusInfo.bgColor} border ${statusInfo.borderColor}`}
+                  >
+                    <span className={statusInfo.color}>{statusInfo.icon}</span>
+                  </motion.div>
+                  <div>
+                    <p className="text-sm font-semibold text-white flex items-center gap-2">
+                      {file.fileName}
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full ${statusInfo.bgColor} ${statusInfo.color} border ${statusInfo.borderColor}`}>
+                        {file.status?.toUpperCase() || 'PENDING'}
+                      </span>
+                    </p>
+                    <div className="flex items-center gap-3 mt-1">
+                      <p className="text-xs text-gray-400 flex items-center gap-1">
+                        <MdSchedule size={12} />
+                        Sent: {formatDate(file.timestamp)}
+                      </p>
+                      {file.lastCheckedAt && (
+                        <p className="text-xs text-purple-400 flex items-center gap-1">
+                          <MdCheckCircle size={12} />
+                          Checked: {formatDate(file.lastCheckedAt)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-            
-            
-          </div>
+          </motion.div>
         )}
         
         {/* Status Steps */}
-        <div className="flex justify-between items-center">
-          {/* Step 1: File Sent */}
-          <div className="flex flex-col items-center">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-1 ${
-              sent ? 'bg-green-500' : 'bg-gray-300'
-            }`}>
-              {sent ? (
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              ) : (
-                <span className="text-white font-bold text-xs">1</span>
-              )}
-            </div>
-            <span className={`text-xs font-medium ${sent ? 'text-green-600' : 'text-gray-500'}`}>
-              Sent
-            </span>
-          </div>
+        <div className="relative px-2 py-4">
+          <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-gray-700/50 -translate-y-1/2" 
+            style={{
+              boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.3)'
+            }}
+          />
+          
+          <div className="relative flex justify-between items-center">
+            {/* Step 1 */}
+            <motion.div 
+              whileHover={{ scale: 1.1 }}
+              className="flex flex-col items-center"
+            >
+              <motion.div 
+                animate={{
+                  scale: sent ? [1, 1.1, 1] : 1,
+                }}
+                transition={{ duration: 0.3 }}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2`}
+                style={{
+                  background: sent 
+                    ? 'linear-gradient(135deg, #10b981, #059669)'
+                    : 'linear-gradient(135deg, #374151, #1f2937)',
+                  boxShadow: sent 
+                    ? '0 10px 20px -5px rgba(16, 185, 129, 0.3), inset 0 1px 2px rgba(255,255,255,0.2)'
+                    : '5px 5px 10px #0f172a, -5px -5px 10px #1e293b, inset 0 1px 2px rgba(255,255,255,0.05)',
+                }}
+              >
+                {sent ? (
+                  <MdCheckCircle className="w-5 h-5 text-white" />
+                ) : (
+                  <span className="text-white font-bold text-sm">1</span>
+                )}
+              </motion.div>
+              <span className={`text-xs font-medium ${sent ? 'text-green-400' : 'text-gray-500'}`}>
+                Sent
+              </span>
+            </motion.div>
 
-          {/* Connecting Line */}
-          <div className={`flex-1 h-1 ${sent ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+            {/* Step 2 */}
+            <motion.div 
+              whileHover={{ scale: 1.1 }}
+              className="flex flex-col items-center"
+            >
+              <motion.div 
+                animate={{
+                  scale: received ? [1, 1.1, 1] : 1,
+                }}
+                transition={{ duration: 0.3 }}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2`}
+                style={{
+                  background: received 
+                    ? 'linear-gradient(135deg, #10b981, #059669)'
+                    : 'linear-gradient(135deg, #374151, #1f2937)',
+                  boxShadow: received 
+                    ? '0 10px 20px -5px rgba(16, 185, 129, 0.3), inset 0 1px 2px rgba(255,255,255,0.2)'
+                    : '5px 5px 10px #0f172a, -5px -5px 10px #1e293b, inset 0 1px 2px rgba(255,255,255,0.05)',
+                }}
+              >
+                {received ? (
+                  <MdCheckCircle className="w-5 h-5 text-white" />
+                ) : (
+                  <span className="text-white font-bold text-sm">2</span>
+                )}
+              </motion.div>
+              <span className={`text-xs font-medium ${received ? 'text-green-400' : 'text-gray-500'}`}>
+                Received
+              </span>
+            </motion.div>
 
-          {/* Step 2: Received */}
-          <div className="flex flex-col items-center">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-1 ${
-              received ? 'bg-green-500' : 'bg-gray-300'
-            }`}>
-              {received ? (
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              ) : (
-                <span className="text-white font-bold text-xs">2</span>
-              )}
-            </div>
-            <span className={`text-xs font-medium ${received ? 'text-green-600' : 'text-gray-500'}`}>
-              Received
-            </span>
-          </div>
+            {/* Step 3 */}
+            <motion.div 
+              whileHover={{ scale: 1.1 }}
+              className="flex flex-col items-center"
+            >
+              <motion.div 
+                animate={{
+                  scale: checked ? [1, 1.1, 1] : 1,
+                }}
+                transition={{ duration: 0.3 }}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2`}
+                style={{
+                  background: checked 
+                    ? 'linear-gradient(135deg, #10b981, #059669)'
+                    : 'linear-gradient(135deg, #374151, #1f2937)',
+                  boxShadow: checked 
+                    ? '0 10px 20px -5px rgba(16, 185, 129, 0.3), inset 0 1px 2px rgba(255,255,255,0.2)'
+                    : '5px 5px 10px #0f172a, -5px -5px 10px #1e293b, inset 0 1px 2px rgba(255,255,255,0.05)',
+                }}
+              >
+                {checked ? (
+                  <MdCheckCircle className="w-5 h-5 text-white" />
+                ) : (
+                  <span className="text-white font-bold text-sm">3</span>
+                )}
+              </motion.div>
+              <span className={`text-xs font-medium ${checked ? 'text-green-400' : 'text-gray-500'}`}>
+                Checked
+              </span>
+            </motion.div>
 
-          {/* Connecting Line */}
-          <div className={`flex-1 h-1 ${received ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-
-          {/* Step 3: Checked */}
-          <div className="flex flex-col items-center">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-1 ${
-              checked ? 'bg-green-500' : 'bg-gray-300'
-            }`}>
-              {checked ? (
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              ) : (
-                <span className="text-white font-bold text-xs">3</span>
-              )}
-            </div>
-            <span className={`text-xs font-medium ${checked ? 'text-green-600' : 'text-gray-500'}`}>
-              Checked
-            </span>
-          </div>
-
-          {/* Connecting Line */}
-          <div className={`flex-1 h-1 ${checked ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-
-          {/* Step 4: Processed */}
-          <div className="flex flex-col items-center">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-1 ${
-              processed ? 'bg-green-500' : 'bg-gray-300'
-            }`}>
-              {processed ? (
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              ) : (
-                <span className="text-white font-bold text-xs">4</span>
-              )}
-            </div>
-            <span className={`text-xs font-medium ${processed ? 'text-green-600' : 'text-gray-500'}`}>
-              Processed
-            </span>
+            {/* Step 4 */}
+            <motion.div 
+              whileHover={{ scale: 1.1 }}
+              className="flex flex-col items-center"
+            >
+              <motion.div 
+                animate={{
+                  scale: processed ? [1, 1.1, 1] : 1,
+                }}
+                transition={{ duration: 0.3 }}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2`}
+                style={{
+                  background: processed 
+                    ? 'linear-gradient(135deg, #10b981, #059669)'
+                    : 'linear-gradient(135deg, #374151, #1f2937)',
+                  boxShadow: processed 
+                    ? '0 10px 20px -5px rgba(16, 185, 129, 0.3), inset 0 1px 2px rgba(255,255,255,0.2)'
+                    : '5px 5px 10px #0f172a, -5px -5px 10px #1e293b, inset 0 1px 2px rgba(255,255,255,0.05)',
+                }}
+              >
+                {processed ? (
+                  <MdCheckCircle className="w-5 h-5 text-white" />
+                ) : (
+                  <span className="text-white font-bold text-sm">4</span>
+                )}
+              </motion.div>
+              <span className={`text-xs font-medium ${processed ? 'text-green-400' : 'text-gray-500'}`}>
+                Processed
+              </span>
+            </motion.div>
           </div>
         </div>
       </div>
@@ -352,165 +420,335 @@ const Tasks = () => {
   }
 
   return (
-    <div className="bg-green-100 p-6">
+    <div className=" w-full bg-[#0f172a] p-6 overflow-y-auto">
+      {/* Animated background */}
+      <motion.div
+        animate={{
+          opacity: [0.1, 0.15, 0.1],
+          scale: [1, 1.02, 1],
+        }}
+        transition={{
+          duration: 8,
+          repeat: Infinity,
+          ease: "linear"
+        }}
+        className="fixed inset-0"
+        style={{
+          background: 'radial-gradient(circle at 70% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 70%)',
+          pointerEvents: 'none'
+        }}
+      />
+
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Accounting Dashboard</h1>
-        <p className="text-gray-600 mt-2">Financial management and Payroll tracking</p>
-      </div>
-
-      {/* Main Content - CENTERED CONTAINERS */}
-      <div className="flex flex-col items-center">
-        <div className="w-full max-w-6xl">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            
-            {/* File Operations Container */}
-            <div className="flex justify-center ">
-              <div className="bg-white rounded-lg shadow-[0_10px_30px_rgba(0,0,0,0.2)] p-6 w-full border border-gray-400 ">
-                <h2 className="text-xl font-semibold text-gray-700 mb-7">File Operations</h2>
-                <div>
-                  {/* Receive File Button */}
-                  <button 
-                    onClick={handleReceiveFile}
-                    className="bg-green-50 hover:bg-green-100 text-green-800 rounded-lg p-11 transition duration-200 ease-in-out border border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 w-full text-left relative"
-                  >
-                    {/* Notification Badge - Only show for pending files */}
-                    {pendingFilesCount > 0 && (
-                      <div className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
-                        {pendingFilesCount}
-                      </div>
-                    )}
-                    <div className="flex items-center space-x-3">
-                      <div className="bg-green-100 p-2 rounded-lg">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
-                        </svg>
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-medium">Receive File</h3>
-                        <p className="text-green-600 text-md mt-1">Get files sent to you safely</p>
-                      </div>
-                    </div>
-                  </button>
-                </div>
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative z-10 mb-8"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent"
+              style={{
+                textShadow: '0 2px 5px rgba(0,0,0,0.3)'
+              }}
+            >
+              Task Management
+            </h1>
+            <p className="text-gray-400 mt-2">Manage and track your file operations</p>
+          </div>
+          
+          {/* Stats Card */}
+          <motion.div 
+            whileHover={{ scale: 1.02 }}
+            className="px-6 py-3 rounded-2xl"
+            style={{
+              background: 'linear-gradient(145deg, #1e293b, #0f172a)',
+              boxShadow: '10px 10px 20px #0a0f1a, -10px -10px 20px #1e2a3a, inset 0 1px 2px rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.03)'
+            }}
+          >
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <p className="text-xs text-gray-400">Total Files</p>
+                <p className="text-2xl font-bold text-white">{allFiles.length}</p>
+              </div>
+              <div className="w-px h-8 bg-gray-700/50" />
+              <div className="text-right">
+                <p className="text-xs text-gray-400">Pending</p>
+                <p className="text-2xl font-bold text-yellow-400">{pendingFilesCount}</p>
               </div>
             </div>
-
-            {/* File Processing Status Container */}
-            <div className="flex justify-center">
-            <div className="bg-white rounded-lg shadow-[0_10px_30px_rgba(0,0,0,0.2)] p-6 border border-gray-400">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold text-gray-700">File Processing Status</h2>
-                  {allFiles.length > 0 && (
-                    <button 
-                      onClick={() => setShowAllFilesModal(true)}
-                      className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-                    >
-                      View All ({allFiles.length})
-                    </button>
-                  )}
-                </div>
-                
-                {/* Show latest file info */}
-                {latestFile ? (
-                  <div className="mb-4">
-                    <div className={`p-3 rounded-lg border mb-3 ${getStatusInfo(latestFile.status).bgColor} ${getStatusInfo(latestFile.status).borderColor}`}>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-gray-700 truncate">
-                            {latestFile.fileName}
-                          </p>
-                          
-                          {latestFile.lastCheckedAt && (
-                            <p className="text-xs text-purple-600 mt-1">
-                              Checked: {formatDate(latestFile.lastCheckedAt)}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className={`text-lg ${getStatusInfo(latestFile.status).color}`}>
-                            {getStatusInfo(latestFile.status).icon}
-                          </span>
-                          <span className={`text-xs font-medium px-2 py-1 rounded-full ${getStatusInfo(latestFile.status).bgColor} ${getStatusInfo(latestFile.status).color} ${getStatusInfo(latestFile.status).borderColor} border`}>
-                            {latestFile.status?.toUpperCase() || 'PENDING'}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      
-                    </div>
-                    
-                    {/* Status Bar for Latest File */}
-                    <StatusBar file={latestFile} />
-                  </div>
-                ) : (
-                  <div className="mb-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                    <p className="text-sm text-yellow-700">
-                      No files sent yet. Send your first file to see status tracking.
-                    </p>
-                  </div>
-                )}
-
-                {/* Status Description */}
-                <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                  <p className="text-blue-800 text-sm">
-                    {getStatusDescription(latestFile)}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Print File & Manage Invoices Section (Optional, pwede nimo i-delete kung gusto) */}
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Empty for now as per original design */}
-          </div>
+          </motion.div>
         </div>
-      </div>
+      </motion.div>
 
-      {/* All Files Modal */}
-      {showAllFilesModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden">
-            <div className="flex justify-between items-center p-6 border-b">
-              <h2 className="text-xl font-semibold text-gray-700">All Files Status</h2>
-              <button 
-                onClick={() => setShowAllFilesModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            
-            <div className="p-6 overflow-y-auto max-h-[60vh]">
-              {allFiles.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-gray-500">No files found.</p>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {allFiles.map((file, index) => (
-                    <div key={file.id} className="border-b pb-4 last:border-b-0">
-                      <StatusBar file={file} showFileName={true} />
+      {/* Main Content - Simple 2-Column Layout */}
+      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* Left Column - File Operations */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          {/* File Operations Card */}
+          <div
+            className="rounded-2xl p-6"
+            style={{
+              background: 'linear-gradient(145deg, #1a2535, #0f1a2a)',
+              boxShadow: '20px 20px 40px -10px #0a0f1a, -20px -20px 40px -10px #1e2a3a, inset 0 1px 2px rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.03)'
+            }}
+          >
+            <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+              <MdAnalytics className="text-blue-400" />
+              File Operations
+            </h2>
+
+            {/* Receive File Button */}
+            <motion.button
+              whileHover={{ scale: 1.02, y: -2 }}
+              whileTap={{ scale: 0.98 }}
+              onHoverStart={() => setHoveredCard('receive')}
+              onHoverEnd={() => setHoveredCard(null)}
+              onClick={handleReceiveFile}
+              className="relative w-full overflow-hidden rounded-xl p-8 text-left"
+              style={{
+                background: hoveredCard === 'receive' 
+                  ? 'linear-gradient(145deg, #10b98120, #1e293b)'
+                  : 'linear-gradient(145deg, #1e293b, #0f172a)',
+                boxShadow: hoveredCard === 'receive'
+                  ? '15px 15px 30px #0a0f1a, -15px -15px 30px #1e2a3a, 0 0 20px rgba(16, 185, 129, 0.2)'
+                  : '10px 10px 20px #0a0f1a, -10px -10px 20px #1e2a3a',
+                border: '1px solid rgba(255,255,255,0.03)'
+              }}
+            >
+              {/* Notification Badge */}
+              <AnimatePresence>
+                {pendingFilesCount > 0 && (
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    exit={{ scale: 0 }}
+                    className="absolute -top-2 -right-2 z-20 w-8 h-8 rounded-full flex items-center justify-center"
+                    style={{
+                      background: 'linear-gradient(135deg, #ef4444, #ec4899)',
+                      boxShadow: '0 5px 15px rgba(239, 68, 68, 0.3)',
+                      border: '2px solid #0f172a'
+                    }}
+                  >
+                    <span className="text-white text-xs font-bold">{pendingFilesCount}</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Shine effect */}
+              <motion.div
+                animate={{
+                  x: hoveredCard === 'receive' ? ['-100%', '200%'] : '0%',
+                }}
+                transition={{
+                  duration: 1.5,
+                  repeat: hoveredCard === 'receive' ? Infinity : 0,
+                  ease: "linear"
+                }}
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-12"
+              />
+
+              <div className="relative z-10">
+                <div className="flex items-center gap-6">
+                  <motion.div 
+                    animate={{
+                      rotate: hoveredCard === 'receive' ? [0, 5, -5, 0] : 0,
+                    }}
+                    transition={{ duration: 0.5 }}
+                    className="w-16 h-16 rounded-xl flex items-center justify-center"
+                    style={{
+                      background: 'linear-gradient(135deg, #10b981, #059669)',
+                      boxShadow: '0 10px 20px -5px rgba(16, 185, 129, 0.3)'
+                    }}
+                  >
+                    <MdDownload className="w-8 h-8 text-white" />
+                  </motion.div>
+                  <div className="flex-1">
+                    <h3 className="text-2xl font-semibold text-white">Receive File</h3>
+                    <p className="text-gray-400 mt-2 text-lg">Get files sent to you safely</p>
+                    <div className="flex items-center gap-1 mt-4 text-green-400 text-base">
+                      <span>View incoming files</span>
+                      <MdArrowForward className="w-5 h-5" />
                     </div>
-                  ))}
+                  </div>
                 </div>
+              </div>
+            </motion.button>
+          </div>
+        </motion.div>
+
+        {/* Right Column - File Processing Status */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <div
+            className="rounded-2xl p-6"
+            style={{
+              background: 'linear-gradient(145deg, #1a2535, #0f1a2a)',
+              boxShadow: '20px 20px 40px -10px #0a0f1a, -20px -20px 40px -10px #1e2a3a, inset 0 1px 2px rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.03)'
+            }}
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                <MdPending className="text-blue-400" />
+                File Processing Status
+              </h2>
+              {allFiles.length > 0 && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowAllFilesModal(true)}
+                  className="px-3 py-1.5 rounded-lg text-sm flex items-center gap-1"
+                  style={{
+                    background: 'linear-gradient(145deg, #2563eb, #1d4ed8)',
+                    boxShadow: '0 5px 15px -5px #2563eb',
+                  }}
+                >
+                  <MdVisibility size={14} />
+                  View All ({allFiles.length})
+                </motion.button>
               )}
             </div>
             
-            <div className="flex justify-end p-6 border-t bg-gray-50">
-              <button 
-                onClick={() => setShowAllFilesModal(false)}
-                className="bg-green-700 text-white px-4 py-2 rounded-md hover:bg-[#0D3721] transition-colors"
+            {/* Latest File Status */}
+            {latestFile ? (
+              <div className="space-y-4">
+                <StatusBar file={latestFile} />
+              </div>
+            ) : (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="p-8 rounded-xl text-center"
+                style={{
+                  background: 'linear-gradient(145deg, #1e293b, #0f172a)',
+                  border: '1px solid rgba(255,255,255,0.03)'
+                }}
               >
-                Close
-              </button>
-            </div>
+                <MdInsertDriveFile className="w-16 h-16 text-gray-600 mx-auto mb-3" />
+                <p className="text-gray-400 text-lg">
+                  No files sent yet.
+                </p>
+              </motion.div>
+            )}
+
+            {/* Status Description */}
+            {latestFile && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="mt-4 p-4 rounded-xl"
+                style={{
+                  background: 'linear-gradient(145deg, #1e293b, #0f172a)',
+                  border: '1px solid rgba(59, 130, 246, 0.1)'
+                }}
+              >
+                <p className="text-sm text-gray-300">
+                  {getStatusDescription(latestFile)}
+                </p>
+              </motion.div>
+            )}
           </div>
-        </div>
-      )}
+        </motion.div>
+      </div>
+
+      {/* All Files Modal */}
+      <AnimatePresence>
+        {showAllFilesModal && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowAllFilesModal(false)}
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            >
+              <div
+                className="w-full max-w-4xl max-h-[80vh] rounded-2xl overflow-hidden"
+                style={{
+                  background: 'linear-gradient(145deg, #1a2535, #0f1a2a)',
+                  boxShadow: '30px 30px 60px -10px #0a0f1a, -30px -30px 60px -10px #1e2a3a, inset 0 1px 2px rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.03)'
+                }}
+              >
+                <div className="flex justify-between items-center p-6 border-b border-white/5">
+                  <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+                    <MdInsertDriveFile className="text-blue-400" />
+                    All Files Status
+                  </h2>
+                  <motion.button
+                    whileHover={{ scale: 1.1, rotate: 90 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setShowAllFilesModal(false)}
+                    className="w-10 h-10 rounded-lg flex items-center justify-center"
+                    style={{
+                      background: 'linear-gradient(145deg, #1e293b, #0f172a)',
+                      boxShadow: '5px 5px 10px #0a0f1a, -5px -5px 10px #1e2a3a',
+                    }}
+                  >
+                    <MdClose className="text-gray-400" size={20} />
+                  </motion.button>
+                </div>
+                
+                <div className="p-6 overflow-y-auto max-h-[60vh]">
+                  {allFiles.length === 0 ? (
+                    <div className="text-center py-8">
+                      <MdInsertDriveFile className="w-16 h-16 text-gray-600 mx-auto mb-3" />
+                      <p className="text-gray-400">No files found.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {allFiles.map((file, index) => (
+                        <motion.div
+                          key={file.id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.05 }}
+                        >
+                          <StatusBar file={file} showFileName={true} />
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex justify-end p-6 border-t border-white/5">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setShowAllFilesModal(false)}
+                    className="px-6 py-2.5 rounded-xl text-white font-medium"
+                    style={{
+                      background: 'linear-gradient(145deg, #2563eb, #1d4ed8)',
+                      boxShadow: '0 10px 20px -5px #2563eb',
+                    }}
+                  >
+                    Close
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

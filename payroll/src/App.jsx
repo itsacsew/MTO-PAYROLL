@@ -1,3 +1,4 @@
+// App.jsx (Updated)
 import React, { useState } from 'react';
 import Login from './pages/Login';
 import { Route, Routes, Navigate, Outlet, useLocation } from 'react-router-dom';
@@ -9,25 +10,23 @@ import SendFile from "./pages/SendFile";
 import ReceiveFile from "./pages/ReceiveFile";
 import { Toaster } from "sonner";
 import { useSelector } from 'react-redux';
-import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
 import FileSend from "./pages/FileSend";
 import PrintView from './pages/printView';
-import Payslip from './pages/payslip'; // ADD THIS IMPORT
+import Payslip from './pages/payslip';
 import VoucherGenerator from './pages/slip';
+import SendFile_MDRRMO from './pages/SendFile_MDRRMO';
+import SendFile_RHU from './pages/SendFile_RHU'; 
+import SendFile_MAYOR_Component from './pages/SendFile_MAYOR';
+import ReceiveFile_MDRRMO from './pages/ModalSend_MDRRMO';
 
-// Create a context to share sidebar state
 export const SidebarContext = React.createContext();
 
 function Layout() {
   const { user } = useSelector(state => state.auth);
   const location = useLocation();
   
-  // State para sa sidebar collapse
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-
-  console.log("Layout - Redux user:", user);
-  console.log("Layout - localStorage user:", localStorage.getItem("auth_user_v1"));
 
   const getCurrentUser = () => {
     if (user) return user;
@@ -59,21 +58,22 @@ function Layout() {
     currentUser.name = currentUser.name || currentUser.email || 'User';
   }
 
+  // Check if current route is dashboard to remove all padding
+  const isDashboard = location.pathname === '/' || location.pathname === '/dashboard';
+
   return currentUser ? (
     <SidebarContext.Provider value={{ isSidebarCollapsed, setIsSidebarCollapsed }}>
-      <div className="w-full h-screen flex flex-col md:flex-row">
-        {/* Sidebar - wala'y padding diri */}
-        <div className={`h-screen bg-green-300 sticky top-0 ${isSidebarCollapsed ? 'w-20' : 'w-64'} hidden md:block transition-all duration-500 ease-out overflow-hidden rounded-br-2xl`}>
-          <Sidebar userOffice={currentUser.office} onToggleSidebar={setIsSidebarCollapsed} />
-        </div>
-
-        {/* Main Content - wala'y extra margin */}
-        <div className="flex-1 overflow-y-auto bg-green-100">
-          <Navbar userOffice={currentUser.office} />
-          <div className="p-0"> {/* Remove padding here */}
+      <div className="w-full min-h-screen bg-[#0f172a]">
+        <Navbar />
+        
+        {/* Main Content - No padding for dashboard, padding for other pages */}
+        {isDashboard ? (
+          <Outlet />
+        ) : (
+          <div className="pt-4 px-4 md:px-6 lg:px-8">
             <Outlet />
           </div>
-        </div>
+        )}
       </div>
     </SidebarContext.Provider>
   ) : (
@@ -100,7 +100,7 @@ function OfficeRoute({ office, mtoComponent, accountingComponent }) {
     return <Navigate to='/log-in' replace />;
   }
 
-  if (currentUser.office === 'MTO') {
+  if (currentUser.office === 'MTO' || currentUser.office === 'MDRRMO' || currentUser.office === 'RHU' || currentUser.office === 'MAYOR') {
     return mtoComponent;
   } else if (currentUser.office === 'Accounting') {
     return accountingComponent;
@@ -111,12 +111,12 @@ function OfficeRoute({ office, mtoComponent, accountingComponent }) {
 
 function App() {
   return (
-    <main className='w-full min-h-screen bg-[#f3f4f6]'>
+    <main className='w-full min-h-screen bg-[#0f172a]'>
       <Routes>
         <Route element={<Layout/>}>
           <Route index path='/' element={
             <OfficeRoute 
-              mtoComponent={<Navigate to='/dashboard' />}
+              mtoComponent={<Dashboard />}
               accountingComponent={<Navigate to='/tasks' />}
             />
           }/>
@@ -142,10 +142,38 @@ function App() {
             />
           }/>
 
+          <Route path='/SendFile_MDRRMO' element={
+            <OfficeRoute 
+              mtoComponent={<SendFile_MDRRMO />}
+              accountingComponent={<Navigate to='/tasks' />}
+            />
+          }/>
+
+          <Route path='/SendFile_RHU' element={
+            <OfficeRoute 
+              mtoComponent={<SendFile_RHU />}
+              accountingComponent={<Navigate to='/tasks' />}
+            />
+          }/>
+
+          <Route path='/SendFile_MAYOR' element={
+            <OfficeRoute 
+              mtoComponent={<SendFile_MAYOR_Component />}
+              accountingComponent={<Navigate to='/tasks' />}
+            />
+          }/>
+
           <Route path='/receive-file' element={
             <OfficeRoute 
               mtoComponent={<Navigate to='/dashboard' />}
               accountingComponent={<ReceiveFile />}
+            />
+          }/>
+
+          <Route path='/receive-file-mdrrmo' element={
+            <OfficeRoute 
+              mtoComponent={<ReceiveFile_MDRRMO />}
+              accountingComponent={<Navigate to='/tasks' />}
             />
           }/>
           
@@ -155,13 +183,10 @@ function App() {
               accountingComponent={<FileSend />}
             />
           }/>
-          <Route path='/print' element={<PrintView />} />
-          
-          {/* ADD THIS PAYSLIP ROUTE */}
-          <Route path='/payslip/:id' element={<Payslip />} />
 
+          <Route path='/print' element={<PrintView />} />
+          <Route path='/payslip/:id' element={<Payslip />} />
           <Route path='/voucher' element={<VoucherGenerator />} />
-          
           <Route path='/team' element={<Users/>}/>
           <Route path='/file' element={<FileReceived/>}/>
 
@@ -171,12 +196,14 @@ function App() {
               accountingComponent={<div>Create Task Page - Under Development</div>}
             />
           }/>
+
           <Route path='/reports' element={
             <OfficeRoute 
               mtoComponent={<Navigate to='/dashboard' />}
               accountingComponent={<div>Reports Page - Under Development</div>}
             />
           }/>
+
           <Route path='/invoices' element={
             <OfficeRoute 
               mtoComponent={<Navigate to='/dashboard' />}
@@ -186,7 +213,6 @@ function App() {
         </Route>
 
         <Route path='/log-in' element={<Login/>}/>
-        
         <Route path='*' element={<Navigate to='/' />} />
       </Routes>
 

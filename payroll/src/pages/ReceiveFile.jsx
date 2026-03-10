@@ -3,6 +3,7 @@ import { saveAs } from 'file-saver';
 import { db } from '../config/firebase';
 import { collection, getDocs, deleteDoc, doc, onSnapshot, query, orderBy, updateDoc } from 'firebase/firestore';
 import ModalSend from './modalSend';
+import ModalSend_MDRRMO from './ModalSend_MDRRMO'; // Import the MDRRMO modal
 
 const ReceiveFile = () => {
   const [receivedFiles, setReceivedFiles] = useState([]);
@@ -12,14 +13,15 @@ const ReceiveFile = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [showFileDetails, setShowFileDetails] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(null);
-  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'sent', 'received', 'checked'
+  const [statusFilter, setStatusFilter] = useState('all');
   const [showStatusFilter, setShowStatusFilter] = useState(false);
   const [showModalSend, setShowModalSend] = useState(false);
+  const [modalComponent, setModalComponent] = useState(null); // State to store which modal to use
   
   const dropdownRefs = useRef({});
   const statusFilterRef = useRef(null);
 
-  // Get current logged-in user from localStorage (same as Tasks.jsx)
+  // Get current logged-in user from localStorage
   const getCurrentUser = () => {
     try {
       const userData = localStorage.getItem('auth_user_v1');
@@ -30,6 +32,22 @@ const ReceiveFile = () => {
     } catch (error) {
       console.error('Error getting current user:', error);
       return null;
+    }
+  };
+
+  // Function to determine which modal to use based on office category
+  const getModalComponentForOffice = (officeCategory) => {
+    switch (officeCategory) {
+      case 'MDDRMO/MEO/MPDO/MSWDO':
+        return 'MDRRMO';
+      case 'SB/MTO/MENRO':
+        return 'SB';
+      case 'RHU/MASO/MCR/HRMO':
+        return 'RHU';
+      case 'MAYOR/ACCT/MBO/MASSO':
+        return 'MAYOR';
+      default:
+        return 'DEFAULT';
     }
   };
 
@@ -78,11 +96,16 @@ const ReceiveFile = () => {
             fileData: fileData.fileData,
             timestamp: fileData.timestamp?.toDate?.() || new Date(fileData.createdAt || Date.now()),
             updatedEmployees: fileData.updatedEmployees || [],
-            status: fileData.status || 'sent', // Default to 'sent'
+            status: fileData.status || 'sent',
             originalFileName: fileData.originalFileName || '',
             fileSize: fileData.fileSize || 0,
             
-            // SENDER INFORMATION - Updated to use sender object
+            // OFFICE INFORMATION - NEW FIELD
+            officeCategory: fileData.officeCategory || fileData.office || 'N/A',
+            office: fileData.office || fileData.officeCategory || 'N/A',
+            officeDisplay: fileData.officeDisplay || fileData.officeCategory || 'N/A',
+            
+            // SENDER INFORMATION
             senderName: senderInfo.name || fileData.senderName || 'Unknown Sender',
             senderEmail: senderInfo.email || fileData.senderEmail || '',
             senderOffice: senderInfo.office || fileData.senderOffice || '',
@@ -142,7 +165,12 @@ const ReceiveFile = () => {
               originalFileName: fileData.originalFileName || '',
               fileSize: fileData.fileSize || 0,
               
-              // SENDER INFORMATION - Updated to use sender object
+              // OFFICE INFORMATION - NEW FIELD
+              officeCategory: fileData.officeCategory || fileData.office || 'N/A',
+              office: fileData.office || fileData.officeCategory || 'N/A',
+              officeDisplay: fileData.officeDisplay || fileData.officeCategory || 'N/A',
+              
+              // SENDER INFORMATION
               senderName: senderInfo.name || fileData.senderName || 'Unknown Sender',
               senderEmail: senderInfo.email || fileData.senderEmail || '',
               senderOffice: senderInfo.office || fileData.senderOffice || '',
@@ -180,25 +208,23 @@ const ReceiveFile = () => {
   const toggleDropdown = (fileId, e) => {
     if (e) e.stopPropagation();
     setDropdownOpen(dropdownOpen === fileId ? null : fileId);
-    setShowStatusFilter(false); // Close status filter dropdown
+    setShowStatusFilter(false);
   };
 
   // Toggle status filter dropdown
   const toggleStatusFilter = (e) => {
     if (e) e.stopPropagation();
     setShowStatusFilter(!showStatusFilter);
-    setDropdownOpen(null); // Close all action dropdowns
+    setDropdownOpen(null);
   };
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      // Check if click is outside any action dropdown
       const isClickInsideActionDropdown = Object.values(dropdownRefs.current).some(ref => 
         ref && ref.contains(event.target)
       );
       
-      // Check if click is outside status filter dropdown
       const isClickInsideStatusFilter = statusFilterRef.current && statusFilterRef.current.contains(event.target);
       
       if (!isClickInsideActionDropdown && !isClickInsideStatusFilter) {
@@ -251,9 +277,13 @@ const ReceiveFile = () => {
     setDropdownOpen(null);
   };
 
-  // Open ModalSend with file data
+  // Open appropriate modal based on office category
   const handleOpenModalSend = (file) => {
     setSelectedFile(file);
+    
+    // Determine which modal component to use based on office category
+    const modalType = getModalComponentForOffice(file.officeCategory);
+    setModalComponent(modalType);
     setShowModalSend(true);
     setDropdownOpen(null);
   };
@@ -262,6 +292,7 @@ const ReceiveFile = () => {
   const handleCloseModalSend = () => {
     setShowModalSend(false);
     setSelectedFile(null);
+    setModalComponent(null);
   };
 
   // Close file details modal
@@ -281,7 +312,6 @@ const ReceiveFile = () => {
       
       // Add additional fields based on status
       if (newStatus === 'received' || newStatus === 'mark as received') {
-        // Get current logged-in user for receiver information
         const currentUser = getCurrentUser();
         if (currentUser) {
           updateData.receivedBy = {
@@ -296,7 +326,6 @@ const ReceiveFile = () => {
         updateData.markedAsReceived = true;
         updateData.receivedAt = new Date();
       } else if (newStatus === 'checked') {
-        // Get current logged-in user for checker information
         const currentUser = getCurrentUser();
         if (currentUser) {
           updateData.checkedBy = {
@@ -325,7 +354,6 @@ const ReceiveFile = () => {
               checked: newStatus === 'checked' ? true : file.checked
             };
             
-            // Add receiver information if status is received
             if (newStatus === 'received' || newStatus === 'mark as received') {
               const currentUser = getCurrentUser();
               if (currentUser) {
@@ -340,7 +368,6 @@ const ReceiveFile = () => {
               }
             }
             
-            // Add checker information if status is checked
             if (newStatus === 'checked') {
               const currentUser = getCurrentUser();
               if (currentUser) {
@@ -380,7 +407,6 @@ const ReceiveFile = () => {
       console.log('Deleting file from Firestore:', fileId);
       await deleteDoc(doc(db, 'sentFiles', fileId));
       
-      // Remove from local state
       setReceivedFiles(prevFiles => prevFiles.filter(file => file.id !== fileId));
       
       alert('✅ File deleted successfully from Firestore!');
@@ -433,7 +459,6 @@ const ReceiveFile = () => {
       querySnapshot.forEach((doc) => {
         const fileData = doc.data();
         
-        // Extract sender information from the file data
         const senderInfo = fileData.sender || {};
         
         files.push({
@@ -446,17 +471,20 @@ const ReceiveFile = () => {
           originalFileName: fileData.originalFileName || '',
           fileSize: fileData.fileSize || 0,
           
-          // SENDER INFORMATION - Updated to use sender object
+          // OFFICE INFORMATION - NEW FIELD
+          officeCategory: fileData.officeCategory || fileData.office || 'N/A',
+          office: fileData.office || fileData.officeCategory || 'N/A',
+          officeDisplay: fileData.officeDisplay || fileData.officeCategory || 'N/A',
+          
+          // SENDER INFORMATION
           senderName: senderInfo.name || fileData.senderName || 'Unknown Sender',
           senderEmail: senderInfo.email || fileData.senderEmail || '',
           senderOffice: senderInfo.office || fileData.senderOffice || '',
           senderId: senderInfo.id || fileData.senderId || '',
           
-          // Receiver information (who marked as received)
           receivedBy: fileData.receivedBy || null,
           receivedAt: fileData.receivedAt || null,
           
-          // Checker information
           checkedBy: fileData.checkedBy || null,
           checkedAt: fileData.checkedAt || null,
           
@@ -540,19 +568,44 @@ const ReceiveFile = () => {
     }
   };
 
+  // Get office badge color based on office category
+  const getOfficeBadgeClass = (officeCategory) => {
+    switch (officeCategory) {
+      case 'MDDRMO/MEO/MPDO/MSWDO':
+        return 'bg-purple-100 text-purple-800';
+      case 'SB/MTO/MENRO':
+        return 'bg-blue-100 text-blue-800';
+      case 'RHU/MASO/MCR/HRMO':
+        return 'bg-green-100 text-green-800';
+      case 'MAYOR/ACCT/MBO/MASSO':
+        return 'bg-orange-100 text-orange-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   return (
-    <div className=" bg-green-100 p-6">
-      {/* ModalSend Component */}
+    <div className="bg-green-100 p-6">
+      {/* Dynamic Modal Based on Office Category */}
       {showModalSend && selectedFile && (
-        <ModalSend 
-          file={selectedFile} 
-          onClose={handleCloseModalSend}
-          markedAsReceived={selectedFile.markedAsReceived}
-          onMarkAsReceived={() => handleUpdateStatus(selectedFile.id, 'received')}
-        />
+        modalComponent === 'MDRRMO' ? (
+          <ModalSend_MDRRMO 
+            file={selectedFile} 
+            onClose={handleCloseModalSend}
+            markedAsReceived={selectedFile.markedAsReceived}
+            onMarkAsReceived={() => handleUpdateStatus(selectedFile.id, 'received')}
+          />
+        ) : (
+          <ModalSend 
+            file={selectedFile} 
+            onClose={handleCloseModalSend}
+            markedAsReceived={selectedFile.markedAsReceived}
+            onMarkAsReceived={() => handleUpdateStatus(selectedFile.id, 'received')}
+          />
+        )
       )}
 
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         {/* Header with Refresh button on the side */}
         <div className="mb-8 flex justify-between items-center">
           <div>
@@ -579,16 +632,17 @@ const ReceiveFile = () => {
           {statusFilter !== 'all' && ` (Filtered by: ${getFilterDisplayText(statusFilter)})`}
         </div>
         
-        {/* Files Table - ALWAYS SHOW TABLE STRUCTURE */}
+        {/* Files Table */}
         <div className="bg-white rounded-lg overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.2)] border border-gray-400">
-          {/* Table Header - ALWAYS VISIBLE */}
+          {/* Table Header */}
           <div className="grid grid-cols-12 bg-gray-50 border-b border-gray-400 px-6 py-4 text-sm font-semibold text-gray-700">
             <div className="col-span-1 text-center">NO.</div>
             <div className="col-span-3">FILE NAME</div>
-            <div className="col-span-3">NAME OF SENDER</div>
+            <div className="col-span-2">NAME OF SENDER</div>
+            <div className="col-span-2">OFFICE</div>
             <div className="col-span-2">DATE</div>
             
-            {/* STATUS HEADER - NOW A DROPDOWN (OVERFLOW STYLE) */}
+            {/* STATUS HEADER - DROPDOWN */}
             <div className="col-span-1 relative" ref={statusFilterRef}>
               <button
                 onClick={toggleStatusFilter}
@@ -600,7 +654,7 @@ const ReceiveFile = () => {
                 </svg>
               </button>
 
-              {/* Status Filter Dropdown Menu - FIXED POSITION LIKE ACTION DROPDOWN */}
+              {/* Status Filter Dropdown Menu */}
               {showStatusFilter && (
                 <div 
                   className="fixed z-50 w-48 bg-white rounded-lg shadow-xl border border-gray-200"
@@ -675,20 +729,19 @@ const ReceiveFile = () => {
               )}
             </div>
             
-            <div className="col-span-2 text-center">ACTION</div>
+            <div className="col-span-1 text-center">ACTION</div>
           </div>
           
           {/* Loading State */}
-        {loading && (
-          <div className="bg-white rounded-lg shadow-md p-12 text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading files from Firestore...</p>
-            <p className="text-sm text-gray-500 mt-2">Checking for sent files...</p>
-          </div>
-        )}
+          {loading && (
+            <div className="bg-white rounded-lg shadow-md p-12 text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600">Loading files from Firestore...</p>
+              <p className="text-sm text-gray-500 mt-2">Checking for sent files...</p>
+            </div>
+          )}
 
-
-          {/* Table Body - SHOWS FILES OR EMPTY STATE */}
+          {/* Table Body */}
           {!loading && filteredFiles.length === 0 ? (
             <div className="py-16 text-center">
               <svg className="mx-auto h-16 w-16 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -748,8 +801,8 @@ const ReceiveFile = () => {
                     </div>
                   </div>
 
-                  {/* NAME OF SENDER - Updated to show sender office */}
-                  <div className="col-span-3">
+                  {/* NAME OF SENDER */}
+                  <div className="col-span-2">
                     <div className="font-medium text-gray-900 truncate">{file.senderName}</div>
                     <div className="flex items-center gap-2 text-sm text-gray-500">
                       <span className="truncate">{file.senderEmail}</span>
@@ -761,25 +814,27 @@ const ReceiveFile = () => {
                     </div>
                   </div>
 
+                  {/* OFFICE - NEW COLUMN with dynamic color */}
+                  <div className="col-span-2">
+                    <div className={`${getOfficeBadgeClass(file.officeCategory)} px-3 py-1.5 rounded-full text-xs font-medium inline-block`}>
+                      {file.officeCategory}
+                    </div>
+                  </div>
+
                   {/* DATE */}
                   <div className="col-span-2">
                     <div className="text-gray-700">{formatDate(file.timestamp)}</div>
                   </div>
 
-                  {/* STATUS (REGULAR BADGE) */}
+                  {/* STATUS */}
                   <div className="col-span-1">
                     <span className={`px-3 py-1.5 rounded-full text-xs font-medium ${getStatusBadgeClass(file.status)}`}>
                       {getStatusDisplayText(file.status)}
                     </span>
-                    {file.markedAsReceived && file.status !== 'checked' && (
-                      <span className="ml-2 px-2 py-1 rounded-full text-xs">
-                        
-                      </span>
-                    )}
                   </div>
 
                   {/* ACTION - DROPDOWN BUTTON */}
-                  <div className="col-span-2 relative">
+                  <div className="col-span-1 relative">
                     <div className="flex justify-center">
                       <button
                         onClick={(e) => toggleDropdown(file.id, e)}
@@ -885,6 +940,17 @@ const ReceiveFile = () => {
                         <label className="text-sm font-medium text-gray-600">File Name:</label>
                         <p className="mt-1 text-gray-900">{selectedFile.fileName}</p>
                       </div>
+                      
+                      {/* OFFICE DETAILS - NEW SECTION */}
+                      <div>
+                        <label className="text-sm font-medium text-gray-600">Office:</label>
+                        <p className="mt-1 text-gray-900">
+                          <span className={`${getOfficeBadgeClass(selectedFile.officeCategory)} px-3 py-1 rounded-full text-xs`}>
+                            {selectedFile.officeCategory}
+                          </span>
+                        </p>
+                      </div>
+                      
                       <div>
                         <label className="text-sm font-medium text-gray-600">Original File Name:</label>
                         <p className="mt-1 text-gray-900">{selectedFile.originalFileName || selectedFile.fileName}</p>
@@ -898,11 +964,6 @@ const ReceiveFile = () => {
                         <span className={`mt-1 inline-block px-3 py-1 rounded-full text-sm ${getStatusBadgeClass(selectedFile.status)}`}>
                           {getStatusDisplayText(selectedFile.status)}
                         </span>
-                        {selectedFile.markedAsReceived && selectedFile.status !== 'checked' && (
-                          <span className="ml-2 px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800">
-                            
-                          </span>
-                        )}
                       </div>
                     </div>
 
@@ -1074,6 +1135,9 @@ const ReceiveFile = () => {
                         </p>
                         <p className="text-sm text-yellow-700 mt-1">
                           <strong>Collection:</strong> sentFiles
+                        </p>
+                        <p className="text-sm text-yellow-700 mt-1">
+                          <strong>Office:</strong> {selectedFile.officeCategory}
                         </p>
                       </div>
                     </div>

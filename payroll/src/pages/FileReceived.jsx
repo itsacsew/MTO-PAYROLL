@@ -3,7 +3,23 @@ import { saveAs } from 'file-saver';
 import { db } from '../config/firebase';
 import { collection, getDocs, onSnapshot, query, orderBy } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
-import { useNavigate } from 'react-router-dom'; // Added for navigation
+import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  MdInsertDriveFile, 
+  MdDownload, 
+  MdPrint, 
+  MdVisibility, 
+  MdClose,
+  MdCheckCircle,
+  MdReceipt,
+  MdRefresh,
+  MdMoreVert,
+  MdPerson,
+  MdDateRange,
+  MdDescription,
+  MdAnalytics
+} from 'react-icons/md';
 
 const FileReceived = () => {
   const [receivedFiles, setReceivedFiles] = useState([]);
@@ -12,17 +28,18 @@ const FileReceived = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [showFileDetails, setShowFileDetails] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(null);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
+  const [hoveredRow, setHoveredRow] = useState(null);
   
-  // PRINT PREVIEW STATES (Excel only, no PDF)
+  // PRINT PREVIEW STATES
   const [excelData, setExcelData] = useState(null);
   const [excelSheets, setExcelSheets] = useState([]);
   const [activeSheet, setActiveSheet] = useState(0);
   const [showPrintPreview, setShowPrintPreview] = useState(false);
   const [previewError, setPreviewError] = useState('');
   
-  const dropdownRefs = useRef({});
-  
-  const navigate = useNavigate(); // For navigation to payslip page
+  const buttonRefs = useRef({});
+  const navigate = useNavigate();
 
   // Load only checked files from Firestore
   useEffect(() => {
@@ -50,7 +67,7 @@ const FileReceived = () => {
             files.push({
               id: doc.id,
               fileName: fileData.fileName || 'Unknown File',
-              fileData: fileData.fileData, // IMPORTANTE: Base64 Excel data
+              fileData: fileData.fileData,
               timestamp: fileData.timestamp?.toDate?.() || new Date(fileData.createdAt || Date.now()),
               updatedEmployees: fileData.updatedEmployees || [],
               status: fileData.status || 'checked',
@@ -153,25 +170,19 @@ const FileReceived = () => {
         return null;
       }
 
-      // Convert base64 to binary
       const binaryString = atob(base64Data);
       const bytes = new Uint8Array(binaryString.length);
       for (let i = 0; i < binaryString.length; i++) {
         bytes[i] = binaryString.charCodeAt(i);
       }
       
-      // Create workbook from Excel data
       const workbook = XLSX.read(bytes, { type: 'array' });
-      
-      // Get sheet names
       const sheetNames = workbook.SheetNames;
       setExcelSheets(sheetNames);
       
-      // Get data from active sheet
       const sheet = workbook.Sheets[sheetNames[activeSheet]];
       const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
       
-      console.log(`Parsed Excel data from sheet ${sheetNames[activeSheet]}:`, jsonData);
       setExcelData(jsonData);
       return jsonData;
       
@@ -190,7 +201,6 @@ const FileReceived = () => {
     }
 
     try {
-      // Create a printable HTML table
       const headers = excelData[0] || [];
       const rows = excelData.slice(1);
       
@@ -258,7 +268,6 @@ const FileReceived = () => {
         </html>
       `;
       
-      // Open print window
       const printWindow = window.open('', '_blank');
       printWindow.document.write(html);
       printWindow.document.close();
@@ -273,8 +282,6 @@ const FileReceived = () => {
   // Download original Excel file function
   const handleDownloadFile = (file) => {
     try {
-      console.log('Downloading Excel file:', file.fileName);
-      
       if (!file.fileData) {
         alert('Error: File data is missing. Cannot download.');
         return;
@@ -308,7 +315,6 @@ const FileReceived = () => {
     try {
       setActiveSheet(index);
       
-      // Parse the new sheet
       const binaryString = atob(file.fileData);
       const bytes = new Uint8Array(binaryString.length);
       for (let i = 0; i < binaryString.length; i++) {
@@ -328,33 +334,30 @@ const FileReceived = () => {
     }
   };
 
-  // Handle View Print Preview - OPEN PRINT PREVIEW MODAL (Excel only)
+  // Handle View Print Preview
   const handleViewPrintPreview = (file) => {
     setSelectedFile(file);
     setShowPrintPreview(true);
     setDropdownOpen(null);
     
-    // Reset states
     setExcelData(null);
     setExcelSheets([]);
     setActiveSheet(0);
     setPreviewError('');
     
-    // Parse Excel data
     setTimeout(() => {
       parseExcelFile(file.fileData);
     }, 300);
   };
 
-  // Function to handle View Payslip - REDIRECT TO PAYSLIP PAGE
+  // Function to handle View Payslip
   const handleViewPayslip = (file) => {
     setSelectedFile(file);
     setDropdownOpen(null);
     
-    // Navigate to payslip page with file data
     navigate(`/payslip/${file.id}`, {
       state: {
-        fileData: file // Pass the file data via state
+        fileData: file
       }
     });
   };
@@ -368,37 +371,58 @@ const FileReceived = () => {
 
   // Toggle dropdown for a specific file
   const toggleDropdown = (fileId, e) => {
-    if (e) e.stopPropagation();
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      
+      const button = e.currentTarget;
+      const rect = button.getBoundingClientRect();
+      
+      // Calculate position - dropdown will appear below the button
+      setDropdownPosition({
+        top: rect.bottom + window.scrollY + 5,
+        left: rect.left + window.scrollX - 200 + rect.width / 2, // Center under button (200px width / 2 = 100px offset)
+      });
+      
+      // Find the selected file
+      const file = receivedFiles.find(f => f.id === fileId);
+      if (file) {
+        setSelectedFile(file);
+      }
+    }
+    
     setDropdownOpen(dropdownOpen === fileId ? null : fileId);
   };
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      const isClickInsideActionDropdown = Object.values(dropdownRefs.current).some(ref => 
-        ref && ref.contains(event.target)
-      );
-      
-      if (!isClickInsideActionDropdown) {
+      if (dropdownOpen) {
+        // Check if click is on the button that opened it
+        const button = buttonRefs.current[dropdownOpen];
+        if (button && button.contains(event.target)) {
+          return; // Don't close if clicking the same button
+        }
+        
+        // Close dropdown for any other outside click
         setDropdownOpen(null);
       }
     };
 
-    document.addEventListener('click', handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
     return () => {
-      document.removeEventListener('click', handleClickOutside);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []);
+  }, [dropdownOpen]);
 
-  // Update ang handleCreateVoucher function:
+  // Handle Create Voucher
   const handleCreateVoucher = (file) => {
     setSelectedFile(file);
     setDropdownOpen(null);
     
-    // Navigate to the voucher/payslip generator page
     navigate('/voucher', {
       state: {
-        fileData: file // Pass the file data via state
+        fileData: file
       }
     });
   };
@@ -462,7 +486,7 @@ const FileReceived = () => {
       });
 
       setReceivedFiles(files);
-      alert(`✅ Refreshed! Found ${files.length} checked file(s).`);
+     
       
     } catch (error) {
       console.error('Error refreshing files:', error);
@@ -473,13 +497,18 @@ const FileReceived = () => {
   };
 
   const formatDate = (timestamp) => {
-    return new Date(timestamp).toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    if (!timestamp) return 'Invalid Date';
+    try {
+      return new Date(timestamp).toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return 'Invalid Date';
+    }
   };
 
   const formatFileSize = (bytes) => {
@@ -491,504 +520,911 @@ const FileReceived = () => {
   };
 
   // Get status badge class based on status
-  const getStatusBadgeClass = (status) => {
+  const getStatusInfo = (status) => {
     switch (status) {
       case 'checked':
-        return 'bg-blue-100 text-blue-800';
+        return {
+          bg: 'bg-blue-500/10',
+          text: 'text-blue-400',
+          border: 'border-blue-500/20',
+          icon: <MdCheckCircle size={14} />
+        };
       default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  // Get status display text
-  const getStatusDisplayText = (status) => {
-    switch (status) {
-      case 'checked':
-        return 'CHECKED';
-      default:
-        return status.toUpperCase();
+        return {
+          bg: 'bg-gray-500/10',
+          text: 'text-gray-400',
+          border: 'border-gray-500/20',
+          icon: <MdInsertDriveFile size={14} />
+        };
     }
   };
 
   return (
-    <div className="bg-green-100 p-6">
-      <div className="max-w-6xl mx-auto">
-        {/* Header with Refresh button on the side */}
-        <div className="mb-8 flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-800">Checked Files</h1>
-            <p className="text-gray-600 mt-2">Files that have been marked as "Checked" from the Receive File page</p>
-          </div>
-          
-          <button 
-            onClick={handleRefreshFiles}
-            disabled={loading}
-            className="bg-green-700 text-white px-4 py-2 rounded-md hover:bg-[#0D3721] transition-colors font-medium flex items-center space-x-2 disabled:bg-gray-400"
-            title="Refresh checked files"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            <span>Refresh</span>
-          </button>
-        </div>
+    <div className="w-full bg-[#0f172a] p-6 overflow-y-auto">
+      {/* Animated background gradient */}
+      <motion.div
+        animate={{
+          opacity: [0.1, 0.15, 0.1],
+          scale: [1, 1.02, 1],
+        }}
+        transition={{
+          duration: 8,
+          repeat: Infinity,
+          ease: "linear"
+        }}
+        className="fixed inset-0"
+        style={{
+          background: 'radial-gradient(circle at 70% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 70%)',
+          pointerEvents: 'none'
+        }}
+      />
 
-        {/* Files Count */}
-        <div className="mb-4 text-sm text-gray-600">
-          Showing {receivedFiles.length} checked file(s)
-        </div>
-        
-        {/* Files Table */}
-        <div className="bg-white rounded-lg overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.2)] border border-gray-400">
-          {/* Table Header */}
-          <div className="grid grid-cols-12 bg-gray-50 border-b border-gray-400 px-6 py-4 text-sm font-semibold text-gray-700">
-            <div className="col-span-1 text-center">NO.</div>
-            <div className="col-span-3">FILE NAME</div>
-            <div className="col-span-3">NAME OF SENDER</div>
-            <div className="col-span-2">DATE CHECKED</div>
-            <div className="col-span-2">CHECKED BY</div>
-            <div className="col-span-1 text-center">ACTION</div>
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative z-10 mb-8"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+              Checked Files
+            </h1>
+            <p className="text-gray-400 mt-2">Files that have been marked as "Checked" from the Receive File page</p>
           </div>
           
+          {/* Stats and Refresh */}
+          <div className="flex items-center gap-4">
+            <motion.div 
+              whileHover={{ scale: 1.02 }}
+              className="px-6 py-3 rounded-2xl"
+              style={{
+                background: 'linear-gradient(145deg, #1e293b, #0f172a)',
+                boxShadow: '10px 10px 20px #0a0f1a, -10px -10px 20px #1e2a3a, inset 0 1px 2px rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.03)'
+              }}
+            >
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <p className="text-xs text-gray-400">Showing</p>
+                  <p className="text-2xl font-bold text-white">{receivedFiles.length} checked file(s)</p>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Refresh Button */}
+            <motion.button 
+              whileHover={{ scale: 1.05, rotate: 180 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleRefreshFiles}
+              disabled={loading}
+              className="w-12 h-12 rounded-xl flex items-center justify-center disabled:opacity-50"
+              style={{
+                background: 'linear-gradient(145deg, #2563eb, #1d4ed8)',
+                boxShadow: '0 10px 20px -5px #2563eb, inset 0 1px 2px rgba(255,255,255,0.2)',
+              }}
+              title="Refresh checked files"
+            >
+              <MdRefresh className="w-5 h-5 text-white" />
+            </motion.button>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Main Content */}
+      <div className="relative z-10">
+        {/* Files Table Container */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="rounded-2xl overflow-visible" // Changed from overflow-hidden to overflow-visible
+          style={{
+            background: 'linear-gradient(145deg, #1a2535, #0f1a2a)',
+            boxShadow: '20px 20px 40px -10px #0a0f1a, -20px -20px 40px -10px #1e2a3a, inset 0 1px 2px rgba(255,255,255,0.05)',
+            border: '1px solid rgba(255,255,255,0.03)'
+          }}
+        >
           {/* Loading State */}
           {loading && (
-            <div className="bg-white rounded-lg shadow-md p-12 text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="mt-4 text-gray-600">Loading checked files from Firestore...</p>
+            <div className="p-12 text-center">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                className="w-16 h-16 mx-auto rounded-xl"
+                style={{
+                  background: 'linear-gradient(145deg, #2563eb, #3b82f6)',
+                  boxShadow: '0 10px 30px -5px #2563eb'
+                }}
+              >
+                <div className="w-full h-full rounded-xl bg-gradient-to-br from-blue-500 to-purple-500" />
+              </motion.div>
+              <p className="mt-4 text-gray-400">Loading checked files from Firestore...</p>
               <p className="text-sm text-gray-500 mt-2">Looking for files marked as "Checked"...</p>
             </div>
           )}
 
-          {/* Table Body */}
-          {!loading && receivedFiles.length === 0 ? (
-            <div className="py-16 text-center">
-              <svg className="mx-auto h-16 w-16 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2z" />
-              </svg>
-              <h3 className="mt-4 text-lg font-medium text-gray-900">No checked files found</h3>
-              <p className="mt-2 text-gray-500 max-w-md mx-auto">
-                Files marked as "Checked" in the Receive File page will appear here.<br />
-                Go to the Receive File page to mark files as "Checked".
-              </p>
-              <button 
-                onClick={handleRefreshFiles}
-                className="mt-4 bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors"
-              >
-                Check Again
-              </button>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-200">
-              {receivedFiles.map((file, index) => (
-                <div key={file.id} className="grid grid-cols-12 items-center px-6 py-4 hover:bg-gray-50 transition-colors relative">
-                  {/* NO. */}
-                  <div className="col-span-1 text-center text-gray-600 font-medium">
-                    {index + 1}
-                  </div>
-
-                  {/* FILE NAME */}
-                  <div className="col-span-3">
-                    <div className="flex items-center space-x-3">
-                      <div className="bg-blue-100 p-2 rounded-lg">
-                        <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <div className="font-medium text-gray-900 truncate">{file.fileName}</div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {file.fileSize > 0 && (
-                            <span className="mr-3">{formatFileSize(file.fileSize)}</span>
-                          )}
-                          <span className={`px-2 py-0.5 rounded-full text-xs ${getStatusBadgeClass(file.status)}`}>
-                            {getStatusDisplayText(file.status)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* NAME OF SENDER */}
-                  <div className="col-span-3">
-                    <div className="font-medium text-gray-900 truncate">{file.senderName}</div>
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                      <span className="truncate">{file.senderEmail}</span>
-                      {file.senderOffice && (
-                        <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs">
-                          {file.senderOffice}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* DATE CHECKED */}
-                  <div className="col-span-2">
-                    <div className="text-gray-700">
-                      {file.checkedAt ? formatDate(file.checkedAt) : 
-                       file.receivedAt ? formatDate(file.receivedAt) : 
-                       formatDate(file.timestamp)}
-                    </div>
-                  </div>
-
-                  {/* CHECKED BY */}
-                  <div className="col-span-2">
-                    {file.checkedBy ? (
-                      <div>
-                        <div className="font-medium text-gray-900 truncate">
-                          {file.checkedBy.name || 'Unknown Checker'}
-                        </div>
-                        {file.checkedBy.office && (
-                          <div className="text-xs text-gray-500">{file.checkedBy.office}</div>
-                        )}
-                        <div className="text-xs text-gray-400 mt-1">
-                          (Receiver)
-                        </div>
-                      </div>
-                    ) : file.receivedBy ? (
-                      <div>
-                        <div className="font-medium text-gray-900 truncate">
-                          {file.receivedBy.name}
-                        </div>
-                        {file.receivedBy.office && (
-                          <div className="text-xs text-gray-500">{file.receivedBy.office}</div>
-                        )}
-                        <div className="text-xs text-gray-400 mt-1">
-                          (Receiver)
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-gray-400 italic">Not recorded</div>
-                    )}
-                  </div>
-
-                  {/* ACTION - DROPDOWN BUTTON */}
-                  <div className="col-span-1 relative">
-                    <div className="flex justify-center">
-                      <button
-                        onClick={(e) => toggleDropdown(file.id, e)}
-                        className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
-                        title="Actions"
-                      >
-                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                        </svg>
-                      </button>
-                    </div>
-
-                    {/* Dropdown Menu */}
-                    {dropdownOpen === file.id && (
-                      <div 
-                        ref={el => dropdownRefs.current[file.id] = el}
-                        className="fixed z-50 mt-1 w-56 bg-white rounded-lg shadow-xl border border-gray-200"
-                        style={{
-                          position: 'fixed',
-                          zIndex: 9999
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <div className="py-1">
-                          <button
-                            onClick={() => handleViewPrintPreview(file)}
-                            className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2"
-                          >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                            </svg>
-                            View Print Preview
-                          </button>
-                          
-                          {/* View Payslip Option - REDIRECTS TO PAYSLIP PAGE */}
-                          <button
-                            onClick={() => handleViewPayslip(file)}
-                            className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 flex items-center gap-2"
-                          >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                            </svg>
-                            View Payslip
-                          </button>
-                          
-                          <button
-                            onClick={() => {
-                              // Navigate to voucher generator
-                              navigate('/voucher', {
-                                state: {
-                                  fileData: file // Pass file data
-                                }
-                              });
-                              setDropdownOpen(null);
-                            }}
-                            className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2"
-                          >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            Create Voucher / Payslip
-                          </button>
-                          
-                          <button
-                            onClick={() => handleViewFileDetails(file)}
-                            className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2"
-                          >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                            View Details
-                          </button>
-                          
-                          <button
-                            onClick={() => handleDownloadFile(file)}
-                            className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2"
-                          >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                            </svg>
-                            Download Excel
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
+          {/* Table Header */}
+          {!loading && receivedFiles.length > 0 && (
+            <div 
+              className="grid grid-cols-12 gap-4 px-6 py-4 text-sm font-medium"
+              style={{
+                background: 'linear-gradient(145deg, #1e293b, #0f1f2f)',
+                borderBottom: '1px solid rgba(255,255,255,0.03)'
+              }}
+            >
+              <div className="col-span-1 text-gray-400">NO.</div>
+              <div className="col-span-3 text-gray-400">FILE NAME</div>
+              <div className="col-span-3 text-gray-400">NAME OF SENDER</div>
+              <div className="col-span-2 text-gray-400">DATE CHECKED</div>
+              <div className="col-span-2 text-gray-400">CHECKED BY</div>
+              <div className="col-span-1 text-gray-400 text-center">ACTION</div>
             </div>
           )}
-        </div>
 
-        {/* PRINT PREVIEW MODAL (Excel only) */}
-        {/* PRINT PREVIEW MODAL (Excel only) */}
-{showPrintPreview && selectedFile && (
-  <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
-    <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl h-[90vh] flex flex-col">
-      {/* Modal Header */}
-      <div className="bg-blue-600 text-white px-6 py-4">
-        <h3 className="text-lg font-semibold text-center">PRINT PREVIEW</h3>
-      </div>
-      
-      {/* Main Content Area - Buttons at Top */}
-      <div className="p-6 flex flex-col flex-1">
-        {/* Top Section - Action Buttons */}
-        <div className="flex justify-end gap-4 mb-6">
-          <button
-            onClick={handlePrintExcel}
-            disabled={!excelData || excelData.length === 0}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm disabled:bg-gray-400"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-            </svg>
-            PRINT EXCEL
-          </button>
-          
-          <button
-            onClick={() => handleDownloadFile(selectedFile)}
-            className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            DOWNLOAD EXCEL
-          </button>
-        </div>
+          {/* Table Body */}
+          {!loading && (
+            <>
+              {receivedFiles.length === 0 ? (
+                <div className="py-16 text-center">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', damping: 15 }}
+                    className="w-20 h-20 mx-auto rounded-2xl flex items-center justify-center mb-4"
+                    style={{
+                      background: 'linear-gradient(145deg, #1e293b, #0f172a)',
+                      boxShadow: '10px 10px 20px #0a0f1a, -10px -10px 20px #1e2a3a',
+                    }}
+                  >
+                    <MdInsertDriveFile className="w-10 h-10 text-gray-600" />
+                  </motion.div>
+                  <h3 className="text-lg font-medium text-white">No checked files found</h3>
+                  <p className="mt-2 text-gray-400 max-w-md mx-auto text-sm">
+                    Files marked as "Checked" in the Receive File page will appear here.
+                  </p>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleRefreshFiles}
+                    className="mt-6 px-6 py-2.5 rounded-xl text-white font-medium"
+                    style={{
+                      background: 'linear-gradient(145deg, #2563eb, #1d4ed8)',
+                      boxShadow: '0 10px 20px -5px #2563eb',
+                    }}
+                  >
+                    Check Again
+                  </motion.button>
+                </div>
+              ) : (
+                <div className="divide-y divide-white/5">
+                  {receivedFiles.map((file, index) => {
+                    const statusInfo = getStatusInfo(file.status);
+                    return (
+                      <motion.div
+                        key={file.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        onHoverStart={() => setHoveredRow(file.id)}
+                        onHoverEnd={() => setHoveredRow(null)}
+                        className="grid grid-cols-12 gap-4 px-6 py-4 relative overflow-visible" // Changed to overflow-visible
+                        style={{
+                          background: hoveredRow === file.id 
+                            ? 'linear-gradient(145deg, #1e293b, #1a2535)'
+                            : 'transparent',
+                          transition: 'background 0.3s ease'
+                        }}
+                      >
+                        {/* Hover Effect */}
+                        <motion.div
+                          animate={{
+                            x: hoveredRow === file.id ? ['-100%', '200%'] : '0%',
+                          }}
+                          transition={{
+                            duration: 1.5,
+                            repeat: hoveredRow === file.id ? Infinity : 0,
+                            ease: "linear"
+                          }}
+                          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-12 pointer-events-none"
+                        />
 
-        
-
-        
-
-        {/* Error Message */}
-        {previewError && (
-          <div className="mt-4 p-4 bg-red-50 text-red-700 rounded-lg">
-            <p className="font-medium">Error:</p>
-            <p className="text-sm">{previewError}</p>
-          </div>
-        )}
-      </div>
-
-      {/* Close Button */}
-      <div className="border-t px-6 py-4 flex justify-end">
-        <button
-          onClick={handleClosePrintPreview}
-          className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors"
-        >
-          Close
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
-        {/* File Details Modal */}
-        {showFileDetails && selectedFile && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-              {/* Modal Header */}
-              <div className="bg-blue-600 text-white px-6 py-4 flex justify-between items-center">
-                <h3 className="text-lg font-semibold">File Details - {selectedFile.fileName}</h3>
-                <button 
-                  onClick={handleCloseFileDetails}
-                  className="text-white hover:text-gray-200 transition-colors"
-                >
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Modal Body */}
-              <div className="p-6 overflow-y-auto max-h-[calc(90vh-8rem)]">
-                <div className="grid grid-cols-2 gap-6">
-                  {/* Left Column - File Details */}
-                  <div>
-                    <h4 className="text-lg font-medium text-gray-800 mb-4">File Information</h4>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="text-sm font-medium text-gray-600">File Name:</label>
-                        <p className="mt-1 text-gray-900">{selectedFile.fileName}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-600">Original File Name:</label>
-                        <p className="mt-1 text-gray-900">{selectedFile.originalFileName || selectedFile.fileName}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-600">File Size:</label>
-                        <p className="mt-1 text-gray-900">{formatFileSize(selectedFile.fileSize)}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-600">Status:</label>
-                        <span className={`mt-1 inline-block px-3 py-1 rounded-full text-sm ${getStatusBadgeClass(selectedFile.status)}`}>
-                          {getStatusDisplayText(selectedFile.status)}
-                        </span>
-                      </div>
-                    </div>
-
-                    <h4 className="text-lg font-medium text-gray-800 mt-6 mb-4">Sender Information</h4>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="text-sm font-medium text-gray-600">Sender Name:</label>
-                        <p className="mt-1 text-gray-900">{selectedFile.senderName}</p>
-                      </div>
-                      {selectedFile.senderEmail && (
-                        <div>
-                          <label className="text-sm font-medium text-gray-600">Sender Email:</label>
-                          <p className="mt-1 text-gray-900">{selectedFile.senderEmail}</p>
+                        {/* NO. */}
+                        <div className="col-span-1 flex items-center">
+                          <span className="text-gray-400 font-mono text-sm">{(index + 1).toString().padStart(2, '0')}</span>
                         </div>
-                      )}
-                      {selectedFile.senderOffice && (
-                        <div>
-                          <label className="text-sm font-medium text-gray-600">Sender Office:</label>
-                          <p className="mt-1 text-gray-900">{selectedFile.senderOffice}</p>
-                        </div>
-                      )}
-                      <div>
-                        <label className="text-sm font-medium text-gray-600">Sent Date:</label>
-                        <p className="mt-1 text-gray-900">{formatDate(selectedFile.timestamp)}</p>
-                      </div>
-                    </div>
 
-                    {/* Checker Information */}
-                    {selectedFile.checkedBy && (
-                      <div className="mt-6">
-                        <h4 className="text-lg font-medium text-gray-800 mb-4">
-                          Checked By (Receiver)
-                        </h4>
-                        <div className="space-y-3 bg-blue-50 p-4 rounded-lg">
-                          <div>
-                            <label className="text-sm font-medium text-gray-600">Checker/Receiver Name:</label>
-                            <p className="mt-1 text-gray-900">{selectedFile.checkedBy.name || 'Unknown'}</p>
+                        {/* FILE NAME */}
+                        <div className="col-span-3 flex items-center gap-3">
+                          <motion.div 
+                            whileHover={{ scale: 1.1, rotate: 5 }}
+                            className="w-10 h-10 rounded-xl flex items-center justify-center"
+                            style={{
+                              background: 'linear-gradient(145deg, #2563eb, #1d4ed8)',
+                              boxShadow: '0 5px 15px -5px #2563eb'
+                            }}
+                          >
+                            <MdInsertDriveFile className="w-5 h-5 text-white" />
+                          </motion.div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white font-medium truncate">{file.fileName}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              {file.fileSize > 0 && (
+                                <span className="text-xs text-gray-500">{formatFileSize(file.fileSize)}</span>
+                              )}
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${statusInfo.bg} ${statusInfo.text} border ${statusInfo.border} flex items-center gap-1`}>
+                                {statusInfo.icon}
+                                CHECKED
+                              </span>
+                            </div>
                           </div>
-                          {selectedFile.checkedBy.email && (
-                            <div>
-                              <label className="text-sm font-medium text-gray-600">Checker/Receiver Email:</label>
-                              <p className="mt-1 text-gray-900">{selectedFile.checkedBy.email}</p>
+                        </div>
+
+                        {/* NAME OF SENDER */}
+                        <div className="col-span-3 flex items-center">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white font-medium truncate">{file.senderName}</p>
+                            <div className="flex items-center gap-2 text-xs text-gray-400 mt-1">
+                              <span className="truncate">{file.senderEmail}</span>
+                              {file.senderOffice && (
+                                <span className={`px-2 py-0.5 rounded-full ${statusInfo.bg} ${statusInfo.text} border ${statusInfo.border} text-[10px]`}>
+                                  {file.senderOffice}
+                                </span>
+                              )}
                             </div>
-                          )}
-                          {selectedFile.checkedBy.office && (
-                            <div>
-                              <label className="text-sm font-medium text-gray-600">Checker/Receiver Office:</label>
-                              <p className="mt-1 text-gray-900">{selectedFile.checkedBy.office}</p>
+                          </div>
+                        </div>
+
+                        {/* DATE CHECKED */}
+                        <div className="col-span-2 flex items-center">
+                          <div className="flex items-center gap-2">
+                            <MdDateRange className="w-4 h-4 text-gray-500" />
+                            <span className="text-gray-300 text-sm">
+                              {file.checkedAt ? formatDate(file.checkedAt) : 
+                               file.receivedAt ? formatDate(file.receivedAt) : 
+                               formatDate(file.timestamp)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* CHECKED BY */}
+                        <div className="col-span-2 flex items-center">
+                          {file.checkedBy ? (
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
+                                <MdPerson className="w-4 h-4 text-purple-400" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-white text-sm truncate">{file.checkedBy.name || 'Unknown Checker'}</p>
+                                {file.checkedBy.office && (
+                                  <p className="text-xs text-gray-400 truncate">{file.checkedBy.office}</p>
+                                )}
+                                <p className="text-xs text-gray-500">(Receiver)</p>
+                              </div>
                             </div>
-                          )}
-                          {selectedFile.checkedAt && (
-                            <div>
-                              <label className="text-sm font-medium text-gray-600">Checked Date:</label>
-                              <p className="mt-1 text-gray-900">{formatDate(selectedFile.checkedAt)}</p>
+                          ) : file.receivedBy ? (
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center">
+                                <MdPerson className="w-4 h-4 text-green-400" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-white text-sm truncate">{file.receivedBy.name}</p>
+                                {file.receivedBy.office && (
+                                  <p className="text-xs text-gray-400 truncate">{file.receivedBy.office}</p>
+                                )}
+                                <p className="text-xs text-gray-500">(Receiver)</p>
+                              </div>
                             </div>
+                          ) : (
+                            <span className="text-gray-500 italic text-sm">Not recorded</span>
                           )}
                         </div>
-                      </div>
-                    )}
-                  </div>
 
-                  {/* Right Column - Actions */}
-                  <div>
-                    <h4 className="text-lg font-medium text-gray-800 mb-4">File Actions</h4>
-                    <div className="space-y-4">
-                      <div className="bg-blue-50 p-4 rounded-lg">
-                        <p className="text-sm text-blue-800 mb-3">You can perform the following actions on this checked file:</p>
-                        <div className="grid grid-cols-1 gap-2">
-                          <button 
+                        {/* ACTION - 3 DOTS BUTTON */}
+                        <div className="col-span-1 flex items-center justify-center">
+                          <motion.button
+                            ref={el => buttonRefs.current[file.id] = el}
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={(e) => toggleDropdown(file.id, e)}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center"
+                            style={{
+                              background: dropdownOpen === file.id 
+                                ? 'linear-gradient(145deg, #2563eb, #1d4ed8)'
+                                : 'linear-gradient(145deg, #1e293b, #0f172a)',
+                              boxShadow: '5px 5px 10px #0a0f1a, -5px -5px 10px #1e2a3a',
+                            }}
+                          >
+                            <MdMoreVert className={`w-4 h-4 ${dropdownOpen === file.id ? 'text-white' : 'text-gray-400'}`} />
+                          </motion.button>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </motion.div>
+      </div>
+
+      {/* Global Dropdown Menu - Fixed position outside table */}
+      <AnimatePresence>
+        {dropdownOpen && selectedFile && (
+          <>
+            {/* Backdrop for dropdown */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-40"
+              onClick={() => setDropdownOpen(null)}
+            />
+            
+            {/* Dropdown Menu - positioned absolutely based on button click */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: -10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: -10 }}
+              transition={{ type: 'spring', damping: 20 }}
+              className="fixed z-50 w-56 rounded-xl overflow-hidden"
+              style={{
+                top: dropdownPosition.top,
+                left: dropdownPosition.left,
+                background: 'linear-gradient(145deg, #1e293b, #0f172a)',
+                boxShadow: '10px 10px 30px -5px #0a0f1a, -10px -10px 30px -5px #1e2a3a, inset 0 1px 2px rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.03)'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="py-2">
+                {/* View Print Preview */}
+                <motion.button
+                  whileHover={{ x: 5 }}
+                  onClick={() => {
+                    handleViewPrintPreview(selectedFile);
+                    setDropdownOpen(null);
+                  }}
+                  className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:text-white flex items-center gap-3"
+                  style={{
+                    background: 'transparent',
+                    transition: 'all 0.2s'
+                  }}
+                  onHoverStart={(e) => e.currentTarget.style.background = 'linear-gradient(145deg, #2563eb20, transparent)'}
+                  onHoverEnd={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <MdPrint className="w-4 h-4 text-blue-400" />
+                  View Print Preview
+                </motion.button>
+                
+                {/* View Payslip */}
+                <motion.button
+                  whileHover={{ x: 5 }}
+                  onClick={() => {
+                    handleViewPayslip(selectedFile);
+                    setDropdownOpen(null);
+                  }}
+                  className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:text-white flex items-center gap-3"
+                  style={{
+                    background: 'transparent',
+                    transition: 'all 0.2s'
+                  }}
+                  onHoverStart={(e) => e.currentTarget.style.background = 'linear-gradient(145deg, #10b98120, transparent)'}
+                  onHoverEnd={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <MdReceipt className="w-4 h-4 text-green-400" />
+                  View Payslip
+                </motion.button>
+                
+                {/* Create Voucher */}
+                <motion.button
+                  whileHover={{ x: 5 }}
+                  onClick={() => {
+                    handleCreateVoucher(selectedFile);
+                    setDropdownOpen(null);
+                  }}
+                  className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:text-white flex items-center gap-3"
+                  style={{
+                    background: 'transparent',
+                    transition: 'all 0.2s'
+                  }}
+                  onHoverStart={(e) => e.currentTarget.style.background = 'linear-gradient(145deg, #8b5cf620, transparent)'}
+                  onHoverEnd={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <MdDescription className="w-4 h-4 text-purple-400" />
+                  Create Voucher / Payslip
+                </motion.button>
+                
+                {/* View Details */}
+                <motion.button
+                  whileHover={{ x: 5 }}
+                  onClick={() => {
+                    handleViewFileDetails(selectedFile);
+                    setDropdownOpen(null);
+                  }}
+                  className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:text-white flex items-center gap-3"
+                  style={{
+                    background: 'transparent',
+                    transition: 'all 0.2s'
+                  }}
+                  onHoverStart={(e) => e.currentTarget.style.background = 'linear-gradient(145deg, #f59e0b20, transparent)'}
+                  onHoverEnd={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <MdVisibility className="w-4 h-4 text-yellow-400" />
+                  View Details
+                </motion.button>
+                
+                {/* Download Excel */}
+                <motion.button
+                  whileHover={{ x: 5 }}
+                  onClick={() => {
+                    handleDownloadFile(selectedFile);
+                    setDropdownOpen(null);
+                  }}
+                  className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:text-white flex items-center gap-3"
+                  style={{
+                    background: 'transparent',
+                    transition: 'all 0.2s'
+                  }}
+                  onHoverStart={(e) => e.currentTarget.style.background = 'linear-gradient(145deg, #ef444420, transparent)'}
+                  onHoverEnd={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <MdDownload className="w-4 h-4 text-red-400" />
+                  Download Excel
+                </motion.button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* PRINT PREVIEW MODAL */}
+      <AnimatePresence>
+        {showPrintPreview && selectedFile && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={handleClosePrintPreview}
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60]"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+            >
+              <div
+                className="w-full max-w-7xl max-h-[90vh] rounded-2xl overflow-hidden flex flex-col"
+                style={{
+                  background: 'linear-gradient(145deg, #1a2535, #0f1a2a)',
+                  boxShadow: '30px 30px 60px -10px #0a0f1a, -30px -30px 60px -10px #1e2a3a, inset 0 1px 2px rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.03)'
+                }}
+              >
+                {/* Modal content... (same as before) */}
+                <div className="flex justify-between items-center p-6 border-b border-white/5">
+                  <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+                    <MdPrint className="text-blue-400" />
+                    Print Preview - {selectedFile.fileName}
+                  </h2>
+                  <motion.button
+                    whileHover={{ scale: 1.1, rotate: 90 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={handleClosePrintPreview}
+                    className="w-10 h-10 rounded-lg flex items-center justify-center"
+                    style={{
+                      background: 'linear-gradient(145deg, #1e293b, #0f172a)',
+                      boxShadow: '5px 5px 10px #0a0f1a, -5px -5px 10px #1e2a3a',
+                    }}
+                  >
+                    <MdClose className="text-gray-400" size={20} />
+                  </motion.button>
+                </div>
+                <div className="flex-1 p-6 overflow-y-auto">
+                  <div className="flex justify-end gap-4 mb-6">
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={handlePrintExcel}
+                      disabled={!excelData || excelData.length === 0}
+                      className="px-4 py-2.5 rounded-xl text-white font-medium flex items-center gap-2 disabled:opacity-50"
+                      style={{
+                        background: 'linear-gradient(145deg, #2563eb, #1d4ed8)',
+                        boxShadow: '0 10px 20px -5px #2563eb',
+                      }}
+                    >
+                      <MdPrint className="w-4 h-4" />
+                      PRINT EXCEL
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => handleDownloadFile(selectedFile)}
+                      className="px-4 py-2.5 rounded-xl text-white font-medium flex items-center gap-2"
+                      style={{
+                        background: 'linear-gradient(145deg, #10b981, #059669)',
+                        boxShadow: '0 10px 20px -5px #10b981',
+                      }}
+                    >
+                      <MdDownload className="w-4 h-4" />
+                      DOWNLOAD EXCEL
+                    </motion.button>
+                  </div>
+                  {excelSheets.length > 1 && (
+                    <div className="mb-6">
+                      <p className="text-sm text-gray-400 mb-3">Select Sheet:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {excelSheets.map((sheet, index) => (
+                          <motion.button
+                            key={index}
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => handleSwitchSheet(index, selectedFile)}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                              activeSheet === index 
+                                ? 'text-white' 
+                                : 'text-gray-400'
+                            }`}
+                            style={{
+                              background: activeSheet === index
+                                ? 'linear-gradient(145deg, #2563eb, #1d4ed8)'
+                                : 'linear-gradient(145deg, #1e293b, #0f172a)',
+                              boxShadow: activeSheet === index
+                                ? '0 10px 20px -5px #2563eb'
+                                : '5px 5px 10px #0a0f1a, -5px -5px 10px #1e2a3a',
+                              border: '1px solid rgba(255,255,255,0.03)'
+                            }}
+                          >
+                            {sheet}
+                          </motion.button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div 
+                    className="p-4 rounded-xl mb-6"
+                    style={{
+                      background: 'linear-gradient(145deg, #1e293b, #0f172a)',
+                      border: '1px solid rgba(59, 130, 246, 0.1)'
+                    }}
+                  >
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <p className="text-xs text-gray-400">Sender</p>
+                        <p className="text-sm text-white mt-1">{selectedFile.senderName}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400">Checked By</p>
+                        <p className="text-sm text-white mt-1">
+                          {selectedFile?.checkedBy?.name || selectedFile?.receivedBy?.name || 'N/A'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400">Date</p>
+                        <p className="text-sm text-white mt-1">{formatDate(selectedFile.timestamp)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400">Sheet</p>
+                        <p className="text-sm text-white mt-1">{excelSheets[activeSheet] || 'Sheet1'}</p>
+                      </div>
+                    </div>
+                  </div>
+                  {previewError && (
+                    <div 
+                      className="p-4 rounded-xl mb-6"
+                      style={{
+                        background: 'linear-gradient(145deg, #ef444420, #dc262620)',
+                        border: '1px solid rgba(239, 68, 68, 0.2)'
+                      }}
+                    >
+                      <p className="text-red-400 text-sm">{previewError}</p>
+                    </div>
+                  )}
+                  {excelData && excelData.length > 0 && (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr>
+                            {(excelData[0] || []).map((header, idx) => (
+                              <th
+                                key={idx}
+                                className="px-4 py-3 text-left text-gray-300 font-medium"
+                                style={{
+                                  background: 'linear-gradient(145deg, #1e293b, #0f1f2f)',
+                                  borderBottom: '1px solid rgba(255,255,255,0.03)'
+                                }}
+                              >
+                                {header || ''}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {excelData.slice(1).map((row, rowIdx) => (
+                            <tr
+                              key={rowIdx}
+                              className="hover:bg-white/5 transition-colors"
+                              style={{
+                                borderBottom: '1px solid rgba(255,255,255,0.03)'
+                              }}
+                            >
+                              {(excelData[0] || []).map((_, colIdx) => (
+                                <td key={colIdx} className="px-4 py-3 text-gray-400">
+                                  {row[colIdx] !== undefined ? row[colIdx] : ''}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+                <div className="flex justify-end p-6 border-t border-white/5">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleClosePrintPreview}
+                    className="px-6 py-2.5 rounded-xl text-white font-medium"
+                    style={{
+                      background: 'linear-gradient(145deg, #4b5563, #374151)',
+                      boxShadow: '0 10px 20px -5px #4b5563',
+                    }}
+                  >
+                    Close
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* File Details Modal */}
+      <AnimatePresence>
+        {showFileDetails && selectedFile && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={handleCloseFileDetails}
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60]"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+            >
+              <div
+                className="w-full max-w-4xl max-h-[90vh] rounded-2xl overflow-hidden"
+                style={{
+                  background: 'linear-gradient(145deg, #1a2535, #0f1a2a)',
+                  boxShadow: '30px 30px 60px -10px #0a0f1a, -30px -30px 60px -10px #1e2a3a, inset 0 1px 2px rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.03)'
+                }}
+              >
+                <div className="flex justify-between items-center p-6 border-b border-white/5">
+                  <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+                    <MdInsertDriveFile className="text-blue-400" />
+                    File Details - {selectedFile.fileName}
+                  </h2>
+                  <motion.button
+                    whileHover={{ scale: 1.1, rotate: 90 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={handleCloseFileDetails}
+                    className="w-10 h-10 rounded-lg flex items-center justify-center"
+                    style={{
+                      background: 'linear-gradient(145deg, #1e293b, #0f172a)',
+                      boxShadow: '5px 5px 10px #0a0f1a, -5px -5px 10px #1e2a3a',
+                    }}
+                  >
+                    <MdClose className="text-gray-400" size={20} />
+                  </motion.button>
+                </div>
+                <div className="p-6 overflow-y-auto max-h-[calc(90vh-8rem)]">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h3 className="text-white font-medium mb-4 flex items-center gap-2">
+                        <MdDescription className="text-blue-400" />
+                        File Information
+                      </h3>
+                      <div 
+                        className="p-4 rounded-xl"
+                        style={{
+                          background: 'linear-gradient(145deg, #1e293b, #0f172a)',
+                          border: '1px solid rgba(255,255,255,0.03)'
+                        }}
+                      >
+                        <div className="space-y-3">
+                          <div className="flex justify-between">
+                            <span className="text-gray-400 text-sm">File Name:</span>
+                            <span className="text-white text-sm">{selectedFile.fileName}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400 text-sm">Original Name:</span>
+                            <span className="text-white text-sm">{selectedFile.originalFileName || selectedFile.fileName}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400 text-sm">File Size:</span>
+                            <span className="text-white text-sm">{formatFileSize(selectedFile.fileSize)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400 text-sm">Status:</span>
+                            <span className={`text-sm px-3 py-1 rounded-full ${getStatusInfo(selectedFile.status).bg} ${getStatusInfo(selectedFile.status).text} border ${getStatusInfo(selectedFile.status).border}`}>
+                              CHECKED
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <h3 className="text-white font-medium mb-4 flex items-center gap-2 mt-6">
+                        <MdPerson className="text-green-400" />
+                        Sender Information
+                      </h3>
+                      <div 
+                        className="p-4 rounded-xl"
+                        style={{
+                          background: 'linear-gradient(145deg, #1e293b, #0f172a)',
+                          border: '1px solid rgba(255,255,255,0.03)'
+                        }}
+                      >
+                        <div className="space-y-3">
+                          <div className="flex justify-between">
+                            <span className="text-gray-400 text-sm">Name:</span>
+                            <span className="text-white text-sm">{selectedFile.senderName}</span>
+                          </div>
+                          {selectedFile.senderEmail && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-400 text-sm">Email:</span>
+                              <span className="text-white text-sm">{selectedFile.senderEmail}</span>
+                            </div>
+                          )}
+                          {selectedFile.senderOffice && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-400 text-sm">Office:</span>
+                              <span className="text-white text-sm">{selectedFile.senderOffice}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between">
+                            <span className="text-gray-400 text-sm">Sent Date:</span>
+                            <span className="text-white text-sm">{formatDate(selectedFile.timestamp)}</span>
+                          </div>
+                        </div>
+                      </div>
+                      {selectedFile.checkedBy && (
+                        <>
+                          <h3 className="text-white font-medium mb-4 flex items-center gap-2 mt-6">
+                            <MdCheckCircle className="text-purple-400" />
+                            Checked By (Receiver)
+                          </h3>
+                          <div 
+                            className="p-4 rounded-xl"
+                            style={{
+                              background: 'linear-gradient(145deg, #1e293b, #0f172a)',
+                              border: '1px solid rgba(139, 92, 246, 0.1)'
+                            }}
+                          >
+                            <div className="space-y-3">
+                              <div className="flex justify-between">
+                                <span className="text-gray-400 text-sm">Name:</span>
+                                <span className="text-white text-sm">{selectedFile.checkedBy.name || 'Unknown'}</span>
+                              </div>
+                              {selectedFile.checkedBy.email && (
+                                <div className="flex justify-between">
+                                  <span className="text-gray-400 text-sm">Email:</span>
+                                  <span className="text-white text-sm">{selectedFile.checkedBy.email}</span>
+                                </div>
+                              )}
+                              {selectedFile.checkedBy.office && (
+                                <div className="flex justify-between">
+                                  <span className="text-gray-400 text-sm">Office:</span>
+                                  <span className="text-white text-sm">{selectedFile.checkedBy.office}</span>
+                                </div>
+                              )}
+                              {selectedFile.checkedAt && (
+                                <div className="flex justify-between">
+                                  <span className="text-gray-400 text-sm">Checked Date:</span>
+                                  <span className="text-white text-sm">{formatDate(selectedFile.checkedAt)}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="text-white font-medium mb-4 flex items-center gap-2">
+                        <MdAnalytics className="text-yellow-400" />
+                        File Actions
+                      </h3>
+                      <div 
+                        className="p-4 rounded-xl"
+                        style={{
+                          background: 'linear-gradient(145deg, #1e293b, #0f172a)',
+                          border: '1px solid rgba(255,255,255,0.03)'
+                        }}
+                      >
+                        <p className="text-sm text-gray-400 mb-4">You can perform the following actions on this checked file:</p>
+                        <div className="grid grid-cols-1 gap-3">
+                          <motion.button
+                            whileHover={{ scale: 1.02, x: 5 }}
+                            whileTap={{ scale: 0.98 }}
                             onClick={() => {
                               handleViewPrintPreview(selectedFile);
                               handleCloseFileDetails();
                             }}
-                            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2"
+                            className="w-full px-4 py-3 rounded-xl text-white font-medium flex items-center gap-3"
+                            style={{
+                              background: 'linear-gradient(145deg, #2563eb, #1d4ed8)',
+                              boxShadow: '0 10px 20px -5px #2563eb',
+                            }}
                           >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                            </svg>
+                            <MdPrint className="w-5 h-5" />
                             View Print Preview (Excel)
-                          </button>
-                          
-                          {/* View Payslip Button */}
-                          <button 
+                          </motion.button>
+                          <motion.button
+                            whileHover={{ scale: 1.02, x: 5 }}
+                            whileTap={{ scale: 0.98 }}
                             onClick={() => {
                               handleViewPayslip(selectedFile);
                               handleCloseFileDetails();
                             }}
-                            className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2"
+                            className="w-full px-4 py-3 rounded-xl text-white font-medium flex items-center gap-3"
+                            style={{
+                              background: 'linear-gradient(145deg, #10b981, #059669)',
+                              boxShadow: '0 10px 20px -5px #10b981',
+                            }}
                           >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                            </svg>
+                            <MdReceipt className="w-5 h-5" />
                             View Payslip
-                          </button>
-                          
-                          <button 
+                          </motion.button>
+                          <motion.button
+                            whileHover={{ scale: 1.02, x: 5 }}
+                            whileTap={{ scale: 0.98 }}
                             onClick={() => {
                               handleCreateVoucher(selectedFile);
                               handleCloseFileDetails();
                             }}
-                            className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2"
+                            className="w-full px-4 py-3 rounded-xl text-white font-medium flex items-center gap-3"
+                            style={{
+                              background: 'linear-gradient(145deg, #8b5cf6, #7c3aed)',
+                              boxShadow: '0 10px 20px -5px #8b5cf6',
+                            }}
                           >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
+                            <MdDescription className="w-5 h-5" />
                             Create Voucher
-                          </button>
-                          
-                          <button 
+                          </motion.button>
+                          <motion.button
+                            whileHover={{ scale: 1.02, x: 5 }}
+                            whileTap={{ scale: 0.98 }}
                             onClick={() => {
                               handleDownloadFile(selectedFile);
                               handleCloseFileDetails();
                             }}
-                            className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors font-medium flex items-center justify-center gap-2"
+                            className="w-full px-4 py-3 rounded-xl text-white font-medium flex items-center gap-3"
+                            style={{
+                              background: 'linear-gradient(145deg, #ef4444, #dc2626)',
+                              boxShadow: '0 10px 20px -5px #ef4444',
+                            }}
                           >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                            </svg>
+                            <MdDownload className="w-5 h-5" />
                             Download Excel File
-                          </button>
+                          </motion.button>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
+            </motion.div>
+          </>
         )}
-      </div>
+      </AnimatePresence>
     </div>
   );
 };
