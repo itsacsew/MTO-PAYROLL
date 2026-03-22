@@ -3,6 +3,18 @@ import { saveAs } from 'file-saver';
 import * as ExcelJS from 'exceljs';
 import { db } from '../config/firebase';
 import { collection, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  MdWarning,
+  MdCheckCircle,
+  MdDownload,
+  MdClose,
+  MdEdit,
+  MdSave,
+  MdVisibility,
+  MdSchedule,
+  MdAnalytics
+} from 'react-icons/md';
 
 const ModalSend = ({ file, onClose, markedAsReceived, onMarkAsReceived }) => {
   const [excelData, setExcelData] = useState(null);
@@ -97,80 +109,8 @@ const ModalSend = ({ file, onClose, markedAsReceived, onMarkAsReceived }) => {
     return excelDate?.toString() || '';
   };
 
-  // Function to check if a row contains actual employee data with valid designation
-  const isValidEmployeeRow = (row, rowNumber) => {
-    try {
-      const nameCell = row.getCell(3); // Column C
-      const designationCell = row.getCell(4); // Column D
-      
-      if (!nameCell || !nameCell.value) return false;
-      if (!designationCell || !designationCell.value) return false;
-      
-      const employeeName = nameCell.value.toString().trim();
-      const designation = designationCell.value.toString().trim();
-      
-      // Skip if name or designation is empty or too short
-      if (!employeeName || employeeName.length < 2) return false;
-      if (!designation || designation.length < 2) return false;
-      
-      // Skip headers and section markers
-      if (employeeName === 'NAME' || 
-          employeeName.includes('MTO') || 
-          employeeName.includes('MENRO') ||
-          employeeName.includes('SB') ||
-          employeeName === 'MTO' ||
-          employeeName === 'MENRO') {
-        return false;
-      }
-      
-      // Skip total rows and carried forward
-      if (employeeName.toLowerCase().includes('total') ||
-          employeeName.toLowerCase().includes('carried forward')) {
-        return false;
-      }
-      
-      // Skip rows that are likely not employees (like signature text, certifications, etc.)
-      if (employeeName.includes('CERTIFY') ||
-          employeeName.includes('APPROVED') ||
-          employeeName.includes('PREAUDIT') ||
-          employeeName.includes('MUNICIPAL') ||
-          employeeName.includes('TREASURER') ||
-          employeeName.includes('MAYOR') ||
-          employeeName.includes('AUDITOR') ||
-          employeeName.includes('VICE-MAYOR') ||
-          employeeName.includes('PAYROLL') ||
-          employeeName.includes('MUNICIPALITY') ||
-          employeeName.includes('LILOAN') ||
-          employeeName.includes('IPAKITA')) {
-        return false;
-      }
-      
-      // Check if designation looks like a valid job title (not a placeholder or empty)
-      if (designation.includes('_____') || 
-          designation.includes('____') || 
-          designation.includes('___') ||
-          designation === '-' ||
-          designation.length < 3) {
-        return false;
-      }
-      
-      // Check if the row has some numeric values in key columns (likely an employee row)
-      const monthlyRate = row.getCell(8)?.value; // Column H
-      const amountAccrued = row.getCell(9)?.value; // Column I
-      
-      // If it has monthly rate or amount accrued, it's definitely an employee
-      if (monthlyRate || amountAccrued) {
-        return true;
-      }
-      
-      // Check if name has proper format (has at least one space for full name)
-      if (!employeeName.includes(' ') && employeeName.length > 15) return false;
-      
-      return true; // Accept if it passed all other checks
-    } catch (error) {
-      return false;
-    }
-  };
+  // Employee rows as per payslip.jsx
+  const employeeRows = [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 30, 31, 32, 35];
 
   // Load Excel data from base64
   useEffect(() => {
@@ -220,52 +160,45 @@ const ModalSend = ({ file, onClose, markedAsReceived, onMarkAsReceived }) => {
   const extractEmployeeData = (worksheet) => {
     const employees = {};
     
-    // Get all rows that contain valid employee data
-    worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+    employeeRows.forEach(row => {
       try {
-        // Start checking from row 10 onwards (skip very top rows)
-        if (rowNumber < 10) return;
-        
-        if (isValidEmployeeRow(row, rowNumber)) {
-          const nameCell = row.getCell(3); // Column C
-          const designationCell = row.getCell(4); // Column D
-          
+        const nameCell = worksheet.getCell(`C${row}`);
+        if (nameCell && nameCell.value) {
           const employeeName = nameCell.value.toString().trim();
-          const designation = designationCell.value.toString().trim();
           
-          // Double-check we don't already have this employee
-          if (employees[employeeName]) return;
-          
-          // Only add if both name and designation are valid
-          if (employeeName && employeeName.length > 2 && designation && designation.length > 2) {
-            employees[employeeName] = {
-              row: rowNumber,
-              name: employeeName,
-              number: getCellValue(worksheet, `A${rowNumber}`),
-              designation: designation,
-              periodFrom: formatDate(getCellRawValue(worksheet, `E${rowNumber}`)),
-              periodTo: formatDate(getCellRawValue(worksheet, `F${rowNumber}`)),
-              monthlyRate: getCellValue(worksheet, `H${rowNumber}`),
-              amountAccrued: getCellValue(worksheet, `I${rowNumber}`),
-              gsisEduLoan: getCellValue(worksheet, `J${rowNumber}`),
-              gsisMplLoan: getCellValue(worksheet, `K${rowNumber}`),
-              philhealthPersonal: getCellValue(worksheet, `L${rowNumber}`),
-              philhealthGovernment: getCellValue(worksheet, `M${rowNumber}`),
-              gsisPersonal: getCellValue(worksheet, `N${rowNumber}`),
-              gsisGovernment: getCellValue(worksheet, `O${rowNumber}`),
-              pagibigPersonal: getCellValue(worksheet, `P${rowNumber}`),
-              pagibigGovernment: getCellValue(worksheet, `Q${rowNumber}`),
-              lbpLoan: getCellValue(worksheet, `R${rowNumber}`),
-              gfalLoan: getCellValue(worksheet, `S${rowNumber}`),
-              gsisLiteLoan: getCellValue(worksheet, `T${rowNumber}`),
-              pagibigMpl: getCellValue(worksheet, `U${rowNumber}`),
-              ec: getCellValue(worksheet, `V${rowNumber}`),
-              paidInCash: getCellValue(worksheet, `X${rowNumber}`),
-            };
+          // Skip if name is empty or is a header
+          if (!employeeName || employeeName === 'NAME' || employeeName.length < 2) {
+            return;
           }
+          
+          employees[employeeName] = {
+            row: row,
+            name: employeeName,
+            section: row <= 26 ? 'SB' : row <= 32 ? 'MTO' : 'MENRO',
+            number: getCellValue(worksheet, `A${row}`),
+            designation: getCellValue(worksheet, `D${row}`),
+            periodFrom: formatDate(getCellRawValue(worksheet, `E${row}`)),
+            periodTo: formatDate(getCellRawValue(worksheet, `F${row}`)),
+            monthlyRate: getCellValue(worksheet, `H${row}`),
+            amountAccrued: getCellValue(worksheet, `I${row}`),
+            gsisEduLoan: getCellValue(worksheet, `J${row}`),
+            gsisMplLoan: getCellValue(worksheet, `K${row}`),
+            philhealthPersonal: getCellValue(worksheet, `L${row}`),
+            philhealthGovernment: getCellValue(worksheet, `M${row}`),
+            gsisPersonal: getCellValue(worksheet, `N${row}`),
+            gsisGovernment: getCellValue(worksheet, `O${row}`),
+            pagibigPersonal: getCellValue(worksheet, `P${row}`),
+            pagibigGovernment: getCellValue(worksheet, `Q${row}`),
+            lbpLoan: getCellValue(worksheet, `R${row}`),
+            gfalLoan: getCellValue(worksheet, `S${row}`),
+            gsisLiteLoan: getCellValue(worksheet, `T${row}`),
+            pagibigMpl: getCellValue(worksheet, `U${row}`),
+            ec: getCellValue(worksheet, `V${row}`),
+            paidInCash: getCellValue(worksheet, `X${row}`),
+          };
         }
       } catch (error) {
-        console.error(`Error extracting data for row ${rowNumber}:`, error);
+        console.error(`Error extracting data for row ${row}:`, error);
       }
     });
     
@@ -297,7 +230,67 @@ const ModalSend = ({ file, onClose, markedAsReceived, onMarkAsReceived }) => {
     }
   };
 
-  // Handle input change
+  // Formula Functions (based on PAYROLL.xlsx)
+  const calculateAmountAccrued = (monthlyRate) => {
+    const rate = parseFloat(monthlyRate) || 0;
+    return (rate / 2).toFixed(2);
+  };
+
+  const calculatePhilhealthShare = (monthlyRate) => {
+    const rate = parseFloat(monthlyRate) || 0;
+    return (rate * 0.025).toFixed(2);
+  };
+
+  const calculateGSISPersonal = (monthlyRate) => {
+    const rate = parseFloat(monthlyRate) || 0;
+    return (rate * 0.09).toFixed(2);
+  };
+
+  const calculateGSISGovernment = (monthlyRate) => {
+    const rate = parseFloat(monthlyRate) || 0;
+    return (rate * 0.12).toFixed(2);
+  };
+
+  const calculatePagibigPersonal = (monthlyRate) => {
+    const rate = parseFloat(monthlyRate) || 0;
+    return (rate * 0.02).toFixed(2);
+  };
+
+  const calculatePagibigGovernment = () => {
+    return "200.00";
+  };
+
+  const calculatePaidInCash = (employee) => {
+    // Formula: = I - J - K - L - N - P - R - S - T - U - V
+    // Includes ALL deductions and loans:
+    // I = Amount Accrued
+    // J = GSIS EDUC LOAN
+    // K = GSIS MPL LOAN
+    // L = PHILHEALTH Personal
+    // N = GSIS Personal
+    // P = Pag-ibig Personal
+    // R = LBP LOAN
+    // S = GFAL LOAN
+    // T = GSIS MPL Lite
+    // U = Pag-ibig LOAN (MPL)
+    // V = E.C.
+    
+    const i = parseFloat(employee.amountAccrued) || 0;
+    const j = parseFloat(employee.gsisEduLoan) || 0;
+    const k = parseFloat(employee.gsisMplLoan) || 0;
+    const l = parseFloat(employee.philhealthPersonal) || 0;
+    const n = parseFloat(employee.gsisPersonal) || 0;
+    const p = parseFloat(employee.pagibigPersonal) || 0;
+    const r = parseFloat(employee.lbpLoan) || 0;
+    const s = parseFloat(employee.gfalLoan) || 0;
+    const t = parseFloat(employee.gsisLiteLoan) || 0;
+    const u = parseFloat(employee.pagibigMpl) || 0;
+    const v = parseFloat(employee.ec) || 0;
+    
+    return (i - j - k - l - n - p - r - s - t - u - v).toFixed(2);
+  };
+
+  // Handle input change with auto-calculation
   const handleInputChange = useCallback((employeeName, field, value) => {
     if (!editingEnabled) {
       alert('⚠️ Please mark this file as received first before editing.');
@@ -307,18 +300,67 @@ const ModalSend = ({ file, onClose, markedAsReceived, onMarkAsReceived }) => {
     try {
       setAllEmployeeChanges(prev => {
         const employeeChanges = prev[employeeName] || {};
+        const currentData = employeeData[employeeName] || {};
+        
+        // Get the updated monthly rate (either from changes or original)
+        let monthlyRate;
+        if (field === 'monthlyRate') {
+          monthlyRate = value;
+        } else {
+          monthlyRate = employeeChanges.monthlyRate !== undefined ? 
+            employeeChanges.monthlyRate : currentData.monthlyRate;
+        }
+        
+        // Create base changes
+        const newChanges = {
+          ...employeeChanges,
+          [field]: value
+        };
+        
+        // Auto-calculate dependent fields if monthlyRate changed
+        if (field === 'monthlyRate') {
+          const rate = parseFloat(value) || 0;
+          
+          // Auto-calculate all formula-based fields
+          newChanges.amountAccrued = calculateAmountAccrued(rate);
+          newChanges.philhealthPersonal = calculatePhilhealthShare(rate);
+          newChanges.philhealthGovernment = calculatePhilhealthShare(rate);
+          newChanges.gsisPersonal = calculateGSISPersonal(rate);
+          newChanges.gsisGovernment = calculateGSISGovernment(rate);
+          newChanges.pagibigPersonal = calculatePagibigPersonal(rate);
+          newChanges.pagibigGovernment = calculatePagibigGovernment();
+        }
+        
+        // Create updated employee object with ALL fields for Paid in Cash calculation
+        const updatedEmployee = {
+          ...currentData,
+          ...newChanges,
+          // Ensure all loan fields are included (some might be from original data)
+          gsisEduLoan: newChanges.gsisEduLoan !== undefined ? newChanges.gsisEduLoan : currentData.gsisEduLoan,
+          gsisMplLoan: newChanges.gsisMplLoan !== undefined ? newChanges.gsisMplLoan : currentData.gsisMplLoan,
+          lbpLoan: newChanges.lbpLoan !== undefined ? newChanges.lbpLoan : currentData.lbpLoan,
+          gfalLoan: newChanges.gfalLoan !== undefined ? newChanges.gfalLoan : currentData.gfalLoan,
+          gsisLiteLoan: newChanges.gsisLiteLoan !== undefined ? newChanges.gsisLiteLoan : currentData.gsisLiteLoan,
+          pagibigMpl: newChanges.pagibigMpl !== undefined ? newChanges.pagibigMpl : currentData.pagibigMpl,
+          ec: newChanges.ec !== undefined ? newChanges.ec : currentData.ec,
+          amountAccrued: newChanges.amountAccrued !== undefined ? newChanges.amountAccrued : currentData.amountAccrued,
+          philhealthPersonal: newChanges.philhealthPersonal !== undefined ? newChanges.philhealthPersonal : currentData.philhealthPersonal,
+          gsisPersonal: newChanges.gsisPersonal !== undefined ? newChanges.gsisPersonal : currentData.gsisPersonal,
+          pagibigPersonal: newChanges.pagibigPersonal !== undefined ? newChanges.pagibigPersonal : currentData.pagibigPersonal,
+        };
+        
+        // Recalculate Paid in Cash after any changes to deductions or loans
+        newChanges.paidInCash = calculatePaidInCash(updatedEmployee);
+        
         return {
           ...prev,
-          [employeeName]: {
-            ...employeeChanges,
-            [field]: value
-          }
+          [employeeName]: newChanges
         };
       });
     } catch (error) {
       console.error('Error in handleInputChange:', error);
     }
-  }, [editingEnabled]);
+  }, [editingEnabled, employeeData]);
 
   const getEmployeeValue = useCallback((employeeName, field) => {
     try {
@@ -350,7 +392,7 @@ const ModalSend = ({ file, onClose, markedAsReceived, onMarkAsReceived }) => {
     }
   }, [allEmployeeChanges, lastFocusedInput]);
 
-  // EditableCell component
+  // EditableCell component - UPDATED COLORS
   const EditableCell = useCallback(({ 
     value, 
     onChange, 
@@ -425,7 +467,7 @@ const ModalSend = ({ file, onClose, markedAsReceived, onMarkAsReceived }) => {
         placeholder={placeholder}
         disabled={disabled}
         readOnly={disabled}
-        className={`w-full px-1 py-0.5 border ${disabled ? 'bg-gray-100 border-gray-200 text-gray-500' : 'border-blue-300 bg-white'} rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-300 text-right ${className}`}
+        className={`w-full px-1 py-0.5 border ${disabled ? 'bg-gray-100 border-gray-200 text-gray-500' : 'border-orange-300 bg-white'} rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-300 text-right ${className}`}
         style={{ minWidth: '60px', height: '22px' }}
       />
     );
@@ -433,8 +475,15 @@ const ModalSend = ({ file, onClose, markedAsReceived, onMarkAsReceived }) => {
 
   // DisplayCell component for non-editable cells
   const DisplayCell = useCallback(({ value, className = '' }) => (
-    <div className={`w-full px-1 py-0.5 text-right text-xs ${className}`}>
-      {formatNumber(value)}
+    <div className={`w-full px-1 py-0.5 text-center text-xs bg-gray-100 ${className}`}>
+      {value}
+    </div>
+  ), []);
+
+  // FormulaCell component for auto-calculated cells
+  const FormulaCell = useCallback(({ value, className = '', bgColor = 'bg-gray-50' }) => (
+    <div className={`w-full px-1 py-0.5 text-right text-xs ${bgColor} ${className}`}>
+      {value}
     </div>
   ), []);
 
@@ -445,6 +494,16 @@ const ModalSend = ({ file, onClose, markedAsReceived, onMarkAsReceived }) => {
     }
     const num = parseFloat(value);
     if (isNaN(num) || num === 0) return '';
+    return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  // Format total number with commas (show dash if zero)
+  const formatTotal = (value) => {
+    if (value === undefined || value === null || value === '' || value === 0 || value === '0') {
+      return '-';
+    }
+    const num = parseFloat(value);
+    if (isNaN(num) || num === 0) return '-';
     return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
@@ -472,86 +531,34 @@ const ModalSend = ({ file, onClose, markedAsReceived, onMarkAsReceived }) => {
           const employeeRow = employeeData[employeeName]?.row;
           if (!employeeRow) return;
 
-          if (changes.number !== undefined) {
-            const cell = worksheet.getCell(`A${employeeRow}`);
-            cell.value = changes.number;
-          }
-          
-          if (changes.periodFrom !== undefined) {
-            const cell = worksheet.getCell(`E${employeeRow}`);
-            cell.value = changes.periodFrom;
-          }
-          
-          if (changes.periodTo !== undefined) {
-            const cell = worksheet.getCell(`F${employeeRow}`);
-            cell.value = changes.periodTo;
-          }
-
-          if (changes.monthlyRate !== undefined) {
-            const cellH = worksheet.getCell(`H${employeeRow}`);
-            cellH.value = parseFloat(changes.monthlyRate) || 0;
+          // Update all changed fields
+          Object.entries(changes).forEach(([field, value]) => {
+            let cellAddress;
+            switch(field) {
+              case 'periodFrom': cellAddress = `E${employeeRow}`; break;
+              case 'periodTo': cellAddress = `F${employeeRow}`; break;
+              case 'monthlyRate': cellAddress = `H${employeeRow}`; break;
+              case 'amountAccrued': cellAddress = `I${employeeRow}`; break;
+              case 'gsisEduLoan': cellAddress = `J${employeeRow}`; break;
+              case 'gsisMplLoan': cellAddress = `K${employeeRow}`; break;
+              case 'philhealthPersonal': cellAddress = `L${employeeRow}`; break;
+              case 'philhealthGovernment': cellAddress = `M${employeeRow}`; break;
+              case 'gsisPersonal': cellAddress = `N${employeeRow}`; break;
+              case 'gsisGovernment': cellAddress = `O${employeeRow}`; break;
+              case 'pagibigPersonal': cellAddress = `P${employeeRow}`; break;
+              case 'pagibigGovernment': cellAddress = `Q${employeeRow}`; break;
+              case 'lbpLoan': cellAddress = `R${employeeRow}`; break;
+              case 'gfalLoan': cellAddress = `S${employeeRow}`; break;
+              case 'gsisLiteLoan': cellAddress = `T${employeeRow}`; break;
+              case 'pagibigMpl': cellAddress = `U${employeeRow}`; break;
+              case 'ec': cellAddress = `V${employeeRow}`; break;
+              case 'paidInCash': cellAddress = `X${employeeRow}`; break;
+              default: return;
+            }
             
-            const cellI = worksheet.getCell(`I${employeeRow}`);
-            const accruedAmount = (parseFloat(changes.monthlyRate) / 2).toFixed(2);
-            cellI.value = parseFloat(accruedAmount) || 0;
-          }
-
-          if (changes.gsisEduLoan !== undefined) {
-            const cell = worksheet.getCell(`J${employeeRow}`);
-            cell.value = parseFloat(changes.gsisEduLoan) || 0;
-          }
-          
-          if (changes.gsisMplLoan !== undefined) {
-            const cell = worksheet.getCell(`K${employeeRow}`);
-            cell.value = parseFloat(changes.gsisMplLoan) || 0;
-          }
-
-          const monthlyRate = changes.monthlyRate !== undefined ? changes.monthlyRate : employeeData[employeeName].monthlyRate;
-          const philhealthRate = monthlyRate ? parseFloat(monthlyRate) : 0;
-          const philhealthShare = (philhealthRate * 0.025).toFixed(2);
-          
-          const cellL = worksheet.getCell(`L${employeeRow}`);
-          const cellM = worksheet.getCell(`M${employeeRow}`);
-          cellL.value = parseFloat(philhealthShare) || 0;
-          cellM.value = parseFloat(philhealthShare) || 0;
-
-          const gsisRate = monthlyRate ? parseFloat(monthlyRate) : 0;
-          const cellN = worksheet.getCell(`N${employeeRow}`);
-          const cellO = worksheet.getCell(`O${employeeRow}`);
-          
-          cellN.value = parseFloat((gsisRate * 0.09).toFixed(2)) || 0;
-          cellO.value = parseFloat((gsisRate * 0.12).toFixed(2)) || 0;
-
-          const cellP = worksheet.getCell(`P${employeeRow}`);
-          const cellQ = worksheet.getCell(`Q${employeeRow}`);
-          
-          cellP.value = parseFloat((gsisRate * 0.02).toFixed(2)) || 0;
-          cellQ.value = 200.00;
-
-          if (changes.lbpLoan !== undefined) {
-            const cell = worksheet.getCell(`R${employeeRow}`);
-            cell.value = parseFloat(changes.lbpLoan) || 0;
-          }
-          
-          if (changes.gfalLoan !== undefined) {
-            const cell = worksheet.getCell(`S${employeeRow}`);
-            cell.value = parseFloat(changes.gfalLoan) || 0;
-          }
-          
-          if (changes.gsisLiteLoan !== undefined) {
-            const cell = worksheet.getCell(`T${employeeRow}`);
-            cell.value = parseFloat(changes.gsisLiteLoan) || 0;
-          }
-          
-          if (changes.pagibigMpl !== undefined) {
-            const cell = worksheet.getCell(`U${employeeRow}`);
-            cell.value = parseFloat(changes.pagibigMpl) || 0;
-          }
-          
-          if (changes.ec !== undefined) {
-            const cell = worksheet.getCell(`V${employeeRow}`);
-            cell.value = parseFloat(changes.ec) || 0;
-          }
+            const cell = worksheet.getCell(cellAddress);
+            cell.value = parseFloat(value) || 0;
+          });
         } catch (error) {
           console.error(`Error updating Excel for ${employeeName}:`, error);
         }
@@ -566,78 +573,93 @@ const ModalSend = ({ file, onClose, markedAsReceived, onMarkAsReceived }) => {
   };
 
   // Handle Check button click
-  const handleCheckFile = async () => {
-    if (!editingEnabled) {
-      alert('⚠️ Please mark this file as received first before checking.');
-      return;
+// Handle Check button click
+const handleCheckFile = async () => {
+  if (!editingEnabled) {
+    alert('⚠️ Please mark this file as received first before checking.');
+    return;
+  }
+
+  if (!excelData) {
+    alert('Please upload an Excel file first.');
+    return;
+  }
+
+  setIsSending(true);
+
+  try {
+    let updatedWorkbook = null;
+    
+    if (Object.keys(allEmployeeChanges).length > 0) {
+      updatedWorkbook = await updateExcelWithInputs();
+      if (!updatedWorkbook) {
+        alert('Error updating Excel file.');
+        setIsSending(false);
+        return;
+      }
     }
 
-    if (!excelData) {
-      alert('Please upload an Excel file first.');
-      return;
+    const updateData = {
+      timestamp: serverTimestamp(),
+      status: 'checked', // Always "checked" regardless of updates
+      lastCheckedAt: new Date().toISOString(),
+    };
+
+    if (Object.keys(allEmployeeChanges).length > 0) {
+      const buffer = await updatedWorkbook.xlsx.writeBuffer();
+      const base64String = arrayBufferToBase64(buffer);
+      
+      const updatedEmployees = Object.keys(allEmployeeChanges);
+      const seniorEmployees = updatedEmployees.filter(name => 
+        allEmployeeChanges[name]?.citizenType === 'senior'
+      );
+
+      Object.assign(updateData, {
+        fileData: base64String,
+        updatedEmployees: updatedEmployees,
+        seniorEmployees: seniorEmployees,
+        // REMOVED: status: 'updated', so status remains "checked"
+        originalFileName: file.originalFileName || file.fileName
+      });
     }
 
-    setIsSending(true);
+    await updateDoc(doc(db, 'sentFiles', file.id), updateData);
 
-    try {
-      let updatedWorkbook = null;
+    let successMessage = `✅ File "${file.fileName}" checked successfully!\n\n`;
+    
+    if (Object.keys(allEmployeeChanges).length > 0) {
+      const updatedEmployees = Object.keys(allEmployeeChanges).join(', ');
+      successMessage += `Updated employees: ${updatedEmployees}\n`;
       
-      if (Object.keys(allEmployeeChanges).length > 0) {
-        updatedWorkbook = await updateExcelWithInputs();
-        if (!updatedWorkbook) {
-          alert('Error updating Excel file.');
-          setIsSending(false);
-          return;
-        }
-      }
-
-      const updateData = {
-        timestamp: serverTimestamp(),
-        status: 'checked',
-        lastCheckedAt: new Date().toISOString(),
-      };
-
-      if (Object.keys(allEmployeeChanges).length > 0) {
-        const buffer = await updatedWorkbook.xlsx.writeBuffer();
-        const base64String = arrayBufferToBase64(buffer);
-        
-        const updatedEmployees = Object.keys(allEmployeeChanges);
-
-        Object.assign(updateData, {
-          fileData: base64String,
-          updatedEmployees: updatedEmployees,
-          status: 'updated',
-          originalFileName: file.originalFileName || file.fileName
-        });
-      }
-
-      await updateDoc(doc(db, 'sentFiles', file.id), updateData);
-
-      let successMessage = `✅ File "${file.fileName}" checked successfully!\n\n`;
+      const seniorEmployees = Object.keys(allEmployeeChanges).filter(name => 
+        allEmployeeChanges[name]?.citizenType === 'senior'
+      );
       
-      if (Object.keys(allEmployeeChanges).length > 0) {
-        const updatedEmployees = Object.keys(allEmployeeChanges).join(', ');
-        successMessage += `Updated employees: ${updatedEmployees}\n`;
-      } else {
-        successMessage += `No changes detected. File remains as is.`;
+      if (seniorEmployees.length > 0) {
+        successMessage += `\nSenior Citizens (No GSIS/Pag-IBIG): ${seniorEmployees.join(', ')}`;
       }
-
-      alert(successMessage);
-      
-      if (Object.keys(allEmployeeChanges).length === 0) {
-        setAllEmployeeChanges({});
-        onClose();
-      } else {
-        setAllEmployeeChanges({});
-      }
-      
-    } catch (error) {
-      console.error('Error checking/updating file in Firestore:', error);
-      alert(`❌ Error ${Object.keys(allEmployeeChanges).length > 0 ? 'updating' : 'checking'} file in Firestore. Please try again.`);
-    } finally {
-      setIsSending(false);
+    } else {
+      successMessage += `No changes detected. File remains as is.`;
     }
-  };
+
+    alert(successMessage);
+    
+    // 🔥 I-RESET ANG MGA CHANGES UG I-CLOSE ANG MODAL
+    setAllEmployeeChanges({});
+    
+    // ✅ GAMITAG setTimeout PARA SIGURADONG MAKITA ANG ALERT BEFORE CLOSE
+    setTimeout(() => {
+      onClose();
+    }, 100);
+    
+  } catch (error) {
+    console.error('Error checking/updating file in Firestore:', error);
+    alert(`❌ Error ${Object.keys(allEmployeeChanges).length > 0 ? 'updating' : 'checking'} file in Firestore. Please try again.`);
+    setIsSending(false);
+  } finally {
+    setIsSending(false);
+  }
+};
 
   // Show filename modal for Save Excel
   const showFileNameInput = () => {
@@ -699,70 +721,113 @@ const ModalSend = ({ file, onClose, markedAsReceived, onMarkAsReceived }) => {
     return btoa(binary);
   };
 
-  // Filename Modal Component
+  // Filename Modal Component - UPDATED COLORS
   const FilenameModal = () => {
     if (!showFileNameModal) return null;
 
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="text-3xl">💾</div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-800">Save Excel File</h2>
-              <p className="text-gray-600 text-sm">Enter a filename for the Excel file that will be downloaded to your computer.</p>
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.9 }}
+          className="bg-gradient-to-br from-[#1a1a2a] to-[#0a0a0f] rounded-2xl shadow-2xl w-full max-w-md p-6 relative overflow-hidden border border-white/5"
+          style={{
+            boxShadow: '30px 30px 60px -15px #050505, -30px -30px 60px -15px #1f1f2a',
+          }}
+        >
+          {/* Abstract sphere overlay */}
+          <div className="absolute -right-20 -top-20 w-60 h-60 rounded-full bg-gradient-to-br from-orange-500/10 to-pink-500/10 blur-3xl pointer-events-none" />
+          
+          <div className="relative z-10">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center"
+                style={{
+                  background: 'linear-gradient(135deg, #f97316, #ec4899)',
+                  boxShadow: '0 10px 20px -5px #f97316'
+                }}
+              >
+                <MdSave className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">Save Excel File</h2>
+                <p className="text-gray-400 text-sm">Enter a filename for the Excel file that will be downloaded to your computer.</p>
+              </div>
+            </div>
+            
+            <div className="mb-6">
+              <label className="block text-gray-300 font-semibold mb-2">
+                Enter File Name:
+              </label>
+              <input
+                type="text"
+                value={customFileName}
+                onChange={(e) => setCustomFileName(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl text-white placeholder-gray-500 transition-all duration-300"
+                style={{
+                  background: 'linear-gradient(145deg, #0a0a0f, #1a1a2a)',
+                  boxShadow: 'inset 3px 3px 6px #050505, inset -3px -3px 6px #1f1f2a',
+                  border: '1px solid rgba(255,255,255,0.03)'
+                }}
+                placeholder="Enter filename"
+                autoFocus
+              />
+              <div className="text-sm text-gray-500 mt-2">
+                File will be saved as: <span className="font-mono font-bold text-orange-400">{customFileName}.xlsx</span>
+              </div>
+            </div>
+            
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowFileNameModal(false)}
+                className="px-4 py-2 rounded-xl text-gray-300 font-medium transition-all duration-200"
+                style={{
+                  background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+                  boxShadow: '5px 5px 10px #050505, -5px -5px 10px #1f1f2a',
+                  border: '1px solid rgba(255,255,255,0.03)'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveExcel}
+                className="px-4 py-2 rounded-xl text-white font-medium flex items-center gap-2"
+                style={{
+                  background: 'linear-gradient(135deg, #f97316, #ec4899)',
+                  boxShadow: '0 10px 20px -5px #f97316',
+                }}
+              >
+                <MdDownload className="w-4 h-4" />
+                Download Excel
+              </button>
             </div>
           </div>
-          
-          <div className="mb-6">
-            <label className="block text-gray-700 font-semibold mb-2">
-              Enter File Name:
-            </label>
-            <input
-              type="text"
-              value={customFileName}
-              onChange={(e) => setCustomFileName(e.target.value)}
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-500"
-              placeholder="Enter filename"
-              autoFocus
-            />
-            <div className="text-sm text-gray-500 mt-1">
-              File will be saved as: <span className="font-mono font-bold">{customFileName}.xlsx</span>
-            </div>
-          </div>
-          
-          <div className="flex justify-end gap-3">
-            <button
-              onClick={() => setShowFileNameModal(false)}
-              className="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg font-medium"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSaveExcel}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium"
-            >
-              💾 Download Excel
-            </button>
-          </div>
-        </div>
+        </motion.div>
       </div>
     );
   };
 
   if (!file || !excelData) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-gray-800">Loading Excel Data...</h2>
-            <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-              ✕
+      <div className="fixed inset-0 flex items-center justify-center p-4 overflow-auto">
+        <div 
+    className="bg-gradient-to-br from-[#1a1a2a] to-[#0a0a0f] rounded-2xl shadow-2xl max-w-[98vw] w-full max-h-[95vh] overflow-hidden relative border border-white/5"
+    style={{
+      boxShadow: '30px 30px 60px -15px #050505, -30px -30px 60px -15px #1f1f2a',
+      zIndex: 100000
+    }}
+  >
+          <div className="absolute -right-20 -top-20 w-60 h-60 rounded-full bg-gradient-to-br from-orange-500/10 to-pink-500/10 blur-3xl pointer-events-none" />
+          
+          <div className="relative z-10 flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-white">Loading Excel Data...</h2>
+            <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+              <MdClose size={24} />
             </button>
           </div>
           <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading file data...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-400 mx-auto"></div>
+            <p className="mt-4 text-gray-400">Loading file data...</p>
           </div>
         </div>
       </div>
@@ -770,132 +835,207 @@ const ModalSend = ({ file, onClose, markedAsReceived, onMarkAsReceived }) => {
   }
 
   const employeesList = Object.values(employeeData);
+  
+  // Group employees by section as per payslip.jsx
+  const sbEmployees = employeesList.filter(emp => emp.section === 'SB');
+  const mtoEmployees = employeesList.filter(emp => emp.section === 'MTO');
+  const menroEmployees = employeesList.filter(emp => emp.section === 'MENRO');
+
+  // Calculate totals for each section
+  const calculateSectionTotals = (sectionEmployees) => {
+    return sectionEmployees.reduce((totals, emp) => {
+      // Get current values (either changed or original)
+      const getValue = (field) => {
+        const changed = allEmployeeChanges[emp.name]?.[field];
+        return changed !== undefined ? parseFloat(changed) || 0 : parseFloat(emp[field]) || 0;
+      };
+
+      return {
+        monthlyRate: totals.monthlyRate + getValue('monthlyRate'),
+        amountAccrued: totals.amountAccrued + getValue('amountAccrued'),
+        gsisEduLoan: totals.gsisEduLoan + getValue('gsisEduLoan'),
+        gsisMplLoan: totals.gsisMplLoan + getValue('gsisMplLoan'),
+        philhealthPersonal: totals.philhealthPersonal + getValue('philhealthPersonal'),
+        philhealthGovernment: totals.philhealthGovernment + getValue('philhealthGovernment'),
+        gsisPersonal: totals.gsisPersonal + getValue('gsisPersonal'),
+        gsisGovernment: totals.gsisGovernment + getValue('gsisGovernment'),
+        pagibigPersonal: totals.pagibigPersonal + getValue('pagibigPersonal'),
+        pagibigGovernment: totals.pagibigGovernment + getValue('pagibigGovernment'),
+        lbpLoan: totals.lbpLoan + getValue('lbpLoan'),
+        gfalLoan: totals.gfalLoan + getValue('gfalLoan'),
+        gsisLiteLoan: totals.gsisLiteLoan + getValue('gsisLiteLoan'),
+        pagibigMpl: totals.pagibigMpl + getValue('pagibigMpl'),
+        ec: totals.ec + getValue('ec'),
+        paidInCash: totals.paidInCash + getValue('paidInCash')
+      };
+    }, {
+      monthlyRate: 0,
+      amountAccrued: 0,
+      gsisEduLoan: 0,
+      gsisMplLoan: 0,
+      philhealthPersonal: 0,
+      philhealthGovernment: 0,
+      gsisPersonal: 0,
+      gsisGovernment: 0,
+      pagibigPersonal: 0,
+      pagibigGovernment: 0,
+      lbpLoan: 0,
+      gfalLoan: 0,
+      gsisLiteLoan: 0,
+      pagibigMpl: 0,
+      ec: 0,
+      paidInCash: 0
+    });
+  };
+
+  const sbTotals = calculateSectionTotals(sbEmployees);
+  const mtoTotals = calculateSectionTotals(mtoEmployees);
+  const menroTotals = calculateSectionTotals(menroEmployees);
+
+  // Calculate grand totals
+  const grandTotals = {
+    monthlyRate: sbTotals.monthlyRate + mtoTotals.monthlyRate + menroTotals.monthlyRate,
+    amountAccrued: sbTotals.amountAccrued + mtoTotals.amountAccrued + menroTotals.amountAccrued,
+    gsisEduLoan: sbTotals.gsisEduLoan + mtoTotals.gsisEduLoan + menroTotals.gsisEduLoan,
+    gsisMplLoan: sbTotals.gsisMplLoan + mtoTotals.gsisMplLoan + menroTotals.gsisMplLoan,
+    philhealthPersonal: sbTotals.philhealthPersonal + mtoTotals.philhealthPersonal + menroTotals.philhealthPersonal,
+    philhealthGovernment: sbTotals.philhealthGovernment + mtoTotals.philhealthGovernment + menroTotals.philhealthGovernment,
+    gsisPersonal: sbTotals.gsisPersonal + mtoTotals.gsisPersonal + menroTotals.gsisPersonal,
+    gsisGovernment: sbTotals.gsisGovernment + mtoTotals.gsisGovernment + menroTotals.gsisGovernment,
+    pagibigPersonal: sbTotals.pagibigPersonal + mtoTotals.pagibigPersonal + menroTotals.pagibigPersonal,
+    pagibigGovernment: sbTotals.pagibigGovernment + mtoTotals.pagibigGovernment + menroTotals.pagibigGovernment,
+    lbpLoan: sbTotals.lbpLoan + mtoTotals.lbpLoan + menroTotals.lbpLoan,
+    gfalLoan: sbTotals.gfalLoan + mtoTotals.gfalLoan + menroTotals.gfalLoan,
+    gsisLiteLoan: sbTotals.gsisLiteLoan + mtoTotals.gsisLiteLoan + menroTotals.gsisLiteLoan,
+    pagibigMpl: sbTotals.pagibigMpl + mtoTotals.pagibigMpl + menroTotals.pagibigMpl,
+    ec: sbTotals.ec + mtoTotals.ec + menroTotals.ec,
+    paidInCash: sbTotals.paidInCash + mtoTotals.paidInCash + menroTotals.paidInCash
+  };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-auto">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-auto">
       <FilenameModal />
       
-      <div className="bg-white rounded-lg shadow-xl max-w-[98vw] w-full max-h-[95vh] overflow-hidden">
-        {/* Modal Header */}
-        <div className="bg-blue-600 text-white px-6 py-3 flex justify-between items-center">
+      <div className="bg-gradient-to-br from-[#1a1a2a] to-[#0a0a0f] rounded-2xl shadow-2xl max-w-[98vw] w-full max-h-[95vh] overflow-hidden relative border border-white/5"
+        style={{
+          boxShadow: '30px 30px 60px -15px #050505, -30px -30px 60px -15px #1f1f2a',
+        }}
+      >
+        {/* Abstract sphere overlays */}
+        <div className="absolute -right-20 -top-20 w-60 h-60 rounded-full bg-gradient-to-br from-orange-500/10 to-pink-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute -left-20 -bottom-20 w-60 h-60 rounded-full bg-gradient-to-tr from-purple-500/10 to-indigo-500/10 blur-3xl pointer-events-none" />
+        
+        {/* Modal Header - UPDATED COLORS */}
+        <div className="relative z-10 px-6 py-3 flex justify-between items-center border-b border-white/5"
+          style={{
+            background: 'linear-gradient(145deg, #1a1a2a, #0f0f1a)',
+          }}
+        >
           <div>
-            <h2 className="text-xl font-semibold">Edit Payroll - {file.fileName}</h2>
-            <div className="flex items-center gap-2 mt-1">
-              <p className="text-sm text-blue-200">Showing only employees with valid names and designations</p>
-              <span className={`px-2 py-0.5 rounded-full text-xs ${
-                editingEnabled 
-                  ? 'bg-green-100 text-green-800' 
-                  : 'bg-yellow-100 text-yellow-800'
-              }`}>
-                {editingEnabled ? '✓ Editable' : 'Read-only'}
-              </span>
-            </div>
+            <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-gradient-to-r from-orange-500 to-pink-500"></span>
+              Edit Payroll - {file.fileName}
+            </h2>
+            
           </div>
           <button 
             onClick={onClose}
-            className="text-white hover:text-gray-200 transition-colors text-2xl"
+            className="w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-white/5"
+            style={{
+              background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+              boxShadow: '5px 5px 10px #050505, -5px -5px 10px #1f1f2a',
+            }}
           >
-            ✕
+            <MdClose className="text-gray-400 hover:text-white" size={20} />
           </button>
         </div>
 
-        {/* Paper Size and Orientation Controls */}
-        <div className="bg-gray-100 px-6 py-2 border-b flex gap-4 items-center">
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium">Paper Size:</label>
-            <select 
-              value={paperSize} 
-              onChange={(e) => setPaperSize(e.target.value)}
-              className="border rounded px-2 py-1 text-sm"
-            >
-              <option value="A3">A3 (297 × 420 mm)</option>
-              <option value="A4">A4 (210 × 297 mm)</option>
-              <option value="Letter">Letter (8.5 × 11 in)</option>
-              <option value="Legal">Legal (8.5 × 14 in)</option>
-              <option value="Tabloid">Tabloid (11 × 17 in)</option>
-            </select>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium">Orientation:</label>
-            <div className="flex">
-              <button
-                onClick={() => setOrientation("portrait")}
-                className={`px-3 py-1 text-sm border ${orientation === "portrait" ? 'bg-blue-500 text-white' : 'bg-white'}`}
-              >
-                Portrait
-              </button>
-              <button
-                onClick={() => setOrientation("landscape")}
-                className={`px-3 py-1 text-sm border ${orientation === "landscape" ? 'bg-blue-500 text-white' : 'bg-white'}`}
-              >
-                Landscape
-              </button>
-            </div>
-          </div>
-          
-          <div className="flex-1"></div>
-          
-          <span className="text-sm text-gray-600">
-            Employees: <span className="font-bold">{employeesList.length}</span>
-          </span>
-        </div>
-
-        {/* Mark as Received Banner - SHOWN ONLY WHEN NOT MARKED */}
+        {/* Mark as Received Banner - SHOWN ONLY WHEN NOT MARKED - UPDATED COLORS */}
         {!editingEnabled && (
-          <div className="bg-yellow-50 border-b border-yellow-200 px-6 py-3">
+          <div className="relative z-10 border-b border-orange-500/20 px-6 py-3"
+            style={{
+              background: 'linear-gradient(145deg, rgba(249, 115, 22, 0.1), #1a1a2a)',
+            }}
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="bg-yellow-100 p-1.5 rounded-full">
-                  <svg className="h-5 w-5 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.998-.833-2.732 0L4.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                  </svg>
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center"
+                  style={{
+                    background: 'linear-gradient(135deg, #f97316, #ec4899)',
+                    boxShadow: '0 5px 15px -3px #f97316'
+                  }}
+                >
+                  <MdWarning className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="font-medium text-yellow-800 text-sm">File Not Ready for Editing</h3>
-                  <p className="text-xs text-yellow-700">You need to mark this file as received before you can edit it.</p>
+                  <h3 className="font-medium text-orange-400 text-sm">File Not Ready for Editing</h3>
+                  <p className="text-xs text-orange-400/70">You need to mark this file as received before you can edit it.</p>
                 </div>
               </div>
               <button
                 onClick={handleMarkAsReceived}
-                className="bg-green-600 text-white px-4 py-1.5 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm flex items-center gap-2"
+                className="px-4 py-1.5 rounded-lg font-medium text-sm flex items-center gap-2 text-white transition-all duration-200"
+                style={{
+                  background: 'linear-gradient(135deg, #f97316, #ec4899)',
+                  boxShadow: '0 10px 20px -5px #f97316',
+                }}
               >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+                <MdCheckCircle className="h-4 w-4" />
                 Mark as Received
               </button>
             </div>
           </div>
         )}
 
-        {/* Action Buttons */}
-        <div className="bg-gray-50 px-6 py-2 border-b flex justify-between items-center">
+        {/* Action Buttons - UPDATED COLORS */}
+        <div className="relative z-10 px-6 py-2 border-b border-white/5 flex justify-between items-center bg-[#0f0f1a]">
           <div>
-            <span className="text-sm text-gray-600">
-              Changes: <span className="font-bold">{Object.keys(allEmployeeChanges).length}</span> employee(s)
+            <span className="text-sm text-gray-400">
+              Employees: <span className="font-bold text-orange-400">{employeesList.length}</span></span>
+            <div></div>
+            <span className="text-sm text-gray-400">
+              Changes: <span className="font-bold text-orange-400">{Object.keys(allEmployeeChanges).length}</span> employee(s)
             </span>
           </div>
           <div className="flex gap-2">
             <button 
               onClick={showFileNameInput}
               disabled={!editingEnabled}
-              className={`px-4 py-1.5 rounded-lg transition-colors font-medium text-sm flex items-center gap-2 ${
+              className={`px-4 py-1.5 rounded-lg transition-all duration-200 font-medium text-sm flex items-center gap-2 ${
                 editingEnabled
-                  ? 'bg-green-600 hover:bg-green-700 text-white'
-                  : 'bg-gray-400 text-white cursor-not-allowed'
+                  ? 'text-white'
+                  : 'opacity-50 cursor-not-allowed'
               }`}
+              style={{
+                background: editingEnabled
+                  ? 'linear-gradient(135deg, #10b981, #059669)'
+                  : 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+                boxShadow: editingEnabled
+                  ? '0 10px 20px -5px #10b981'
+                  : '5px 5px 10px #050505, -5px -5px 10px #1f1f2a',
+              }}
             >
-              💾 Save Excel
+              <MdSave className="w-4 h-4" />
+              Save Excel
             </button>
             <button 
               onClick={handleCheckFile}
               disabled={!editingEnabled || isSending}
-              className={`px-4 py-1.5 rounded-lg transition-colors font-medium text-sm flex items-center gap-2 ${
+              className={`px-4 py-1.5 rounded-lg transition-all duration-200 font-medium text-sm flex items-center gap-2 ${
                 editingEnabled
-                  ? (isSending ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white')
-                  : 'bg-gray-400 text-white cursor-not-allowed'
+                  ? 'text-white'
+                  : 'opacity-50 cursor-not-allowed'
               }`}
+              style={{
+                background: editingEnabled
+                  ? isSending
+                    ? 'linear-gradient(145deg, #6b7280, #4b5563)'
+                    : 'linear-gradient(135deg, #f97316, #ec4899)'
+                  : 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+                boxShadow: editingEnabled && !isSending
+                  ? '0 10px 20px -5px #f97316'
+                  : '5px 5px 10px #050505, -5px -5px 10px #1f1f2a',
+              }}
             >
               {isSending ? (
                 <>
@@ -903,7 +1043,10 @@ const ModalSend = ({ file, onClose, markedAsReceived, onMarkAsReceived }) => {
                   Checking...
                 </>
               ) : (
-                '✓ Check File'
+                <>
+                  <MdCheckCircle className="w-4 h-4" />
+                  Check File
+                </>
               )}
             </button>
           </div>
@@ -911,7 +1054,7 @@ const ModalSend = ({ file, onClose, markedAsReceived, onMarkAsReceived }) => {
 
         {/* Main Payslip Container */}
         <div 
-          className="bg-white mx-auto overflow-auto p-4"
+          className="bg-[#0a0a0f] mx-auto overflow-auto p-4"
           style={{
             maxHeight: 'calc(95vh - 160px)',
           }}
@@ -988,7 +1131,7 @@ const ModalSend = ({ file, onClose, markedAsReceived, onMarkAsReceived }) => {
               </div>
             </div>
 
-            {/* MAIN TABLE - Only shows actual employee data with valid designations */}
+            {/* MAIN TABLE - Exactly as in payslip.jsx with NUMBER column non-editable */}
             <table 
               className="w-full border-collapse border border-black" 
               style={{ fontSize: `${fontSizes.small}px`, tableLayout: 'auto' }}
@@ -1051,24 +1194,40 @@ const ModalSend = ({ file, onClose, markedAsReceived, onMarkAsReceived }) => {
               </thead>
 
               <tbody>
-                {employeesList.map((emp, index) => (
-                  <tr key={`emp-${index}`}>
-                    <td className="border border-black text-center align-middle" style={{ padding: '2px 2px', fontSize: `${fontSizes.number}px` }}>
-                      <EditableCell
-                        value={getEmployeeValue(emp.name, 'number')}
-                        onChange={(e) => handleInputChange(emp.name, 'number', e.target.value)}
-                        type="text"
-                        className="text-center"
-                        employeeName={emp.name}
-                        field="number"
-                        disabled={!editingEnabled}
-                      />
+                {/* SB SECTION */}
+                {sbEmployees.map((emp, index) => {
+                  // Get current values (either changed or original)
+                  const currentValues = {
+                    periodFrom: getEmployeeValue(emp.name, 'periodFrom'),
+                    periodTo: getEmployeeValue(emp.name, 'periodTo'),
+                    monthlyRate: getEmployeeValue(emp.name, 'monthlyRate'),
+                    amountAccrued: getEmployeeValue(emp.name, 'amountAccrued'),
+                    gsisEduLoan: getEmployeeValue(emp.name, 'gsisEduLoan'),
+                    gsisMplLoan: getEmployeeValue(emp.name, 'gsisMplLoan'),
+                    philhealthPersonal: getEmployeeValue(emp.name, 'philhealthPersonal'),
+                    philhealthGovernment: getEmployeeValue(emp.name, 'philhealthGovernment'),
+                    gsisPersonal: getEmployeeValue(emp.name, 'gsisPersonal'),
+                    gsisGovernment: getEmployeeValue(emp.name, 'gsisGovernment'),
+                    pagibigPersonal: getEmployeeValue(emp.name, 'pagibigPersonal'),
+                    pagibigGovernment: getEmployeeValue(emp.name, 'pagibigGovernment'),
+                    gsisLiteLoan: getEmployeeValue(emp.name, 'gsisLiteLoan'),
+                    lbpLoan: getEmployeeValue(emp.name, 'lbpLoan'),
+                    gfalLoan: getEmployeeValue(emp.name, 'gfalLoan'),
+                    pagibigMpl: getEmployeeValue(emp.name, 'pagibigMpl'),
+                    ec: getEmployeeValue(emp.name, 'ec'),
+                    paidInCash: getEmployeeValue(emp.name, 'paidInCash')
+                  };
+                  
+                  return (
+                  <tr key={`sb-${index}`}>
+                    <td className="border border-black text-center align-middle bg-gray-100" style={{ padding: '2px 2px', fontSize: `${fontSizes.number}px` }}>
+                      {emp.number}
                     </td>
                     <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.name || ''}</td>
                     <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.designation || ''}</td>
                     <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>
                       <EditableCell
-                        value={getEmployeeValue(emp.name, 'periodFrom')}
+                        value={currentValues.periodFrom}
                         onChange={(e) => handleInputChange(emp.name, 'periodFrom', e.target.value)}
                         placeholder="DD-MMM-YYYY"
                         className="text-center"
@@ -1079,7 +1238,7 @@ const ModalSend = ({ file, onClose, markedAsReceived, onMarkAsReceived }) => {
                     </td>
                     <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>
                       <EditableCell
-                        value={getEmployeeValue(emp.name, 'periodTo')}
+                        value={currentValues.periodTo}
                         onChange={(e) => handleInputChange(emp.name, 'periodTo', e.target.value)}
                         placeholder="DD-MMM-YYYY"
                         className="text-center"
@@ -1090,7 +1249,7 @@ const ModalSend = ({ file, onClose, markedAsReceived, onMarkAsReceived }) => {
                     </td>
                     <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                       <EditableCell
-                        value={getEmployeeValue(emp.name, 'monthlyRate')}
+                        value={currentValues.monthlyRate}
                         onChange={(e) => handleInputChange(emp.name, 'monthlyRate', e.target.value)}
                         type="number"
                         placeholder="0.00"
@@ -1101,11 +1260,11 @@ const ModalSend = ({ file, onClose, markedAsReceived, onMarkAsReceived }) => {
                       />
                     </td>
                     <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                      <DisplayCell value={emp.amountAccrued} />
+                      <FormulaCell value={formatNumber(currentValues.amountAccrued)} />
                     </td>
                     <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                       <EditableCell
-                        value={getEmployeeValue(emp.name, 'gsisEduLoan')}
+                        value={currentValues.gsisEduLoan}
                         onChange={(e) => handleInputChange(emp.name, 'gsisEduLoan', e.target.value)}
                         type="number"
                         placeholder="0.00"
@@ -1117,7 +1276,7 @@ const ModalSend = ({ file, onClose, markedAsReceived, onMarkAsReceived }) => {
                     </td>
                     <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                       <EditableCell
-                        value={getEmployeeValue(emp.name, 'gsisMplLoan')}
+                        value={currentValues.gsisMplLoan}
                         onChange={(e) => handleInputChange(emp.name, 'gsisMplLoan', e.target.value)}
                         type="number"
                         placeholder="0.00"
@@ -1128,26 +1287,26 @@ const ModalSend = ({ file, onClose, markedAsReceived, onMarkAsReceived }) => {
                       />
                     </td>
                     <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                      <DisplayCell value={emp.philhealthPersonal} />
+                      <FormulaCell value={formatNumber(currentValues.philhealthPersonal)} />
                     </td>
                     <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                      <DisplayCell value={emp.philhealthGovernment} />
+                      <FormulaCell value={formatNumber(currentValues.philhealthGovernment)} />
                     </td>
                     <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                      <DisplayCell value={emp.gsisPersonal} />
+                      <FormulaCell value={formatNumber(currentValues.gsisPersonal)} />
                     </td>
                     <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                      <DisplayCell value={emp.gsisGovernment} />
+                      <FormulaCell value={formatNumber(currentValues.gsisGovernment)} />
                     </td>
                     <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                      <DisplayCell value={emp.pagibigPersonal} />
+                      <FormulaCell value={formatNumber(currentValues.pagibigPersonal)} />
                     </td>
                     <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                      <DisplayCell value={emp.pagibigGovernment} />
+                      <FormulaCell value={formatNumber(currentValues.pagibigGovernment)} />
                     </td>
                     <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                       <EditableCell
-                        value={getEmployeeValue(emp.name, 'gsisLiteLoan')}
+                        value={currentValues.gsisLiteLoan}
                         onChange={(e) => handleInputChange(emp.name, 'gsisLiteLoan', e.target.value)}
                         type="number"
                         placeholder="0.00"
@@ -1159,7 +1318,7 @@ const ModalSend = ({ file, onClose, markedAsReceived, onMarkAsReceived }) => {
                     </td>
                     <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                       <EditableCell
-                        value={getEmployeeValue(emp.name, 'lbpLoan')}
+                        value={currentValues.lbpLoan}
                         onChange={(e) => handleInputChange(emp.name, 'lbpLoan', e.target.value)}
                         type="number"
                         placeholder="0.00"
@@ -1171,7 +1330,7 @@ const ModalSend = ({ file, onClose, markedAsReceived, onMarkAsReceived }) => {
                     </td>
                     <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                       <EditableCell
-                        value={getEmployeeValue(emp.name, 'gfalLoan')}
+                        value={currentValues.gfalLoan}
                         onChange={(e) => handleInputChange(emp.name, 'gfalLoan', e.target.value)}
                         type="number"
                         placeholder="0.00"
@@ -1183,7 +1342,7 @@ const ModalSend = ({ file, onClose, markedAsReceived, onMarkAsReceived }) => {
                     </td>
                     <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                       <EditableCell
-                        value={getEmployeeValue(emp.name, 'pagibigMpl')}
+                        value={currentValues.pagibigMpl}
                         onChange={(e) => handleInputChange(emp.name, 'pagibigMpl', e.target.value)}
                         type="number"
                         placeholder="0.00"
@@ -1195,7 +1354,7 @@ const ModalSend = ({ file, onClose, markedAsReceived, onMarkAsReceived }) => {
                     </td>
                     <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                       <EditableCell
-                        value={getEmployeeValue(emp.name, 'ec')}
+                        value={currentValues.ec}
                         onChange={(e) => handleInputChange(emp.name, 'ec', e.target.value)}
                         type="number"
                         placeholder="0.00"
@@ -1206,22 +1365,490 @@ const ModalSend = ({ file, onClose, markedAsReceived, onMarkAsReceived }) => {
                       />
                     </td>
                     <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                      <DisplayCell value={emp.paidInCash} />
+                      <FormulaCell value={formatNumber(currentValues.paidInCash)} />
                     </td>
-                    <td className="border border-black text-center p-0 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
-                      <EditableCell
-                        value={getEmployeeValue(emp.name, 'number')}
-                        onChange={(e) => handleInputChange(emp.name, 'number', e.target.value)}
-                        type="text"
-                        className="text-center"
-                        employeeName={emp.name}
-                        field="number"
-                        disabled={!editingEnabled}
-                      />
+                    <td className="border border-black text-center p-0 align-middle bg-gray-100" style={{ fontSize: `${fontSizes.number}px` }}>
+                      {emp.number}
                     </td>
                     <td className="border border-black p-0 align-middle"></td>
                   </tr>
-                ))}
+                )})}
+                
+                {/* SB TOTAL ROW */}
+                {sbEmployees.length > 0 && (
+                  <tr className="border border-black text-center align-middle font-bold">
+                    <td colSpan={5} className="border border-black p-0 text-right pr-1 align-middle">P</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbTotals.monthlyRate)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbTotals.amountAccrued)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbTotals.gsisEduLoan)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbTotals.gsisMplLoan)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbTotals.philhealthPersonal)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbTotals.philhealthGovernment)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbTotals.gsisPersonal)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbTotals.gsisGovernment)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbTotals.pagibigPersonal)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbTotals.pagibigGovernment)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbTotals.gsisLiteLoan)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbTotals.lbpLoan)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbTotals.gfalLoan)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbTotals.pagibigMpl)}</td>
+                    <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbTotals.ec)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbTotals.paidInCash)}</td>
+                    <td className="border border-black text-center p-0 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{sbEmployees.length + 1}</td>
+                    <td className="border border-black p-0 align-middle"></td>
+                  </tr>
+                )}
+                
+                {/* MTO SECTION HEADER */}
+                {mtoEmployees.length > 0 && (
+                  <tr>
+                    <td className="border border-black text-center align-middle font-bold"></td>
+                    <td className="border border-black p-0 pl-1 font-bold align-middle" style={{ fontSize: `${fontSizes.main}px` }}>MTO</td>
+                    <td colSpan={21} className="border border-black p-0 align-middle"></td>
+                  </tr>
+                )}
+                
+                {/* MTO ROWS */}
+                {mtoEmployees.map((emp, index) => {
+                  const currentValues = {
+                    periodFrom: getEmployeeValue(emp.name, 'periodFrom'),
+                    periodTo: getEmployeeValue(emp.name, 'periodTo'),
+                    monthlyRate: getEmployeeValue(emp.name, 'monthlyRate'),
+                    amountAccrued: getEmployeeValue(emp.name, 'amountAccrued'),
+                    gsisEduLoan: getEmployeeValue(emp.name, 'gsisEduLoan'),
+                    gsisMplLoan: getEmployeeValue(emp.name, 'gsisMplLoan'),
+                    philhealthPersonal: getEmployeeValue(emp.name, 'philhealthPersonal'),
+                    philhealthGovernment: getEmployeeValue(emp.name, 'philhealthGovernment'),
+                    gsisPersonal: getEmployeeValue(emp.name, 'gsisPersonal'),
+                    gsisGovernment: getEmployeeValue(emp.name, 'gsisGovernment'),
+                    pagibigPersonal: getEmployeeValue(emp.name, 'pagibigPersonal'),
+                    pagibigGovernment: getEmployeeValue(emp.name, 'pagibigGovernment'),
+                    gsisLiteLoan: getEmployeeValue(emp.name, 'gsisLiteLoan'),
+                    lbpLoan: getEmployeeValue(emp.name, 'lbpLoan'),
+                    gfalLoan: getEmployeeValue(emp.name, 'gfalLoan'),
+                    pagibigMpl: getEmployeeValue(emp.name, 'pagibigMpl'),
+                    ec: getEmployeeValue(emp.name, 'ec'),
+                    paidInCash: getEmployeeValue(emp.name, 'paidInCash')
+                  };
+                  
+                  return (
+                  <tr key={`mto-${index}`}>
+                    <td className="border border-black text-center align-middle bg-gray-100" style={{ padding: '2px 2px', fontSize: `${fontSizes.number}px` }}>
+                      {emp.number}
+                    </td>
+                    <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.name || ''}</td>
+                    <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.designation || ''}</td>
+                    <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>
+                      <EditableCell
+                        value={currentValues.periodFrom}
+                        onChange={(e) => handleInputChange(emp.name, 'periodFrom', e.target.value)}
+                        placeholder="DD-MMM-YYYY"
+                        className="text-center"
+                        employeeName={emp.name}
+                        field="periodFrom"
+                        disabled={!editingEnabled}
+                      />
+                    </td>
+                    <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>
+                      <EditableCell
+                        value={currentValues.periodTo}
+                        onChange={(e) => handleInputChange(emp.name, 'periodTo', e.target.value)}
+                        placeholder="DD-MMM-YYYY"
+                        className="text-center"
+                        employeeName={emp.name}
+                        field="periodTo"
+                        disabled={!editingEnabled}
+                      />
+                    </td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                      <EditableCell
+                        value={currentValues.monthlyRate}
+                        onChange={(e) => handleInputChange(emp.name, 'monthlyRate', e.target.value)}
+                        type="number"
+                        placeholder="0.00"
+                        className="text-right"
+                        employeeName={emp.name}
+                        field="monthlyRate"
+                        disabled={!editingEnabled}
+                      />
+                    </td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
+                      <FormulaCell value={formatNumber(currentValues.amountAccrued)} />
+                    </td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                      <EditableCell
+                        value={currentValues.gsisEduLoan}
+                        onChange={(e) => handleInputChange(emp.name, 'gsisEduLoan', e.target.value)}
+                        type="number"
+                        placeholder="0.00"
+                        className="text-right"
+                        employeeName={emp.name}
+                        field="gsisEduLoan"
+                        disabled={!editingEnabled}
+                      />
+                    </td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                      <EditableCell
+                        value={currentValues.gsisMplLoan}
+                        onChange={(e) => handleInputChange(emp.name, 'gsisMplLoan', e.target.value)}
+                        type="number"
+                        placeholder="0.00"
+                        className="text-right"
+                        employeeName={emp.name}
+                        field="gsisMplLoan"
+                        disabled={!editingEnabled}
+                      />
+                    </td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
+                      <FormulaCell value={formatNumber(currentValues.philhealthPersonal)} />
+                    </td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
+                      <FormulaCell value={formatNumber(currentValues.philhealthGovernment)} />
+                    </td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
+                      <FormulaCell value={formatNumber(currentValues.gsisPersonal)} />
+                    </td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
+                      <FormulaCell value={formatNumber(currentValues.gsisGovernment)} />
+                    </td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
+                      <FormulaCell value={formatNumber(currentValues.pagibigPersonal)} />
+                    </td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
+                      <FormulaCell value={formatNumber(currentValues.pagibigGovernment)} />
+                    </td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                      <EditableCell
+                        value={currentValues.gsisLiteLoan}
+                        onChange={(e) => handleInputChange(emp.name, 'gsisLiteLoan', e.target.value)}
+                        type="number"
+                        placeholder="0.00"
+                        className="text-right"
+                        employeeName={emp.name}
+                        field="gsisLiteLoan"
+                        disabled={!editingEnabled}
+                      />
+                    </td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                      <EditableCell
+                        value={currentValues.lbpLoan}
+                        onChange={(e) => handleInputChange(emp.name, 'lbpLoan', e.target.value)}
+                        type="number"
+                        placeholder="0.00"
+                        className="text-right"
+                        employeeName={emp.name}
+                        field="lbpLoan"
+                        disabled={!editingEnabled}
+                      />
+                    </td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                      <EditableCell
+                        value={currentValues.gfalLoan}
+                        onChange={(e) => handleInputChange(emp.name, 'gfalLoan', e.target.value)}
+                        type="number"
+                        placeholder="0.00"
+                        className="text-right"
+                        employeeName={emp.name}
+                        field="gfalLoan"
+                        disabled={!editingEnabled}
+                      />
+                    </td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                      <EditableCell
+                        value={currentValues.pagibigMpl}
+                        onChange={(e) => handleInputChange(emp.name, 'pagibigMpl', e.target.value)}
+                        type="number"
+                        placeholder="0.00"
+                        className="text-right"
+                        employeeName={emp.name}
+                        field="pagibigMpl"
+                        disabled={!editingEnabled}
+                      />
+                    </td>
+                    <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                      <EditableCell
+                        value={currentValues.ec}
+                        onChange={(e) => handleInputChange(emp.name, 'ec', e.target.value)}
+                        type="number"
+                        placeholder="0.00"
+                        className="text-center"
+                        employeeName={emp.name}
+                        field="ec"
+                        disabled={!editingEnabled}
+                      />
+                    </td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
+                      <FormulaCell value={formatNumber(currentValues.paidInCash)} />
+                    </td>
+                    <td className="border border-black text-center p-0 align-middle bg-gray-100" style={{ fontSize: `${fontSizes.number}px` }}>
+                      {emp.number}
+                    </td>
+                    <td className="border border-black p-0 align-middle"></td>
+                  </tr>
+                )})}
+                
+                {/* MTO TOTAL ROW */}
+                {mtoEmployees.length > 0 && (
+                  <tr className="border border-black text-center align-middle font-bold">
+                    <td colSpan={5} className="border border-black p-0 align-middle"></td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mtoTotals.monthlyRate)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mtoTotals.amountAccrued)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mtoTotals.gsisEduLoan)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mtoTotals.gsisMplLoan)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mtoTotals.philhealthPersonal)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mtoTotals.philhealthGovernment)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mtoTotals.gsisPersonal)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mtoTotals.gsisGovernment)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mtoTotals.pagibigPersonal)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mtoTotals.pagibigGovernment)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mtoTotals.gsisLiteLoan)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mtoTotals.lbpLoan)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mtoTotals.gfalLoan)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mtoTotals.pagibigMpl)}</td>
+                    <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mtoTotals.ec)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mtoTotals.paidInCash)}</td>
+                    <td className="border border-black text-center p-0 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{sbEmployees.length + mtoEmployees.length + 1}</td>
+                    <td className="border border-black p-0 align-middle"></td>
+                  </tr>
+                )}
+                
+                {/* MENRO SECTION HEADER */}
+                {menroEmployees.length > 0 && (
+                  <tr>
+                    <td className="border border-black text-center align-middle font-bold"></td>
+                    <td className="border border-black p-0 pl-1 font-bold align-middle" style={{ fontSize: `${fontSizes.main}px` }}>MENRO</td>
+                    <td colSpan={21} className="border border-black p-0 align-middle"></td>
+                  </tr>
+                )}
+                
+                {/* MENRO ROWS */}
+                {menroEmployees.map((emp, index) => {
+                  const currentValues = {
+                    periodFrom: getEmployeeValue(emp.name, 'periodFrom'),
+                    periodTo: getEmployeeValue(emp.name, 'periodTo'),
+                    monthlyRate: getEmployeeValue(emp.name, 'monthlyRate'),
+                    amountAccrued: getEmployeeValue(emp.name, 'amountAccrued'),
+                    gsisEduLoan: getEmployeeValue(emp.name, 'gsisEduLoan'),
+                    gsisMplLoan: getEmployeeValue(emp.name, 'gsisMplLoan'),
+                    philhealthPersonal: getEmployeeValue(emp.name, 'philhealthPersonal'),
+                    philhealthGovernment: getEmployeeValue(emp.name, 'philhealthGovernment'),
+                    gsisPersonal: getEmployeeValue(emp.name, 'gsisPersonal'),
+                    gsisGovernment: getEmployeeValue(emp.name, 'gsisGovernment'),
+                    pagibigPersonal: getEmployeeValue(emp.name, 'pagibigPersonal'),
+                    pagibigGovernment: getEmployeeValue(emp.name, 'pagibigGovernment'),
+                    gsisLiteLoan: getEmployeeValue(emp.name, 'gsisLiteLoan'),
+                    lbpLoan: getEmployeeValue(emp.name, 'lbpLoan'),
+                    gfalLoan: getEmployeeValue(emp.name, 'gfalLoan'),
+                    pagibigMpl: getEmployeeValue(emp.name, 'pagibigMpl'),
+                    ec: getEmployeeValue(emp.name, 'ec'),
+                    paidInCash: getEmployeeValue(emp.name, 'paidInCash')
+                  };
+                  
+                  return (
+                  <tr key={`menro-${index}`}>
+                    <td className="border border-black text-center align-middle bg-gray-100" style={{ padding: '2px 2px', fontSize: `${fontSizes.number}px` }}>
+                      {emp.number}
+                    </td>
+                    <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.name || ''}</td>
+                    <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.designation || ''}</td>
+                    <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>
+                      <EditableCell
+                        value={currentValues.periodFrom}
+                        onChange={(e) => handleInputChange(emp.name, 'periodFrom', e.target.value)}
+                        placeholder="DD-MMM-YYYY"
+                        className="text-center"
+                        employeeName={emp.name}
+                        field="periodFrom"
+                        disabled={!editingEnabled}
+                      />
+                    </td>
+                    <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>
+                      <EditableCell
+                        value={currentValues.periodTo}
+                        onChange={(e) => handleInputChange(emp.name, 'periodTo', e.target.value)}
+                        placeholder="DD-MMM-YYYY"
+                        className="text-center"
+                        employeeName={emp.name}
+                        field="periodTo"
+                        disabled={!editingEnabled}
+                      />
+                    </td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                      <EditableCell
+                        value={currentValues.monthlyRate}
+                        onChange={(e) => handleInputChange(emp.name, 'monthlyRate', e.target.value)}
+                        type="number"
+                        placeholder="0.00"
+                        className="text-right"
+                        employeeName={emp.name}
+                        field="monthlyRate"
+                        disabled={!editingEnabled}
+                      />
+                    </td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
+                      <FormulaCell value={formatNumber(currentValues.amountAccrued)} />
+                    </td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                      <EditableCell
+                        value={currentValues.gsisEduLoan}
+                        onChange={(e) => handleInputChange(emp.name, 'gsisEduLoan', e.target.value)}
+                        type="number"
+                        placeholder="0.00"
+                        className="text-right"
+                        employeeName={emp.name}
+                        field="gsisEduLoan"
+                        disabled={!editingEnabled}
+                      />
+                    </td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                      <EditableCell
+                        value={currentValues.gsisMplLoan}
+                        onChange={(e) => handleInputChange(emp.name, 'gsisMplLoan', e.target.value)}
+                        type="number"
+                        placeholder="0.00"
+                        className="text-right"
+                        employeeName={emp.name}
+                        field="gsisMplLoan"
+                        disabled={!editingEnabled}
+                      />
+                    </td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
+                      <FormulaCell value={formatNumber(currentValues.philhealthPersonal)} />
+                    </td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
+                      <FormulaCell value={formatNumber(currentValues.philhealthGovernment)} />
+                    </td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
+                      <FormulaCell value={formatNumber(currentValues.gsisPersonal)} />
+                    </td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
+                      <FormulaCell value={formatNumber(currentValues.gsisGovernment)} />
+                    </td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
+                      <FormulaCell value={formatNumber(currentValues.pagibigPersonal)} />
+                    </td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
+                      <FormulaCell value={formatNumber(currentValues.pagibigGovernment)} />
+                    </td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                      <EditableCell
+                        value={currentValues.gsisLiteLoan}
+                        onChange={(e) => handleInputChange(emp.name, 'gsisLiteLoan', e.target.value)}
+                        type="number"
+                        placeholder="0.00"
+                        className="text-right"
+                        employeeName={emp.name}
+                        field="gsisLiteLoan"
+                        disabled={!editingEnabled}
+                      />
+                    </td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                      <EditableCell
+                        value={currentValues.lbpLoan}
+                        onChange={(e) => handleInputChange(emp.name, 'lbpLoan', e.target.value)}
+                        type="number"
+                        placeholder="0.00"
+                        className="text-right"
+                        employeeName={emp.name}
+                        field="lbpLoan"
+                        disabled={!editingEnabled}
+                      />
+                    </td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                      <EditableCell
+                        value={currentValues.gfalLoan}
+                        onChange={(e) => handleInputChange(emp.name, 'gfalLoan', e.target.value)}
+                        type="number"
+                        placeholder="0.00"
+                        className="text-right"
+                        employeeName={emp.name}
+                        field="gfalLoan"
+                        disabled={!editingEnabled}
+                      />
+                    </td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                      <EditableCell
+                        value={currentValues.pagibigMpl}
+                        onChange={(e) => handleInputChange(emp.name, 'pagibigMpl', e.target.value)}
+                        type="number"
+                        placeholder="0.00"
+                        className="text-right"
+                        employeeName={emp.name}
+                        field="pagibigMpl"
+                        disabled={!editingEnabled}
+                      />
+                    </td>
+                    <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                      <EditableCell
+                        value={currentValues.ec}
+                        onChange={(e) => handleInputChange(emp.name, 'ec', e.target.value)}
+                        type="number"
+                        placeholder="0.00"
+                        className="text-center"
+                        employeeName={emp.name}
+                        field="ec"
+                        disabled={!editingEnabled}
+                      />
+                    </td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
+                      <FormulaCell value={formatNumber(currentValues.paidInCash)} />
+                    </td>
+                    <td className="border border-black text-center p-0 align-middle bg-gray-100" style={{ fontSize: `${fontSizes.number}px` }}>
+                      {emp.number}
+                    </td>
+                    <td className="border border-black p-0 align-middle"></td>
+                  </tr>
+                )})}
+                
+                {/* MENRO TOTAL ROW */}
+                {menroEmployees.length > 0 && (
+                  <tr className="border border-black text-center align-middle font-bold">
+                    <td colSpan={5} className="border border-black p-0 align-middle"></td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(menroTotals.monthlyRate)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(menroTotals.amountAccrued)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(menroTotals.gsisEduLoan)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(menroTotals.gsisMplLoan)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(menroTotals.philhealthPersonal)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(menroTotals.philhealthGovernment)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(menroTotals.gsisPersonal)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(menroTotals.gsisGovernment)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(menroTotals.pagibigPersonal)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(menroTotals.pagibigGovernment)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(menroTotals.gsisLiteLoan)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(menroTotals.lbpLoan)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(menroTotals.gfalLoan)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(menroTotals.pagibigMpl)}</td>
+                    <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(menroTotals.ec)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(menroTotals.paidInCash)}</td>
+                    <td className="border border-black text-center p-0 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{sbEmployees.length + mtoEmployees.length + menroEmployees.length + 1}</td>
+                    <td className="border border-black p-0 align-middle"></td>
+                  </tr>
+                )}
+                
+                {/* GRAND TOTAL ROW */}
+                {employeesList.length > 0 && (
+                  <tr className="font-bold">
+                    <td colSpan={5} className="border border-black align-middle font-bold" style={{ padding: '4px 2px', fontSize: `${fontSizes.number}px` }}>Total or Carried forward</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.monthlyRate)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.amountAccrued)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.gsisEduLoan)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.gsisMplLoan)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.philhealthPersonal)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.philhealthGovernment)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.gsisPersonal)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.gsisGovernment)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.pagibigPersonal)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.pagibigGovernment)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.gsisLiteLoan)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.lbpLoan)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.gfalLoan)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.pagibigMpl)}</td>
+                    <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.ec)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.paidInCash)}</td>
+                    <td className="border border-black text-center p-0 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{employeesList.length + 3}</td>
+                    <td className="border border-black p-0 align-middle"></td>
+                  </tr>
+                )}
               </tbody>
             </table>
 
@@ -1319,22 +1946,29 @@ const ModalSend = ({ file, onClose, markedAsReceived, onMarkAsReceived }) => {
           </div>
         </div>
 
-        {/* Instructions */}
-        <div className="border-t border-gray-300 px-6 py-3 bg-gray-50">
-          <div className="text-sm text-gray-600">
+        {/* Instructions - UPDATED COLORS */}
+        <div className="relative z-10 border-t border-white/5 px-6 py-3 bg-[#0f0f1a]">
+          <div className="text-sm text-gray-400">
             <ul className="list-disc list-inside space-y-1">
-              <li><strong>Click "Mark as Received" button</strong> to enable editing</li>
-              <li><strong>Edit white input boxes</strong> to change values (when enabled)</li>
-              <li><strong>Gray boxes are from Excel (non-editable)</strong></li>
-              <li><strong>💾 Save Excel:</strong> Download edited file to computer</li>
-              <li><strong>✓ Check File:</strong> Validate file and update in Firestore</li>
-              <li><strong>Note:</strong> Only employees with valid names AND designations are shown in the table</li>
+              <li><span className="text-orange-400">Click "Mark as Received" button</span> to enable editing</li>
+              <li><span className="text-orange-400">Edit white input boxes</span> to change values (when enabled)</li>
+              <li><strong className="text-gray-300">Gray boxes are non-editable and auto-calculated</strong> - Amount Accrued, PHILHEALTH, GSIS Premiums, Pag-ibig Government, and Paid in Cash</li>
+              <li><span className="text-orange-400">Editable loans:</span> GSIS EDUC LOAN, GSIS MPL LOAN, LBP LOAN, GFAL LOAN, GSIS MPL Lite, Pag-ibig LOAN, E.C.</li>
+              <li><span className="text-green-400">💾 Save Excel:</span> Download edited file to computer</li>
+              <li><span className="text-orange-400">✓ Check File:</span> Validate file and update in Firestore</li>
+              <li><strong className="text-gray-300">Formulas:</strong> Monthly Rate / 2 = Amount Accrued | Monthly Rate × 2.5% = PHILHEALTH | Monthly Rate × 9% = GSIS Personal | Monthly Rate × 12% = GSIS Government | Monthly Rate × 2% = Pag-ibig Personal | Pag-ibig Government = ₱200 | Paid in Cash = Amount Accrued - (GSIS EDUC + GSIS MPL + PHILHEALTH Personal + GSIS Personal + Pag-ibig Personal + LBP LOAN + GFAL LOAN + GSIS MPL Lite + Pag-ibig LOAN + E.C.)</li>
             </ul>
           </div>
           {!editingEnabled && (
-            <div className="mt-3 p-2 bg-yellow-100 rounded-lg border border-yellow-200">
-              <p className="text-yellow-800 text-sm font-medium">
-                ⚠️ <strong>Note:</strong> You must click <strong>"Mark as Received"</strong> before you can edit or check this file.
+            <div className="mt-3 p-3 rounded-xl"
+              style={{
+                background: 'linear-gradient(145deg, rgba(249, 115, 22, 0.1), #1a1a2a)',
+                border: '1px solid rgba(249, 115, 22, 0.2)'
+              }}
+            >
+              <p className="text-orange-400 text-sm font-medium flex items-center gap-2">
+                <MdWarning className="w-4 h-4" />
+                <strong>Note:</strong> You must click <strong>"Mark as Received"</strong> before you can edit or check this file.
               </p>
             </div>
           )}

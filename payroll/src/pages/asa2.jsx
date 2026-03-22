@@ -368,7 +368,7 @@ const SendFile = () => {
   // Error display
   if (hasError) {
     return (
-      <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-6">
+      <div className=" bg-[#0f172a] flex items-center justify-center p-6">
         <div
           className="bg-[#1a2535] rounded-2xl p-8 max-w-2xl"
           style={{

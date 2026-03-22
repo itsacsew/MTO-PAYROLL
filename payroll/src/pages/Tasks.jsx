@@ -12,7 +12,9 @@ import {
   MdClose,
   MdVisibility,
   MdPending,
-  MdAnalytics
+  MdAnalytics,
+  MdWaves,
+  MdBusiness
 } from 'react-icons/md'
 
 const Tasks = () => {
@@ -22,6 +24,19 @@ const Tasks = () => {
   const [allFiles, setAllFiles] = useState([])
   const [showAllFilesModal, setShowAllFilesModal] = useState(false)
   const [hoveredCard, setHoveredCard] = useState(null)
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
+
+  // Track mouse position for parallax effects
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      setMousePosition({
+        x: (e.clientX / window.innerWidth - 0.5) * 10,
+        y: (e.clientY / window.innerHeight - 0.5) * 10
+      })
+    }
+    window.addEventListener('mousemove', handleMouseMove)
+    return () => window.removeEventListener('mousemove', handleMouseMove)
+  }, [])
 
   // Load files and latest file status from Firestore
   useEffect(() => {
@@ -181,25 +196,25 @@ const Tasks = () => {
     }
   }
 
-  // Get status icon and color based on status
+  // Get status icon and color based on status - UPDATED COLORS
   const getStatusInfo = (status) => {
     switch (status) {
       case 'sent':
       case 'pending':
         return { 
           icon: <MdSchedule size={18} />, 
-          color: 'text-blue-400', 
-          bgColor: 'bg-blue-500/10',
-          borderColor: 'border-blue-500/20',
-          gradient: 'from-blue-500 to-cyan-500'
+          color: 'text-orange-400', 
+          bgColor: 'bg-orange-500/10',
+          borderColor: 'border-orange-500/20',
+          gradient: 'from-orange-500 to-pink-500'
         }
       case 'received':
         return { 
           icon: <MdDownload size={18} />, 
-          color: 'text-green-400', 
-          bgColor: 'bg-green-500/10',
-          borderColor: 'border-green-500/20',
-          gradient: 'from-green-500 to-emerald-500'
+          color: 'text-amber-400', 
+          bgColor: 'bg-amber-500/10',
+          borderColor: 'border-amber-500/20',
+          gradient: 'from-amber-500 to-orange-500'
         }
       case 'checked':
       case 'updated':
@@ -213,10 +228,10 @@ const Tasks = () => {
       case 'processed':
         return { 
           icon: <MdCheckCircle size={18} />, 
-          color: 'text-teal-400', 
-          bgColor: 'bg-teal-500/10',
-          borderColor: 'border-teal-500/20',
-          gradient: 'from-teal-500 to-emerald-500'
+          color: 'text-green-400', 
+          bgColor: 'bg-green-500/10',
+          borderColor: 'border-green-500/20',
+          gradient: 'from-green-500 to-emerald-500'
         }
       default:
         return { 
@@ -237,28 +252,34 @@ const Tasks = () => {
     return (
       <div className="space-y-4">
         {showFileName && (
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={`p-4 rounded-xl ${statusInfo.bgColor} border ${statusInfo.borderColor}`}
+          <div 
+            className={`p-4 rounded-xl ${statusInfo.bgColor} border ${statusInfo.borderColor} relative overflow-hidden`}
             style={{
-              boxShadow: '0 10px 30px -10px rgba(0,0,0,0.2), inset 0 1px 2px rgba(255,255,255,0.05)',
-              backdropFilter: 'blur(10px)'
+              background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+              backdropFilter: 'blur(10px)',
+              boxShadow: '0 20px 40px -15px rgba(0,0,0,0.5), inset 0 1px 2px rgba(255,255,255,0.08)'
             }}
           >
-            <div className="flex items-center justify-between">
+            {/* Abstract sphere overlay */}
+            <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-gradient-to-br from-orange-500/10 to-purple-500/10 blur-2xl" />
+            
+            <div className="relative z-10 flex items-center justify-between">
               <div className="flex-1">
                 <div className="flex items-center gap-3">
-                  <motion.div 
-                    whileHover={{ scale: 1.1, rotate: 5 }}
-                    className={`w-10 h-10 rounded-lg flex items-center justify-center ${statusInfo.bgColor} border ${statusInfo.borderColor}`}
+                  <div 
+                    className="w-10 h-10 rounded-lg flex items-center justify-center relative overflow-hidden"
+                    style={{
+                      background: 'linear-gradient(135deg, #2a2a3a, #1a1a2a)',
+                      boxShadow: 'inset 2px 2px 5px rgba(0,0,0,0.5), inset -2px -2px 5px rgba(255,255,255,0.05)'
+                    }}
                   >
-                    <span className={statusInfo.color}>{statusInfo.icon}</span>
-                  </motion.div>
+                    <div className={`absolute inset-0 bg-gradient-to-br ${statusInfo.gradient} opacity-20`} />
+                    <span className={`relative z-10 ${statusInfo.color}`}>{statusInfo.icon}</span>
+                  </div>
                   <div>
                     <p className="text-sm font-semibold text-white flex items-center gap-2">
                       {file.fileName}
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full ${statusInfo.bgColor} ${statusInfo.color} border ${statusInfo.borderColor}`}>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full ${statusInfo.bgColor} ${statusInfo.color} border ${statusInfo.borderColor} backdrop-blur-sm`}>
                         {file.status?.toUpperCase() || 'PENDING'}
                       </span>
                     </p>
@@ -278,10 +299,10 @@ const Tasks = () => {
                 </div>
               </div>
             </div>
-          </motion.div>
+          </div>
         )}
         
-        {/* Status Steps */}
+        {/* Status Steps - UPDATED COLORS */}
         <div className="relative px-2 py-4">
           <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-gray-700/50 -translate-y-1/2" 
             style={{
@@ -303,11 +324,11 @@ const Tasks = () => {
                 className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2`}
                 style={{
                   background: sent 
-                    ? 'linear-gradient(135deg, #10b981, #059669)'
-                    : 'linear-gradient(135deg, #374151, #1f2937)',
+                    ? 'linear-gradient(135deg, #f97316, #ec4899)'
+                    : 'linear-gradient(135deg, #2a2a3a, #1a1a2a)',
                   boxShadow: sent 
-                    ? '0 10px 20px -5px rgba(16, 185, 129, 0.3), inset 0 1px 2px rgba(255,255,255,0.2)'
-                    : '5px 5px 10px #0f172a, -5px -5px 10px #1e293b, inset 0 1px 2px rgba(255,255,255,0.05)',
+                    ? '0 10px 20px -5px rgba(249, 115, 22, 0.3), inset 0 1px 2px rgba(255,255,255,0.2)'
+                    : '5px 5px 10px #0a0a0a, -5px -5px 10px #2a2a2a, inset 0 1px 2px rgba(255,255,255,0.05)',
                 }}
               >
                 {sent ? (
@@ -316,7 +337,7 @@ const Tasks = () => {
                   <span className="text-white font-bold text-sm">1</span>
                 )}
               </motion.div>
-              <span className={`text-xs font-medium ${sent ? 'text-green-400' : 'text-gray-500'}`}>
+              <span className={`text-xs font-medium ${sent ? 'text-orange-400' : 'text-gray-500'}`}>
                 Sent
               </span>
             </motion.div>
@@ -334,11 +355,11 @@ const Tasks = () => {
                 className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2`}
                 style={{
                   background: received 
-                    ? 'linear-gradient(135deg, #10b981, #059669)'
-                    : 'linear-gradient(135deg, #374151, #1f2937)',
+                    ? 'linear-gradient(135deg, #f59e0b, #f97316)'
+                    : 'linear-gradient(135deg, #2a2a3a, #1a1a2a)',
                   boxShadow: received 
-                    ? '0 10px 20px -5px rgba(16, 185, 129, 0.3), inset 0 1px 2px rgba(255,255,255,0.2)'
-                    : '5px 5px 10px #0f172a, -5px -5px 10px #1e293b, inset 0 1px 2px rgba(255,255,255,0.05)',
+                    ? '0 10px 20px -5px rgba(245, 158, 11, 0.3), inset 0 1px 2px rgba(255,255,255,0.2)'
+                    : '5px 5px 10px #0a0a0a, -5px -5px 10px #2a2a2a, inset 0 1px 2px rgba(255,255,255,0.05)',
                 }}
               >
                 {received ? (
@@ -347,7 +368,7 @@ const Tasks = () => {
                   <span className="text-white font-bold text-sm">2</span>
                 )}
               </motion.div>
-              <span className={`text-xs font-medium ${received ? 'text-green-400' : 'text-gray-500'}`}>
+              <span className={`text-xs font-medium ${received ? 'text-amber-400' : 'text-gray-500'}`}>
                 Received
               </span>
             </motion.div>
@@ -365,11 +386,11 @@ const Tasks = () => {
                 className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2`}
                 style={{
                   background: checked 
-                    ? 'linear-gradient(135deg, #10b981, #059669)'
-                    : 'linear-gradient(135deg, #374151, #1f2937)',
+                    ? 'linear-gradient(135deg, #a855f7, #ec4899)'
+                    : 'linear-gradient(135deg, #2a2a3a, #1a1a2a)',
                   boxShadow: checked 
-                    ? '0 10px 20px -5px rgba(16, 185, 129, 0.3), inset 0 1px 2px rgba(255,255,255,0.2)'
-                    : '5px 5px 10px #0f172a, -5px -5px 10px #1e293b, inset 0 1px 2px rgba(255,255,255,0.05)',
+                    ? '0 10px 20px -5px rgba(168, 85, 247, 0.3), inset 0 1px 2px rgba(255,255,255,0.2)'
+                    : '5px 5px 10px #0a0a0a, -5px -5px 10px #2a2a2a, inset 0 1px 2px rgba(255,255,255,0.05)',
                 }}
               >
                 {checked ? (
@@ -378,7 +399,7 @@ const Tasks = () => {
                   <span className="text-white font-bold text-sm">3</span>
                 )}
               </motion.div>
-              <span className={`text-xs font-medium ${checked ? 'text-green-400' : 'text-gray-500'}`}>
+              <span className={`text-xs font-medium ${checked ? 'text-purple-400' : 'text-gray-500'}`}>
                 Checked
               </span>
             </motion.div>
@@ -397,10 +418,10 @@ const Tasks = () => {
                 style={{
                   background: processed 
                     ? 'linear-gradient(135deg, #10b981, #059669)'
-                    : 'linear-gradient(135deg, #374151, #1f2937)',
+                    : 'linear-gradient(135deg, #2a2a3a, #1a1a2a)',
                   boxShadow: processed 
                     ? '0 10px 20px -5px rgba(16, 185, 129, 0.3), inset 0 1px 2px rgba(255,255,255,0.2)'
-                    : '5px 5px 10px #0f172a, -5px -5px 10px #1e293b, inset 0 1px 2px rgba(255,255,255,0.05)',
+                    : '5px 5px 10px #0a0a0a, -5px -5px 10px #2a2a2a, inset 0 1px 2px rgba(255,255,255,0.05)',
                 }}
               >
                 {processed ? (
@@ -420,24 +441,52 @@ const Tasks = () => {
   }
 
   return (
-    <div className=" w-full bg-[#0f172a] p-6 overflow-y-auto">
-      {/* Animated background */}
-      <motion.div
-        animate={{
-          opacity: [0.1, 0.15, 0.1],
-          scale: [1, 1.02, 1],
-        }}
-        transition={{
-          duration: 8,
-          repeat: Infinity,
-          ease: "linear"
-        }}
-        className="fixed inset-0"
-        style={{
-          background: 'radial-gradient(circle at 70% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 70%)',
-          pointerEvents: 'none'
-        }}
-      />
+    <div className=" p-6 ">
+      {/* Animated abstract sphere background */}
+      <div className="fixed inset-0 overflow-hidden">
+        {/* Main gradient spheres */}
+        <motion.div
+          animate={{
+            x: mousePosition.x,
+            y: mousePosition.y,
+          }}
+          transition={{ type: "spring", stiffness: 50, damping: 30 }}
+          className="absolute -top-20 -right-20 w-96 h-96 rounded-full"
+          style={{
+            background: 'radial-gradient(circle at 30% 30%, rgba(249, 115, 22, 0.15), transparent 70%)',
+            filter: 'blur(60px)',
+            pointerEvents: 'none'
+          }}
+        />
+        
+        <motion.div
+          animate={{
+            x: -mousePosition.x * 0.5,
+            y: -mousePosition.y * 0.5,
+          }}
+          transition={{ type: "spring", stiffness: 50, damping: 30 }}
+          className="absolute -bottom-20 -left-20 w-[500px] h-[500px] rounded-full"
+          style={{
+            background: 'radial-gradient(circle at 70% 70%, rgba(168, 85, 247, 0.15), transparent 70%)',
+            filter: 'blur(60px)',
+            pointerEvents: 'none'
+          }}
+        />
+        
+        <motion.div
+          animate={{
+            x: mousePosition.x * 0.3,
+            y: mousePosition.y * 0.3,
+          }}
+          transition={{ type: "spring", stiffness: 50, damping: 30 }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full"
+          style={{
+            background: 'radial-gradient(circle, rgba(244, 63, 94, 0.1), transparent 70%)',
+            filter: 'blur(80px)',
+            pointerEvents: 'none'
+          }}
+        />
+      </div>
 
       {/* Header */}
       <motion.div
@@ -447,35 +496,41 @@ const Tasks = () => {
       >
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent"
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-orange-400 via-rose-400 to-purple-400 bg-clip-text text-transparent"
               style={{
-                textShadow: '0 2px 5px rgba(0,0,0,0.3)'
+                textShadow: '0 2px 10px rgba(249, 115, 22, 0.3)'
               }}
             >
               Task Management
             </h1>
-            <p className="text-gray-400 mt-2">Manage and track your file operations</p>
+            <p className="text-gray-400 mt-2 flex items-center gap-2">
+              <MdWaves className="text-orange-400" />
+              Manage and track your file operations
+            </p>
           </div>
           
-          {/* Stats Card */}
+          {/* Stats Card - UPDATED COLORS */}
           <motion.div 
             whileHover={{ scale: 1.02 }}
-            className="px-6 py-3 rounded-2xl"
+            className="px-6 py-3 rounded-2xl relative overflow-hidden"
             style={{
-              background: 'linear-gradient(145deg, #1e293b, #0f172a)',
-              boxShadow: '10px 10px 20px #0a0f1a, -10px -10px 20px #1e2a3a, inset 0 1px 2px rgba(255,255,255,0.05)',
+              background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+              boxShadow: '15px 15px 30px #050505, -15px -15px 30px #1f1f2a, inset 0 1px 2px rgba(255,255,255,0.08)',
               border: '1px solid rgba(255,255,255,0.03)'
             }}
           >
-            <div className="flex items-center gap-4">
+            {/* Abstract sphere overlay */}
+            <div className="absolute -right-5 -top-5 w-20 h-20 rounded-full bg-gradient-to-br from-orange-500/20 to-purple-500/20 blur-xl" />
+            
+            <div className="relative z-10 flex items-center gap-4">
               <div className="text-right">
                 <p className="text-xs text-gray-400">Total Files</p>
                 <p className="text-2xl font-bold text-white">{allFiles.length}</p>
               </div>
-              <div className="w-px h-8 bg-gray-700/50" />
+              <div className="w-px h-8 bg-gradient-to-b from-transparent via-gray-700 to-transparent" />
               <div className="text-right">
                 <p className="text-xs text-gray-400">Pending</p>
-                <p className="text-2xl font-bold text-yellow-400">{pendingFilesCount}</p>
+                <p className="text-2xl font-bold text-orange-400">{pendingFilesCount}</p>
               </div>
             </div>
           </motion.div>
@@ -493,19 +548,23 @@ const Tasks = () => {
         >
           {/* File Operations Card */}
           <div
-            className="rounded-2xl p-6"
+            className="rounded-2xl p-6 relative overflow-hidden"
             style={{
-              background: 'linear-gradient(145deg, #1a2535, #0f1a2a)',
-              boxShadow: '20px 20px 40px -10px #0a0f1a, -20px -20px 40px -10px #1e2a3a, inset 0 1px 2px rgba(255,255,255,0.05)',
+              background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+              boxShadow: '30px 30px 60px -15px #050505, -30px -30px 60px -15px #1f1f2a, inset 0 1px 2px rgba(255,255,255,0.05)',
               border: '1px solid rgba(255,255,255,0.03)'
             }}
           >
-            <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
-              <MdAnalytics className="text-blue-400" />
+            {/* Abstract sphere overlays */}
+            <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-gradient-to-br from-orange-500/10 to-pink-500/10 blur-2xl" />
+            <div className="absolute -left-10 -bottom-10 w-40 h-40 rounded-full bg-gradient-to-tr from-purple-500/10 to-indigo-500/10 blur-2xl" />
+            
+            <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2 relative z-10">
+              <MdAnalytics className="text-orange-400" />
               File Operations
             </h2>
 
-            {/* Receive File Button */}
+            {/* Receive File Button - UPDATED COLORS */}
             <motion.button
               whileHover={{ scale: 1.02, y: -2 }}
               whileTap={{ scale: 0.98 }}
@@ -515,15 +574,15 @@ const Tasks = () => {
               className="relative w-full overflow-hidden rounded-xl p-8 text-left"
               style={{
                 background: hoveredCard === 'receive' 
-                  ? 'linear-gradient(145deg, #10b98120, #1e293b)'
-                  : 'linear-gradient(145deg, #1e293b, #0f172a)',
+                  ? 'linear-gradient(145deg, rgba(249, 115, 22, 0.15), #1a1a2a)'
+                  : 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
                 boxShadow: hoveredCard === 'receive'
-                  ? '15px 15px 30px #0a0f1a, -15px -15px 30px #1e2a3a, 0 0 20px rgba(16, 185, 129, 0.2)'
-                  : '10px 10px 20px #0a0f1a, -10px -10px 20px #1e2a3a',
+                  ? '15px 15px 30px #050505, -15px -15px 30px #1f1f2a, 0 0 30px rgba(249, 115, 22, 0.2)'
+                  : '10px 10px 20px #050505, -10px -10px 20px #1f1f2a',
                 border: '1px solid rgba(255,255,255,0.03)'
               }}
             >
-              {/* Notification Badge */}
+              {/* Notification Badge - UPDATED COLORS */}
               <AnimatePresence>
                 {pendingFilesCount > 0 && (
                   <motion.div
@@ -532,9 +591,9 @@ const Tasks = () => {
                     exit={{ scale: 0 }}
                     className="absolute -top-2 -right-2 z-20 w-8 h-8 rounded-full flex items-center justify-center"
                     style={{
-                      background: 'linear-gradient(135deg, #ef4444, #ec4899)',
-                      boxShadow: '0 5px 15px rgba(239, 68, 68, 0.3)',
-                      border: '2px solid #0f172a'
+                      background: 'linear-gradient(135deg, #f97316, #ec4899)',
+                      boxShadow: '0 5px 15px rgba(249, 115, 22, 0.3)',
+                      border: '2px solid #0a0a0f'
                     }}
                   >
                     <span className="text-white text-xs font-bold">{pendingFilesCount}</span>
@@ -555,6 +614,15 @@ const Tasks = () => {
                 className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-12"
               />
 
+              {/* Abstract sphere overlay on hover */}
+              {hoveredCard === 'receive' && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="absolute -right-5 -top-5 w-20 h-20 rounded-full bg-gradient-to-br from-orange-500/30 to-pink-500/30 blur-xl"
+                />
+              )}
+
               <div className="relative z-10">
                 <div className="flex items-center gap-6">
                   <motion.div 
@@ -564,8 +632,8 @@ const Tasks = () => {
                     transition={{ duration: 0.5 }}
                     className="w-16 h-16 rounded-xl flex items-center justify-center"
                     style={{
-                      background: 'linear-gradient(135deg, #10b981, #059669)',
-                      boxShadow: '0 10px 20px -5px rgba(16, 185, 129, 0.3)'
+                      background: 'linear-gradient(135deg, #f97316, #ec4899)',
+                      boxShadow: '0 10px 20px -5px rgba(249, 115, 22, 0.3)'
                     }}
                   >
                     <MdDownload className="w-8 h-8 text-white" />
@@ -573,7 +641,7 @@ const Tasks = () => {
                   <div className="flex-1">
                     <h3 className="text-2xl font-semibold text-white">Receive File</h3>
                     <p className="text-gray-400 mt-2 text-lg">Get files sent to you safely</p>
-                    <div className="flex items-center gap-1 mt-4 text-green-400 text-base">
+                    <div className="flex items-center gap-1 mt-4 text-orange-400 text-base">
                       <span>View incoming files</span>
                       <MdArrowForward className="w-5 h-5" />
                     </div>
@@ -591,78 +659,84 @@ const Tasks = () => {
           transition={{ delay: 0.2 }}
         >
           <div
-            className="rounded-2xl p-6"
+            className="rounded-2xl p-6 relative overflow-hidden"
             style={{
-              background: 'linear-gradient(145deg, #1a2535, #0f1a2a)',
-              boxShadow: '20px 20px 40px -10px #0a0f1a, -20px -20px 40px -10px #1e2a3a, inset 0 1px 2px rgba(255,255,255,0.05)',
+              background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+              boxShadow: '30px 30px 60px -15px #050505, -30px -30px 60px -15px #1f1f2a, inset 0 1px 2px rgba(255,255,255,0.05)',
               border: '1px solid rgba(255,255,255,0.03)'
             }}
           >
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                <MdPending className="text-blue-400" />
-                File Processing Status
-              </h2>
-              {allFiles.length > 0 && (
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setShowAllFilesModal(true)}
-                  className="px-3 py-1.5 rounded-lg text-sm flex items-center gap-1"
+            {/* Abstract sphere overlays */}
+            <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-gradient-to-br from-orange-500/10 to-pink-500/10 blur-2xl" />
+            <div className="absolute -left-10 -bottom-10 w-40 h-40 rounded-full bg-gradient-to-tr from-purple-500/10 to-indigo-500/10 blur-2xl" />
+            
+            <div className="relative z-10">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <MdPending className="text-orange-400" />
+                  File Processing Status
+                </h2>
+                {allFiles.length > 0 && (
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setShowAllFilesModal(true)}
+                    className="px-3 py-1.5 rounded-lg text-sm flex items-center gap-1"
+                    style={{
+                      background: 'linear-gradient(135deg, #f97316, #ec4899)',
+                      boxShadow: '0 5px 15px -5px #f97316',
+                    }}
+                  >
+                    <MdVisibility size={14} />
+                    View All ({allFiles.length})
+                  </motion.button>
+                )}
+              </div>
+              
+              {/* Latest File Status */}
+              {latestFile ? (
+                <div className="space-y-4">
+                  <StatusBar file={latestFile} />
+                </div>
+              ) : (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="p-8 rounded-xl text-center"
                   style={{
-                    background: 'linear-gradient(145deg, #2563eb, #1d4ed8)',
-                    boxShadow: '0 5px 15px -5px #2563eb',
+                    background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+                    border: '1px solid rgba(255,255,255,0.03)'
                   }}
                 >
-                  <MdVisibility size={14} />
-                  View All ({allFiles.length})
-                </motion.button>
+                  <MdInsertDriveFile className="w-16 h-16 text-gray-600 mx-auto mb-3" />
+                  <p className="text-gray-400 text-lg">
+                    No files sent yet.
+                  </p>
+                </motion.div>
+              )}
+
+              {/* Status Description */}
+              {latestFile && (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="mt-4 p-4 rounded-xl"
+                  style={{
+                    background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+                    border: '1px solid rgba(249, 115, 22, 0.1)'
+                  }}
+                >
+                  <p className="text-sm text-gray-300">
+                    {getStatusDescription(latestFile)}
+                  </p>
+                </motion.div>
               )}
             </div>
-            
-            {/* Latest File Status */}
-            {latestFile ? (
-              <div className="space-y-4">
-                <StatusBar file={latestFile} />
-              </div>
-            ) : (
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="p-8 rounded-xl text-center"
-                style={{
-                  background: 'linear-gradient(145deg, #1e293b, #0f172a)',
-                  border: '1px solid rgba(255,255,255,0.03)'
-                }}
-              >
-                <MdInsertDriveFile className="w-16 h-16 text-gray-600 mx-auto mb-3" />
-                <p className="text-gray-400 text-lg">
-                  No files sent yet.
-                </p>
-              </motion.div>
-            )}
-
-            {/* Status Description */}
-            {latestFile && (
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="mt-4 p-4 rounded-xl"
-                style={{
-                  background: 'linear-gradient(145deg, #1e293b, #0f172a)',
-                  border: '1px solid rgba(59, 130, 246, 0.1)'
-                }}
-              >
-                <p className="text-sm text-gray-300">
-                  {getStatusDescription(latestFile)}
-                </p>
-              </motion.div>
-            )}
           </div>
         </motion.div>
       </div>
 
-      {/* All Files Modal */}
+      {/* All Files Modal - UPDATED COLORS */}
       <AnimatePresence>
         {showAllFilesModal && (
           <>
@@ -671,7 +745,7 @@ const Tasks = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowAllFilesModal(false)}
-              className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50"
+              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
             />
 
             <motion.div
@@ -682,16 +756,20 @@ const Tasks = () => {
               className="fixed inset-0 z-50 flex items-center justify-center p-4"
             >
               <div
-                className="w-full max-w-4xl max-h-[80vh] rounded-2xl overflow-hidden"
+                className="w-full max-w-4xl max-h-[80vh] rounded-2xl overflow-hidden relative"
                 style={{
-                  background: 'linear-gradient(145deg, #1a2535, #0f1a2a)',
-                  boxShadow: '30px 30px 60px -10px #0a0f1a, -30px -30px 60px -10px #1e2a3a, inset 0 1px 2px rgba(255,255,255,0.05)',
+                  background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+                  boxShadow: '30px 30px 60px -15px #050505, -30px -30px 60px -15px #1f1f2a, inset 0 1px 2px rgba(255,255,255,0.05)',
                   border: '1px solid rgba(255,255,255,0.03)'
                 }}
               >
-                <div className="flex justify-between items-center p-6 border-b border-white/5">
+                {/* Abstract sphere overlays */}
+                <div className="absolute -right-20 -top-20 w-60 h-60 rounded-full bg-gradient-to-br from-orange-500/10 to-pink-500/10 blur-3xl" />
+                <div className="absolute -left-20 -bottom-20 w-60 h-60 rounded-full bg-gradient-to-tr from-purple-500/10 to-indigo-500/10 blur-3xl" />
+                
+                <div className="relative z-10 flex justify-between items-center p-6 border-b border-white/5">
                   <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-                    <MdInsertDriveFile className="text-blue-400" />
+                    <MdInsertDriveFile className="text-orange-400" />
                     All Files Status
                   </h2>
                   <motion.button
@@ -700,15 +778,15 @@ const Tasks = () => {
                     onClick={() => setShowAllFilesModal(false)}
                     className="w-10 h-10 rounded-lg flex items-center justify-center"
                     style={{
-                      background: 'linear-gradient(145deg, #1e293b, #0f172a)',
-                      boxShadow: '5px 5px 10px #0a0f1a, -5px -5px 10px #1e2a3a',
+                      background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+                      boxShadow: '5px 5px 10px #050505, -5px -5px 10px #1f1f2a',
                     }}
                   >
                     <MdClose className="text-gray-400" size={20} />
                   </motion.button>
                 </div>
                 
-                <div className="p-6 overflow-y-auto max-h-[60vh]">
+                <div className="relative z-10 p-6 overflow-y-auto max-h-[60vh]">
                   {allFiles.length === 0 ? (
                     <div className="text-center py-8">
                       <MdInsertDriveFile className="w-16 h-16 text-gray-600 mx-auto mb-3" />
@@ -717,28 +795,23 @@ const Tasks = () => {
                   ) : (
                     <div className="space-y-6">
                       {allFiles.map((file, index) => (
-                        <motion.div
-                          key={file.id}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: index * 0.05 }}
-                        >
+                        <div key={file.id}>
                           <StatusBar file={file} showFileName={true} />
-                        </motion.div>
+                        </div>
                       ))}
                     </div>
                   )}
                 </div>
                 
-                <div className="flex justify-end p-6 border-t border-white/5">
+                <div className="relative z-10 flex justify-end p-6 border-t border-white/5">
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setShowAllFilesModal(false)}
                     className="px-6 py-2.5 rounded-xl text-white font-medium"
                     style={{
-                      background: 'linear-gradient(145deg, #2563eb, #1d4ed8)',
-                      boxShadow: '0 10px 20px -5px #2563eb',
+                      background: 'linear-gradient(135deg, #f97316, #ec4899)',
+                      boxShadow: '0 10px 20px -5px #f97316',
                     }}
                   >
                     Close

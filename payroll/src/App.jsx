@@ -1,4 +1,4 @@
-// App.jsx (Updated)
+// App.jsx (Updated with new color scheme and payslip4 route)
 import React, { useState } from 'react';
 import Login from './pages/Login';
 import { Route, Routes, Navigate, Outlet, useLocation } from 'react-router-dom';
@@ -14,11 +14,17 @@ import Navbar from './components/Navbar';
 import FileSend from "./pages/FileSend";
 import PrintView from './pages/printView';
 import Payslip from './pages/payslip';
+import Payslip2 from './pages/payslip2'; // ✅ IMPORT PAYSLIP2
+import Payslip3 from './pages/payslip3'; // ✅ IMPORT PAYSLIP3
+import Payslip4 from './pages/payslip4'; // ✅ IMPORT PAYSLIP4
 import VoucherGenerator from './pages/slip';
 import SendFile_MDRRMO from './pages/SendFile_MDRRMO';
 import SendFile_RHU from './pages/SendFile_RHU'; 
 import SendFile_MAYOR_Component from './pages/SendFile_MAYOR';
-import ReceiveFile_MDRRMO from './pages/ModalSend_MDRRMO';
+
+// Import the modal components
+import ModalSend_MDRRMO from './pages/ModalSend_MDRRMO';
+import ModalSend_MAYOR from './pages/ModalSend_MAYOR';
 
 export const SidebarContext = React.createContext();
 
@@ -63,14 +69,60 @@ function Layout() {
 
   return currentUser ? (
     <SidebarContext.Provider value={{ isSidebarCollapsed, setIsSidebarCollapsed }}>
-      <div className="w-full min-h-screen bg-[#0f172a]">
+      <div className="w-full min-h-screen bg-[#0a0a0f] relative overflow-hidden">
+        {/* Animated abstract sphere background for all pages */}
+        <div className="fixed inset-0 overflow-hidden pointer-events-none">
+          {/* Main gradient spheres */}
+          <div 
+            className="absolute -top-20 -right-20 w-96 h-96 rounded-full"
+            style={{
+              background: 'radial-gradient(circle at 30% 30%, rgba(249, 115, 22, 0.15), transparent 70%)',
+              filter: 'blur(60px)'
+            }}
+          />
+          
+          <div 
+            className="absolute -bottom-20 -left-20 w-[500px] h-[500px] rounded-full"
+            style={{
+              background: 'radial-gradient(circle at 70% 70%, rgba(168, 85, 247, 0.15), transparent 70%)',
+              filter: 'blur(60px)'
+            }}
+          />
+          
+          <div 
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full"
+            style={{
+              background: 'radial-gradient(circle, rgba(244, 63, 94, 0.1), transparent 70%)',
+              filter: 'blur(80px)'
+            }}
+          />
+
+          {/* Floating particles effect */}
+          {[...Array(20)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute rounded-full animate-float-slow"
+              style={{
+                width: Math.random() * 100 + 50,
+                height: Math.random() * 100 + 50,
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                background: `radial-gradient(circle, rgba(${Math.random() * 255}, ${Math.random() * 100}, ${Math.random() * 255}, 0.05), transparent)`,
+                filter: 'blur(30px)',
+                animationDelay: `${i * 0.2}s`,
+                animationDuration: `${5 + i}s`
+              }}
+            />
+          ))}
+        </div>
+
         <Navbar />
         
         {/* Main Content - No padding for dashboard, padding for other pages */}
         {isDashboard ? (
           <Outlet />
         ) : (
-          <div className="pt-4 px-4 md:px-6 lg:px-8">
+          <div className="relative z-10 pt-4 px-4 md:px-6 lg:px-8">
             <Outlet />
           </div>
         )}
@@ -100,7 +152,10 @@ function OfficeRoute({ office, mtoComponent, accountingComponent }) {
     return <Navigate to='/log-in' replace />;
   }
 
-  if (currentUser.office === 'MTO' || currentUser.office === 'MDRRMO' || currentUser.office === 'RHU' || currentUser.office === 'MAYOR') {
+  // Check for all office types
+  const mtoOffices = ['MTO', 'MDRRMO', 'RHU', 'MAYOR', 'ACCT', 'MBO', 'MASSO', 'SB', 'MENRO', 'MEO', 'MPDO', 'MSWDO', 'MDDRMO', 'MASO', 'MCR', 'HRMO'];
+  
+  if (mtoOffices.includes(currentUser.office) || currentUser.office === 'MTO' || currentUser.office === 'MDRRMO' || currentUser.office === 'RHU' || currentUser.office === 'MAYOR') {
     return mtoComponent;
   } else if (currentUser.office === 'Accounting') {
     return accountingComponent;
@@ -111,7 +166,7 @@ function OfficeRoute({ office, mtoComponent, accountingComponent }) {
 
 function App() {
   return (
-    <main className='w-full min-h-screen bg-[#0f172a]'>
+    <main className='w-full min-h-screen bg-[#0a0a0f]'>
       <Routes>
         <Route element={<Layout/>}>
           <Route index path='/' element={
@@ -135,6 +190,7 @@ function App() {
             />
           }/>
 
+          {/* Send File Routes */}
           <Route path='/send-file' element={
             <OfficeRoute 
               mtoComponent={<SendFile />}
@@ -163,6 +219,7 @@ function App() {
             />
           }/>
 
+          {/* Receive File Routes - For viewing received files */}
           <Route path='/receive-file' element={
             <OfficeRoute 
               mtoComponent={<Navigate to='/dashboard' />}
@@ -170,9 +227,17 @@ function App() {
             />
           }/>
 
-          <Route path='/receive-file-mdrrmo' element={
+          {/* Modal Routes - For viewing payslips and checking files */}
+          <Route path='/modal-mdrrmo' element={
             <OfficeRoute 
-              mtoComponent={<ReceiveFile_MDRRMO />}
+              mtoComponent={<ModalSend_MDRRMO />}
+              accountingComponent={<Navigate to='/tasks' />}
+            />
+          }/>
+
+          <Route path='/modal-mayor' element={
+            <OfficeRoute 
+              mtoComponent={<ModalSend_MAYOR />}
               accountingComponent={<Navigate to='/tasks' />}
             />
           }/>
@@ -186,6 +251,16 @@ function App() {
 
           <Route path='/print' element={<PrintView />} />
           <Route path='/payslip/:id' element={<Payslip />} />
+          
+          {/* ✅ ROUTE FOR PAYSLIP2 - For SB, MTO, MENRO office categories */}
+          <Route path='/payslip2/:id' element={<Payslip2 />} />
+          
+          {/* ✅ ROUTE FOR PAYSLIP3 - For RHU, MASO, MCR, HRMO office categories */}
+          <Route path='/payslip3/:id' element={<Payslip3 />} />
+          
+          {/* ✅ ROUTE FOR PAYSLIP4 - For MAYOR, ACCT, MBO, MASSO office categories */}
+          <Route path='/payslip4/:id' element={<Payslip4 />} />
+          
           <Route path='/voucher' element={<VoucherGenerator />} />
           <Route path='/team' element={<Users/>}/>
           <Route path='/file' element={<FileReceived/>}/>
@@ -216,7 +291,16 @@ function App() {
         <Route path='*' element={<Navigate to='/' />} />
       </Routes>
 
-      <Toaster richColors />
+      <Toaster richColors position="top-right" 
+        toastOptions={{
+          style: {
+            background: 'linear-gradient(145deg, rgba(30, 30, 40, 0.95), rgba(20, 20, 30, 0.98))',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255,255,255,0.03)',
+            color: '#fff',
+          },
+        }}
+      />
     </main>
   );
 }

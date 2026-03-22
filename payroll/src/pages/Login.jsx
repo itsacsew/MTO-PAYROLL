@@ -1,4 +1,6 @@
-// Login.jsx - Redesigned with Professional 3D Glassmorphism
+// Login.jsx - Redesigned with Professional 3D Glassmorphism - Full Screen Version
+// UPDATED with Navbar color scheme - NO CLOCK - NO SHINE - WITH ORANGE GLOW
+
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
@@ -26,6 +28,19 @@ import {
 /* ------------------ Main component ------------------ */
 export default function AuthWithSheet() {
   const dispatch = useDispatch();
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+
+  // Track mouse position for parallax effects
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      setMousePosition({
+        x: (e.clientX / window.innerWidth - 0.5) * 10,
+        y: (e.clientY / window.innerHeight - 0.5) * 10
+      });
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
 
   const handleLogin = (userData) => {
     localStorage.setItem("auth_user_v1", JSON.stringify(userData));
@@ -33,60 +48,102 @@ export default function AuthWithSheet() {
   };
 
   return (
-    <div className=" flex flex-col items-center justify-start bg-[#0f172a] pt-9">
-      {/* Animated background gradient */}
-      <motion.div
-        animate={{
-          opacity: [0.1, 0.15, 0.1],
-          scale: [1, 1.02, 1],
-        }}
-        transition={{
-          duration: 8,
-          repeat: Infinity,
-          ease: "linear"
-        }}
-        className="fixed inset-0"
-        style={{
-          background: 'radial-gradient(circle at 70% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 70%)',
-          pointerEvents: 'none'
-        }}
-      />
+    <div className="w-full min-h-screen flex flex-col items-center justify-start relative overflow-hidden pt-14 md:pt-10"
+      style={{
+        background: 'linear-gradient(145deg, #0a0a0f 0%, #1a1a2a 50%, #0a0a0f 100%)',
+      }}
+    >
+      {/* Abstract sphere background effects */}
+      <div className="absolute inset-0 overflow-hidden">
+        {/* Floating spheres with mouse parallax */}
+        <motion.div
+          animate={{
+            x: mousePosition.x,
+            y: mousePosition.y,
+          }}
+          transition={{ type: "spring", stiffness: 50, damping: 30 }}
+          className="absolute -top-20 -right-20 w-96 h-96 rounded-full"
+          style={{
+            background: 'radial-gradient(circle at 30% 30%, rgba(249, 115, 22, 0.15), transparent 70%)',
+            filter: 'blur(60px)',
+            pointerEvents: 'none'
+          }}
+        />
+        
+        <motion.div
+          animate={{
+            x: -mousePosition.x * 0.5,
+            y: -mousePosition.y * 0.5,
+          }}
+          transition={{ type: "spring", stiffness: 50, damping: 30 }}
+          className="absolute -bottom-20 -left-20 w-[500px] h-[500px] rounded-full"
+          style={{
+            background: 'radial-gradient(circle at 70% 70%, rgba(168, 85, 247, 0.15), transparent 70%)',
+            filter: 'blur(60px)',
+            pointerEvents: 'none'
+          }}
+        />
+        
+        <motion.div
+          animate={{
+            x: mousePosition.x * 0.3,
+            y: mousePosition.y * 0.3,
+          }}
+          transition={{ type: "spring", stiffness: 50, damping: 30 }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full"
+          style={{
+            background: 'radial-gradient(circle, rgba(244, 63, 94, 0.1), transparent 70%)',
+            filter: 'blur(80px)',
+            pointerEvents: 'none'
+          }}
+        />
+      </div>
 
-      {/* Floating orbs for visual interest */}
-      <motion.div
-        animate={{
-          y: [0, -20, 0],
-          x: [0, 10, 0],
-        }}
-        transition={{
-          duration: 6,
-          repeat: Infinity,
-          ease: "easeInOut"
-        }}
-        className="fixed top-20 right-20 w-64 h-64 rounded-full bg-blue-500/5 blur-3xl"
-      />
-      <motion.div
-        animate={{
-          y: [0, 20, 0],
-          x: [0, -10, 0],
-        }}
-        transition={{
-          duration: 7,
-          repeat: Infinity,
-          ease: "easeInOut"
-        }}
-        className="fixed bottom-20 left-20 w-64 h-64 rounded-full bg-purple-500/5 blur-3xl"
-      />
+      <div className="w-full max-w-md px-4 relative z-10">
+        {/* ORANGE GLOW BEHIND THE FORM BOX */}
+        <motion.div
+          animate={{
+            scale: [1, 1.05, 1],
+            opacity: [0.5, 0.8, 0.5],
+          }}
+          transition={{
+            duration: 4,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+          className="absolute -inset-4 bg-gradient-to-r from-orange-500/30 via-rose-500/20 to-purple-500/30 rounded-3xl blur-2xl"
+          style={{
+            filter: 'blur(30px)',
+            zIndex: -1
+          }}
+        />
+        
+        {/* SECOND GLOW LAYER FOR MORE INTENSITY */}
+        <motion.div
+          animate={{
+            scale: [1, 1.1, 1],
+            opacity: [0.3, 0.6, 0.3],
+          }}
+          transition={{
+            duration: 5,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 0.5
+          }}
+          className="absolute -inset-10 bg-orange-500/20 rounded-full blur-3xl"
+          style={{
+            zIndex: -2
+          }}
+        />
 
-      <div className="max-w-md w-full mt-8 mb-8 relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="rounded-3xl overflow-hidden"
+          className="rounded-3xl overflow-hidden relative"
           style={{
-            background: 'linear-gradient(145deg, #1a2535, #0f1a2a)',
-            boxShadow: '30px 30px 60px -10px #0a0f1a, -30px -30px 60px -10px #1e2a3a, inset 0 1px 2px rgba(255,255,255,0.05)',
+            background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+            boxShadow: '30px 30px 60px -15px #000000, -30px -30px 60px -15px #1f1f2a, inset 0 1px 2px rgba(255,255,255,0.05), 0 0 30px rgba(249, 115, 22, 0.3)',
             border: '1px solid rgba(255,255,255,0.03)'
           }}
         >
@@ -114,9 +171,9 @@ function AuthForms({ onLogin }) {
         className="flex items-center justify-between mb-6"
       >
         <div>
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent"
+          <h2 className="text-3xl font-bold bg-gradient-to-r from-orange-400 via-rose-400 to-purple-400 bg-clip-text text-transparent"
             style={{
-              textShadow: '0 2px 5px rgba(0,0,0,0.3)'
+              textShadow: '0 2px 10px rgba(249, 115, 22, 0.3)'
             }}
           >
             {mode === "login" ? "Welcome Back" : "Create Account"}
@@ -133,7 +190,7 @@ function AuthForms({ onLogin }) {
             <motion.button 
               whileHover={{ x: 2 }}
               onClick={() => setMode("signup")}
-              className="flex items-center gap-1 text-blue-400 hover:text-blue-300 transition-colors"
+              className="flex items-center gap-1 text-orange-400 hover:text-orange-300 transition-colors"
             >
               Sign up <MdArrowForward />
             </motion.button>
@@ -141,7 +198,7 @@ function AuthForms({ onLogin }) {
             <motion.button 
               whileHover={{ x: -2 }}
               onClick={() => setMode("login")}
-              className="flex items-center gap-1 text-blue-400 hover:text-blue-300 transition-colors"
+              className="flex items-center gap-1 text-orange-400 hover:text-orange-300 transition-colors"
             >
               <MdArrowForward className="rotate-180" /> Sign in
             </motion.button>
@@ -175,7 +232,7 @@ function AuthForms({ onLogin }) {
         className="mt-6 pt-4 border-t border-white/5"
       >
         <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
-          <MdDashboard className="text-blue-400/50" />
+          <MdDashboard className="text-orange-400/50" />
           <span>Secured by MTO Financial System</span>
         </div>
       </motion.div>
@@ -272,9 +329,9 @@ function InputField({
   const isPassword = type === "password";
   
   return (
-    <div className="space-y-1.5">
+    <div className="">
       <label className="text-sm font-medium text-gray-300 flex items-center gap-1">
-        <Icon className="text-blue-400" size={16} />
+        <Icon className="text-orange-400" size={16} />
         {label}
       </label>
       <div className="relative">
@@ -286,12 +343,12 @@ function InputField({
           className={`
             w-full px-4 py-3 rounded-xl text-white placeholder-gray-500
             transition-all duration-200
-            focus:outline-none focus:ring-2 focus:ring-blue-500/50
+            focus:outline-none focus:ring-2 focus:ring-orange-500/50
             ${error ? 'ring-2 ring-red-500/50' : ''}
           `}
           style={{
-            background: 'linear-gradient(145deg, #1e293b, #0f172a)',
-            boxShadow: 'inset 5px 5px 10px #0a0f1a, inset -5px -5px 10px #1e2a3a',
+            background: 'linear-gradient(145deg, #0a0a0f, #1a1a2a)',
+            boxShadow: 'inset 3px 3px 6px #050505, inset -3px -3px 6px #1f1f2a',
             border: '1px solid rgba(255,255,255,0.03)'
           }}
           {...props}
@@ -315,7 +372,7 @@ function SelectField({ icon: Icon, label, value, onChange, options, error }) {
   return (
     <div className="space-y-1.5">
       <label className="text-sm font-medium text-gray-300 flex items-center gap-1">
-        <Icon className="text-blue-400" size={16} />
+        <Icon className="text-orange-400" size={16} />
         {label}
       </label>
       <div className="relative">
@@ -325,18 +382,18 @@ function SelectField({ icon: Icon, label, value, onChange, options, error }) {
           className={`
             w-full px-4 py-3 rounded-xl text-white appearance-none
             transition-all duration-200
-            focus:outline-none focus:ring-2 focus:ring-blue-500/50
+            focus:outline-none focus:ring-2 focus:ring-orange-500/50
             ${error ? 'ring-2 ring-red-500/50' : ''}
           `}
           style={{
-            background: 'linear-gradient(145deg, #1e293b, #0f172a)',
-            boxShadow: 'inset 5px 5px 10px #0a0f1a, inset -5px -5px 10px #1e2a3a',
+            background: 'linear-gradient(145deg, #0a0a0f, #1a1a2a)',
+            boxShadow: 'inset 3px 3px 6px #050505, inset -3px -3px 6px #1f1f2a',
             border: '1px solid rgba(255,255,255,0.03)'
           }}
         >
-          <option value="" className="bg-[#1e293b]">Select Office</option>
+          <option value="" className="bg-[#1a1a2a]">Select Office</option>
           {options.map(opt => (
-            <option key={opt.value} value={opt.value} className="bg-[#1e293b]">
+            <option key={opt.value} value={opt.value} className="bg-[#1a1a2a]">
               {opt.label}
             </option>
           ))}
@@ -371,7 +428,7 @@ function SignupForm({ onSignupSuccess, onLogin }) {
     }
     if (password.length < 6) return setErr("Password must be at least 6 characters.");
     if (password !== confirm) return setErr("Passwords do not match.");
-    if (!["MTO", "Accounting"].includes(office)) {
+    if (!["MTO", "Accounting", "MDRRMO", "RHU", "MAYOR"].includes(office)) {
       return setErr("Please select a valid office.");
     }
 
@@ -464,7 +521,10 @@ function SignupForm({ onSignupSuccess, onLogin }) {
         onChange={(e) => setOffice(e.target.value)}
         options={[
           { value: "MTO", label: "MTO" },
-          { value: "Accounting", label: "Accounting" }
+          { value: "Accounting", label: "Accounting" },
+          { value: "MDRRMO", label: "MDRRMO" },
+          { value: "RHU", label: "RHU" },
+          { value: "MAYOR", label: "MAYOR" }
         ]}
         error={err && !office}
       />
@@ -495,8 +555,8 @@ function SignupForm({ onSignupSuccess, onLogin }) {
         disabled={loading} 
         className="w-full py-3.5 rounded-xl text-white font-medium relative overflow-hidden group mt-2"
         style={{
-          background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
-          boxShadow: '0 10px 20px -5px #2563eb',
+          background: 'linear-gradient(135deg, #f97316, #ec4899)',
+          boxShadow: '0 10px 20px -5px #f97316',
         }}
       >
         <motion.div
@@ -600,7 +660,10 @@ function LoginForm({ onLogin }) {
         onChange={(e) => setOffice(e.target.value)}
         options={[
           { value: "MTO", label: "MTO" },
-          { value: "Accounting", label: "Accounting" }
+          { value: "Accounting", label: "Accounting" },
+          { value: "MDRRMO", label: "MDRRMO" },
+          { value: "RHU", label: "RHU" },
+          { value: "MAYOR", label: "MAYOR" }
         ]}
         error={err && !office}
       />
@@ -621,7 +684,7 @@ function LoginForm({ onLogin }) {
             type="checkbox" 
             checked={remember} 
             onChange={(e) => setRemember(e.target.checked)} 
-            className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-0"
+            className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-orange-500 focus:ring-orange-500 focus:ring-offset-0"
           />
           <span>Remember me</span>
         </label>
@@ -630,7 +693,7 @@ function LoginForm({ onLogin }) {
           whileHover={{ x: 2 }}
           type="button"
           onClick={() => {/* Forgot password logic */}}
-          className="text-sm text-blue-400 hover:text-blue-300"
+          className="text-sm text-orange-400 hover:text-orange-300"
         >
           Forgot password?
         </motion.button>
@@ -642,8 +705,8 @@ function LoginForm({ onLogin }) {
         disabled={loading} 
         className="w-full py-3.5 rounded-xl text-white font-medium relative overflow-hidden group mt-2"
         style={{
-          background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
-          boxShadow: '0 10px 20px -5px #2563eb',
+          background: 'linear-gradient(135deg, #f97316, #ec4899)',
+          boxShadow: '0 10px 20px -5px #f97316',
         }}
       >
         <motion.div
@@ -669,8 +732,9 @@ function LoginForm({ onLogin }) {
         transition={{ delay: 0.3 }}
         className="mt-4 p-3 rounded-xl text-center"
         style={{
-          background: 'linear-gradient(145deg, #1e293b, #0f172a)',
-          border: '1px solid rgba(255,255,255,0.03)'
+          background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+          border: '1px solid rgba(255,255,255,0.03)',
+          boxShadow: 'inset 2px 2px 5px #050505, inset -2px -2px 5px #1f1f2a'
         }}
       >
         <p className="text-xs text-gray-400">
@@ -713,9 +777,9 @@ function Footer() {
         transition={{ delay: 0.5 }}
         src="/assets/logo.png"
         alt="left-corner"
-        className="hidden md:block fixed bottom-2 left-3 w-12 h-12 rounded-full shadow-lg bg-[#1a2535] p-1 object-contain z-40"
+        className="hidden md:block absolute bottom-2 left-3 w-12 h-12 rounded-full shadow-lg bg-[#1a1a2a] p-1 object-contain z-40"
         style={{
-          boxShadow: '10px 10px 20px #0a0f1a, -10px -10px 20px #1e2a3a',
+          boxShadow: '10px 10px 20px #050505, -10px -10px 20px #1f1f2a',
           border: '1px solid rgba(255,255,255,0.03)'
         }}
         onError={(e) => (e.currentTarget.style.display = 'none')}
@@ -726,40 +790,36 @@ function Footer() {
         transition={{ delay: 0.5 }}
         src="/assets/mto-right.png"
         alt="right-corner"
-        className="hidden md:block fixed bottom-2 right-3 w-12 h-12 rounded-full shadow-lg bg-[#1a2535] p-1 object-contain z-40"
+        className="hidden md:block absolute bottom-2 right-3 w-12 h-12 rounded-full shadow-lg bg-[#1a1a2a] p-1 object-contain z-40"
         style={{
-          boxShadow: '10px 10px 20px #0a0f1a, -10px -10px 20px #1e2a3a',
+          boxShadow: '10px 10px 20px #050505, -10px -10px 20px #1f1f2a',
           border: '1px solid rgba(255,255,255,0.03)'
         }}
         onError={(e) => (e.currentTarget.style.display = 'none')}
       />
 
       {/* FOOTER */}
-      <footer className="fixed bottom-0 left-0 right-0 w-full z-30">
-        
-        
+      <footer className="absolute bottom-0 left-0 right-0 w-full z-30">
         <div 
           className="flex flex-col md:flex-row items-start md:items-center justify-between px-8 py-4 relative"
           style={{
-            background: 'linear-gradient(145deg, #1a2535, #0f1a2a)',
-            boxShadow: '0 -10px 30px -10px #0a0f1a',
+            background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+            boxShadow: '0 -10px 30px -10px #050505',
             borderTop: '1px solid rgba(255,255,255,0.03)'
           }}
         >
           {/* LEFT SIDE */}
           <div className="text-left flex-1">
-            <div className="font-semibold text-lg bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+            <div className="font-semibold text-lg bg-gradient-to-r from-orange-400 via-rose-400 to-purple-400 bg-clip-text text-transparent">
               BPLO 2025
             </div>
-            <div className="text-sm text-gray-400 mt-1">
-              All Contents is in the public domain unless otherwise stated.
-            </div>
+            
             <div className="mt-2">
               <a
                 href="https://form.jotform.com/240957550026052"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm text-blue-400 hover:text-blue-300 transition-colors underline"
+                className="text-sm text-orange-400 hover:text-orange-300 transition-colors underline"
               >
                 Send Feedback
               </a>
@@ -769,7 +829,7 @@ function Footer() {
           {/* CENTER SIDE */}
           <div className="absolute left-1/2 transform -translate-x-1/2 flex flex-col items-center justify-center">
             <div className="text-sm text-gray-400">Powered by</div>
-            <div className="text-white font-semibold mt-1 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+            <div className="text-white font-semibold mt-1 bg-gradient-to-r from-orange-400 via-rose-400 to-purple-400 bg-clip-text text-transparent">
               MTO
             </div>
           </div>
@@ -781,29 +841,10 @@ function Footer() {
             <div className="text-xs text-gray-500 mt-1">
               PHILIPPINE STANDARD TIME
             </div>
-            <div className="mt-2 text-sm">
-              <a
-                href="#"
-                onClick={(e) => e.preventDefault()}
-                className="text-gray-400 hover:text-gray-300 transition-colors underline mr-2"
-              >
-                Privacy
-              </a>
-              <span className="text-gray-600 mx-1">|</span>
-              <a
-                href="#"
-                onClick={(e) => e.preventDefault()}
-                className="text-gray-400 hover:text-gray-300 transition-colors underline ml-2"
-              >
-                Terms
-              </a>
-            </div>
+            
           </div>
         </div>
       </footer>
-
-      {/* Spacer */}
-      <div style={{ height: 200 }} aria-hidden />
     </>
   );
 }

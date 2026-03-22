@@ -434,7 +434,7 @@ const FileSend = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
+    <div className=" bg-gray-100 p-6">
       {/* Header Section with File Upload Button on the right */}
       <div className="flex justify-between items-center mb-8">
         <div>

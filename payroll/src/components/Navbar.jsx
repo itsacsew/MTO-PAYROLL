@@ -1,5 +1,5 @@
-// Navbar.jsx (Redesigned - Professional 3D Glassmorphism with Firestore Password Change)
-import React, { useState, useContext } from "react";
+// Navbar.jsx (with Real-time 12-Hour Clock)
+import React, { useState, useContext, useEffect } from "react";
 import { 
   MdDashboard, 
   MdTaskAlt, 
@@ -12,11 +12,12 @@ import {
   MdKeyboardArrowDown,
   MdNotificationsNone,
   MdSettings,
-  MdHelpOutline,
   MdLock,
   MdVisibility,
   MdVisibilityOff,
-  MdClose as MdCloseIcon
+  MdClose as MdCloseIcon,
+  MdWaves,
+  MdAccessTime
 } from "react-icons/md";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -108,6 +109,71 @@ const accountingLinks = [
   },
 ];
 
+// Real-time Clock Component
+const RealtimeClock = () => {
+  const [time, setTime] = useState(new Date());
+  
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTime(new Date());
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, []);
+  
+  // Format time to 12-hour format with AM/PM
+  const formatTime = (date) => {
+    let hours = date.getHours();
+    const minutes = date.getMinutes();
+    const seconds = date.getSeconds();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    
+    // Convert to 12-hour format
+    hours = hours % 12;
+    hours = hours ? hours : 12; // 0 should be 12
+    
+    // Add leading zeros
+    const formattedMinutes = minutes < 10 ? '0' + minutes : minutes;
+    const formattedSeconds = seconds < 10 ? '0' + seconds : seconds;
+    
+    return `${hours}:${formattedMinutes}:${formattedSeconds} ${ampm}`;
+  };
+  
+  // Format date
+  const formatDate = (date) => {
+    const options = { 
+      weekday: 'short', 
+      month: 'short', 
+      day: 'numeric',
+      year: 'numeric'
+    };
+    return date.toLocaleDateString('en-US', options);
+  };
+  
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex items-center gap-3 px-4 py-2 rounded-xl"
+      style={{
+        background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+        boxShadow: 'inset 2px 2px 5px #050505, inset -2px -2px 5px #1f1f2a',
+        border: '1px solid rgba(255,255,255,0.03)'
+      }}
+    >
+      <MdAccessTime className="text-orange-400" size={18} />
+      <div className="flex flex-col">
+        <span className="text-sm font-semibold text-white">
+          {formatTime(time)}
+        </span>
+        <span className="text-[10px] text-gray-400">
+          {formatDate(time)}
+        </span>
+      </div>
+    </motion.div>
+  );
+};
+
 const Navbar = () => {
   const { user } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
@@ -120,6 +186,7 @@ const Navbar = () => {
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [isHovering, setIsHovering] = useState(null);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   
   // Change Password States
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
@@ -136,6 +203,18 @@ const Navbar = () => {
   const [passwordError, setPasswordError] = useState("");
   const [passwordSuccess, setPasswordSuccess] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  // Track mouse position for parallax effects
+  React.useEffect(() => {
+    const handleMouseMove = (e) => {
+      setMousePosition({
+        x: (e.clientX / window.innerWidth - 0.5) * 10,
+        y: (e.clientY / window.innerHeight - 0.5) * 10
+      });
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
 
   const path = location.pathname.split("/")[1];
 
@@ -286,7 +365,7 @@ const Navbar = () => {
       const storedUser = localStorage.getItem("auth_user_v1");
       if (storedUser) {
         const parsedUser = JSON.parse(storedUser);
-        parsedUser.password = passwordData.newPassword; // Update password in localStorage
+        parsedUser.password = passwordData.newPassword;
         localStorage.setItem("auth_user_v1", JSON.stringify(parsedUser));
       }
       
@@ -323,104 +402,71 @@ const Navbar = () => {
   const NotificationIcon = ({ type }) => {
     switch(type) {
       case 'receive':
-        return <MdDownload className="text-green-400" size={16} />;
+        return <MdDownload className="text-amber-400" size={16} />;
       case 'send':
-        return <MdSend className="text-blue-400" size={16} />;
+        return <MdSend className="text-orange-400" size={16} />;
       case 'print':
         return <MdPrint className="text-purple-400" size={16} />;
       case 'task':
-        return <MdTaskAlt className="text-yellow-400" size={16} />;
+        return <MdTaskAlt className="text-rose-400" size={16} />;
       default:
         return <MdNotificationsNone className="text-gray-400" size={16} />;
     }
   };
 
   const NavLink = ({ el, isMobile = false }) => {
-    const isActive = path === el.link.split("/")[0];
+    // Better path matching to determine active state
+    const currentPath = location.pathname;
+    const linkPath = `/${el.link}`;
+    const isActive = currentPath === linkPath || 
+                     currentPath === `/${el.link}/` || 
+                     (el.link === 'dashboard' && (currentPath === '/' || currentPath === '/dashboard'));
 
     return (
       <Link
-        to={el.link}
+        to={el.link === 'dashboard' ? '/' : el.link}
         onClick={closeMobileMenu}
-        onMouseEnter={() => setIsHovering(el.label)}
-        onMouseLeave={() => setIsHovering(null)}
         className={`
-          relative flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-300
-          ${isActive 
-            ? 'text-white shadow-lg' 
-            : 'text-gray-300 hover:text-white'
-          }
+          relative flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200
           ${isMobile ? 'w-full' : ''}
-          group overflow-hidden
+          group
         `}
         style={{
-          // Added 3px margin between buttons
           marginRight: !isMobile ? '3px' : '0',
+          backgroundColor: isActive ? '#f97316' : 'transparent',
+          color: isActive ? '#ffffff' : '#9ca3af',
         }}
       >
-        {/* Background gradient with 3D effect */}
-        <motion.div
-          animate={{
-            background: isActive 
-              ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(147, 51, 234, 0.3))'
-              : isHovering === el.label
-              ? 'linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05))'
-              : 'none'
-          }}
-          className="absolute inset-0 rounded-xl"
-          style={{
-            boxShadow: isActive 
-              ? '0 10px 30px -5px rgba(59, 130, 246, 0.3), inset 0 1px 2px rgba(255,255,255,0.2)'
-              : isHovering === el.label
-              ? '0 5px 15px -5px rgba(0,0,0,0.3), inset 0 1px 1px rgba(255,255,255,0.1)'
-              : 'none',
-            transform: isActive || isHovering === el.label ? 'translateY(-1px)' : 'translateY(0)',
-            transition: 'all 0.3s ease'
-          }}
-        />
-
-        {/* Shine effect on hover */}
-        <motion.div
-          animate={{
-            x: isHovering === el.label ? ['-100%', '200%'] : '0%',
-          }}
-          transition={{
-            duration: 1.5,
-            repeat: isHovering === el.label ? Infinity : 0,
-            ease: "linear"
-          }}
-          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12"
-        />
-
-        {/* Icon with 3D effect */}
-        <motion.span
-          animate={{
-            scale: isHovering === el.label ? 1.1 : 1,
-            rotate: isHovering === el.label ? 5 : 0
-          }}
-          className={`
-            relative z-10 transition-colors duration-300
-            ${isActive ? 'text-blue-400' : 'text-gray-400 group-hover:text-blue-400'}
-          `}
-        >
-          {el.icon}
-        </motion.span>
-
-        {/* Label */}
-        <span className="relative z-10 font-medium whitespace-nowrap">
-          {el.label}
-        </span>
-
-        {/* Active indicator with 3D effect */}
+        {/* Simple background for active state */}
         {isActive && (
-          <motion.div
-            layoutId="activeNavIndicator"
+          <div 
+            className="absolute inset-0 rounded-xl"
             style={{
-              boxShadow: '0 0 15px rgba(59, 130, 246, 0.5)',
-              filter: 'blur(0.5px)'
+              background: 'linear-gradient(135deg, #f97316, #ec4899)',
+              boxShadow: '0 10px 20px -5px rgba(249, 115, 22, 0.3)',
             }}
           />
         )}
+
+        {/* Icon */}
+        <span 
+          className="relative z-10"
+          style={{
+            color: isActive ? '#ffffff' : '#9ca3af',
+          }}
+        >
+          {el.icon}
+        </span>
+
+        {/* Label */}
+        <span 
+          className="relative z-10 font-medium whitespace-nowrap"
+          style={{
+            color: isActive ? '#ffffff' : '#9ca3af',
+          }}
+        >
+          {el.label}
+        </span>
       </Link>
     );
   };
@@ -431,33 +477,56 @@ const Navbar = () => {
       <nav
         className="fixed top-0 left-0 right-0 z-50"
         style={{
-          background: 'linear-gradient(145deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)',
-          boxShadow: '0 20px 40px -15px rgba(0,0,0,0.5), inset 0 1px 2px rgba(255,255,255,0.1)',
-          borderBottom: '1px solid rgba(255,255,255,0.05)'
+          background: 'linear-gradient(145deg, #0a0a0f 0%, #1a1a2a 50%, #0a0a0f 100%)',
+          boxShadow: '0 20px 40px -15px rgba(0,0,0,0.7), inset 0 1px 2px rgba(255,255,255,0.1)',
+          borderBottom: '1px solid rgba(255,255,255,0.03)'
         }}
       >
-        {/* 3D Depth Layers */}
-        <div className="absolute inset-0" style={{
-          background: 'radial-gradient(circle at 50% 0%, rgba(255,255,255,0.1) 0%, transparent 70%)',
-          pointerEvents: 'none'
-        }} />
-        
-        {/* Animated gradient overlay */}
-        <motion.div
-          animate={{
-            opacity: [0.1, 0.2, 0.1],
-            scale: [1, 1.02, 1],
-          }}
-          transition={{
-            duration: 8,
-            repeat: Infinity,
-            ease: "linear"
-          }}
-          className="absolute inset-0"
-          style={{
-            background: 'radial-gradient(circle at 70% 20%, rgba(59, 130, 246, 0.15) 0%, transparent 70%)'
-          }}
-        />
+        {/* Abstract sphere background effects */}
+        <div className="absolute inset-0 overflow-hidden">
+          {/* Floating spheres */}
+          <motion.div
+            animate={{
+              x: mousePosition.x,
+              y: mousePosition.y,
+            }}
+            transition={{ type: "spring", stiffness: 50, damping: 30 }}
+            className="absolute -top-20 -right-20 w-96 h-96 rounded-full"
+            style={{
+              background: 'radial-gradient(circle at 30% 30%, rgba(249, 115, 22, 0.15), transparent 70%)',
+              filter: 'blur(60px)',
+              pointerEvents: 'none'
+            }}
+          />
+          
+          <motion.div
+            animate={{
+              x: -mousePosition.x * 0.5,
+              y: -mousePosition.y * 0.5,
+            }}
+            transition={{ type: "spring", stiffness: 50, damping: 30 }}
+            className="absolute -bottom-20 -left-20 w-[500px] h-[500px] rounded-full"
+            style={{
+              background: 'radial-gradient(circle at 70% 70%, rgba(168, 85, 247, 0.15), transparent 70%)',
+              filter: 'blur(60px)',
+              pointerEvents: 'none'
+            }}
+          />
+          
+          <motion.div
+            animate={{
+              x: mousePosition.x * 0.3,
+              y: mousePosition.y * 0.3,
+            }}
+            transition={{ type: "spring", stiffness: 50, damping: 30 }}
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full"
+            style={{
+              background: 'radial-gradient(circle, rgba(244, 63, 94, 0.1), transparent 70%)',
+              filter: 'blur(80px)',
+              pointerEvents: 'none'
+            }}
+          />
+        </div>
 
         {/* Glassmorphism shine effect */}
         <motion.div
@@ -470,7 +539,7 @@ const Navbar = () => {
             ease: "linear",
             delay: 2
           }}
-          className="absolute top-0 left-0 w-60 h-full bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-12"
+          className="absolute top-0 left-0 w-60 h-full bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-12 pointer-events-none"
         />
 
         {/* Navbar Content */}
@@ -483,8 +552,8 @@ const Navbar = () => {
               onClick={toggleMobileMenu}
               className="lg:hidden text-white text-2xl p-2 rounded-xl transition-all duration-300"
               style={{
-                background: 'linear-gradient(145deg, #1e293b, #0f172a)',
-                boxShadow: '5px 5px 10px #0a0f1a, -5px -5px 10px #1e2a3a',
+                background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+                boxShadow: '5px 5px 10px #050505, -5px -5px 10px #1f1f2a',
               }}
             >
               {isMobileMenuOpen ? <MdClose /> : <MdMenu />}
@@ -499,7 +568,7 @@ const Navbar = () => {
                 {/* 3D Logo Container */}
                 <div className="w-11 h-11 rounded-xl overflow-hidden"
                   style={{
-                    boxShadow: '8px 8px 15px #0a0f1a, -8px -8px 15px #1e2a3a, inset 0 1px 2px rgba(255,255,255,0.1)',
+                    boxShadow: '8px 8px 15px #050505, -8px -8px 15px #1f1f2a, inset 0 1px 2px rgba(255,255,255,0.1)',
                   }}
                 >
                   <img
@@ -509,13 +578,13 @@ const Navbar = () => {
                   />
                 </div>
                 {/* Glow effect */}
-                <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl opacity-20 blur-sm" />
+                <div className="absolute -inset-0.5 bg-gradient-to-r from-orange-500 to-pink-500 rounded-xl opacity-20 blur-sm" />
               </div>
               
               <div className="hidden sm:block">
-                <span className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent"
+                <span className="text-3xl font-bold bg-gradient-to-r from-orange-400 via-rose-400 to-purple-400 bg-clip-text text-transparent"
                   style={{
-                    textShadow: '0 2px 5px rgba(0,0,0,0.3)'
+                    textShadow: '0 2px 10px rgba(249, 115, 22, 0.3)'
                   }}
                 >
                   PAYROLL
@@ -525,14 +594,14 @@ const Navbar = () => {
             </motion.div>
           </div>
 
-          {/* Center - Desktop Navigation Links - UPDATED: Added 3px gap between buttons */}
+          {/* Center - Desktop Navigation Links */}
           <div className="hidden lg:flex items-center px-4 py-1.5 rounded-2xl"
             style={{
-              background: 'rgba(15, 23, 42, 0.6)',
+              background: 'rgba(10, 10, 15, 0.6)',
               backdropFilter: 'blur(10px)',
               boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.05), 0 10px 20px -10px rgba(0,0,0,0.5)',
               border: '1px solid rgba(255,255,255,0.03)',
-              gap: '30px' // Added 3px gap between flex items
+              gap: '30px'
             }}
           >
             {sidebarLinks.map((link, index) => (
@@ -540,20 +609,10 @@ const Navbar = () => {
             ))}
           </div>
 
-          {/* Right Section - User Info and Avatar */}
+          {/* Right Section - User Info, Clock, and Avatar */}
           <div className="flex items-center gap-2">
-            {/* Quick Actions */}
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="hidden md:block p-2.5 rounded-xl text-gray-400 hover:text-white transition-all duration-300"
-              style={{
-                background: 'linear-gradient(145deg, #1e293b, #0f172a)',
-                boxShadow: '5px 5px 10px #0a0f1a, -5px -5px 10px #1e2a3a',
-              }}
-            >
-              <MdHelpOutline size={18} />
-            </motion.button>
+            {/* Real-time Clock - REPLACED question mark icon */}
+            <RealtimeClock />
 
             {/* Standalone Notification Bell */}
             <div className="relative">
@@ -563,10 +622,10 @@ const Navbar = () => {
                 onClick={() => setIsNotificationOpen(!isNotificationOpen)}
                 className="relative p-2.5 rounded-xl text-gray-400 hover:text-white transition-all duration-300"
                 style={{
-                  background: 'linear-gradient(145deg, #1e293b, #0f172a)',
+                  background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
                   boxShadow: isNotificationOpen 
-                    ? 'inset 3px 3px 6px #0a0f1a, inset -3px -3px 6px #1e2a3a'
-                    : '5px 5px 10px #0a0f1a, -5px -5px 10px #1e2a3a',
+                    ? 'inset 3px 3px 6px #050505, inset -3px -3px 6px #1f1f2a'
+                    : '5px 5px 10px #050505, -5px -5px 10px #1f1f2a',
                 }}
               >
                 <MdNotificationsNone size={20} />
@@ -574,10 +633,10 @@ const Navbar = () => {
                   <motion.span
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold rounded-full flex items-center justify-center"
+                    className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 bg-gradient-to-r from-orange-500 to-pink-500 text-white text-xs font-bold rounded-full flex items-center justify-center"
                     style={{
-                      boxShadow: '0 2px 5px rgba(239, 68, 68, 0.5)',
-                      border: '2px solid #0f172a'
+                      boxShadow: '0 2px 5px rgba(249, 115, 22, 0.5)',
+                      border: '2px solid #0a0a0f'
                     }}
                   >
                     {unreadCount}
@@ -595,37 +654,40 @@ const Navbar = () => {
                     transition={{ duration: 0.2 }}
                     className="absolute right-0 mt-3 w-96 rounded-2xl overflow-hidden z-50"
                     style={{
-                      background: 'linear-gradient(145deg, #1a2535, #0f1a2a)',
-                      boxShadow: '20px 20px 40px -10px #0a0f1a, -20px -20px 40px -10px #1e2a3a, inset 0 1px 2px rgba(255,255,255,0.05)',
+                      background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+                      boxShadow: '20px 20px 40px -10px #050505, -20px -20px 40px -10px #1f1f2a, inset 0 1px 2px rgba(255,255,255,0.05)',
                       border: '1px solid rgba(255,255,255,0.03)'
                     }}
                   >
+                    {/* Abstract sphere overlay */}
+                    <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-gradient-to-br from-orange-500/10 to-pink-500/10 blur-2xl pointer-events-none" />
+                    
                     {/* Header */}
-                    <div className="p-4 border-b border-white/5 flex items-center justify-between">
+                    <div className="relative z-10 p-4 border-b border-white/5 flex items-center justify-between">
                       <h3 className="text-white font-semibold">Notifications</h3>
                       {unreadCount > 0 && (
-                        <span className="text-xs text-blue-400 bg-blue-500/10 px-2 py-1 rounded-full">
+                        <span className="text-xs text-orange-400 bg-orange-500/10 px-2 py-1 rounded-full">
                           {unreadCount} unread
                         </span>
                       )}
                     </div>
 
                     {/* Notifications List */}
-                    <div className="max-h-96 overflow-y-auto">
+                    <div className="relative z-10 max-h-96 overflow-y-auto">
                       {notifications.map((notification) => (
                         <motion.div
                           key={notification.id}
                           whileHover={{ backgroundColor: 'rgba(255,255,255,0.03)' }}
                           className={`p-4 border-b border-white/5 cursor-pointer transition-colors duration-200 ${
-                            !notification.read ? 'bg-blue-500/5' : ''
+                            !notification.read ? 'bg-orange-500/5' : ''
                           }`}
                         >
                           <div className="flex gap-3">
                             <div className={`w-8 h-8 rounded-lg flex items-center justify-center
-                              ${notification.type === 'receive' ? 'bg-green-500/10' : ''}
-                              ${notification.type === 'send' ? 'bg-blue-500/10' : ''}
+                              ${notification.type === 'receive' ? 'bg-amber-500/10' : ''}
+                              ${notification.type === 'send' ? 'bg-orange-500/10' : ''}
                               ${notification.type === 'print' ? 'bg-purple-500/10' : ''}
-                              ${notification.type === 'task' ? 'bg-yellow-500/10' : ''}
+                              ${notification.type === 'task' ? 'bg-rose-500/10' : ''}
                             `}>
                               <NotificationIcon type={notification.type} />
                             </div>
@@ -635,7 +697,7 @@ const Navbar = () => {
                                   {notification.title}
                                 </h4>
                                 {!notification.read && (
-                                  <span className="w-2 h-2 bg-blue-500 rounded-full" />
+                                  <span className="w-2 h-2 bg-orange-500 rounded-full" />
                                 )}
                               </div>
                               <p className="text-xs text-gray-400 mt-1">
@@ -651,8 +713,8 @@ const Navbar = () => {
                     </div>
 
                     {/* Footer */}
-                    <div className="p-3 border-t border-white/5">
-                      <button className="w-full text-center text-sm text-blue-400 hover:text-blue-300 transition-colors">
+                    <div className="relative z-10 p-3 border-t border-white/5">
+                      <button className="w-full text-center text-sm text-orange-400 hover:text-orange-300 transition-colors">
                         Mark all as read
                       </button>
                     </div>
@@ -670,11 +732,11 @@ const Navbar = () => {
                 className="flex items-center gap-3 p-1.5 pl-3 rounded-xl transition-all duration-300"
                 style={{
                   background: isUserMenuOpen 
-                    ? 'linear-gradient(145deg, #1a2535, #0f1a2a)'
-                    : 'linear-gradient(145deg, #1e293b, #0f172a)',
+                    ? 'linear-gradient(145deg, #1a1a2a, #0a0a0f)'
+                    : 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
                   boxShadow: isUserMenuOpen
-                    ? 'inset 3px 3px 6px #0a0f1a, inset -3px -3px 6px #1e2a3a'
-                    : '5px 5px 10px #0a0f1a, -5px -5px 10px #1e2a3a',
+                    ? 'inset 3px 3px 6px #050505, inset -3px -3px 6px #1f1f2a'
+                    : '5px 5px 10px #050505, -5px -5px 10px #1f1f2a',
                   border: '1px solid rgba(255,255,255,0.03)'
                 }}
               >
@@ -685,7 +747,7 @@ const Navbar = () => {
                     {currentUser?.name?.split(' ')[0] || 'User'}
                     
                     {/* Office Badge with 3D effect */}
-                    <span className="px-2 py-0.5 text-[10px] font-medium bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-300 rounded-md"
+                    <span className="px-2 py-0.5 text-[10px] font-medium bg-gradient-to-r from-orange-500/20 to-pink-500/20 text-orange-300 rounded-md"
                       style={{
                         boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.1), 0 2px 4px rgba(0,0,0,0.2)',
                         border: '1px solid rgba(255,255,255,0.05)'
@@ -714,21 +776,37 @@ const Navbar = () => {
                     transition={{ duration: 0.2 }}
                     className="absolute right-0 mt-3 w-72 rounded-2xl overflow-hidden z-50"
                     style={{
-                      background: 'linear-gradient(145deg, #1a2535, #0f1a2a)',
-                      boxShadow: '20px 20px 40px -10px #0a0f1a, -20px -20px 40px -10px #1e2a3a, inset 0 1px 2px rgba(255,255,255,0.05)',
+                      background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+                      boxShadow: '20px 20px 40px -10px #050505, -20px -20px 40px -10px #1f1f2a, inset 0 1px 2px rgba(255,255,255,0.05)',
                       border: '1px solid rgba(255,255,255,0.03)'
                     }}
                   >
+                    {/* Abstract sphere overlay */}
+                    <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-gradient-to-br from-orange-500/10 to-pink-500/10 blur-2xl pointer-events-none" />
+                    
                     {/* Header with user info */}
-                    <div className="p-5 border-b border-white/5">
+                    <div className="relative z-10 p-5 border-b border-white/5">
                       <div className="flex items-center gap-4">
                         <div className="relative">
+                          <div className="w-16 h-16 rounded-xl overflow-hidden"
+                            style={{
+                              background: 'linear-gradient(135deg, #2a2a3a, #1a1a2a)',
+                              boxShadow: 'inset 2px 2px 5px rgba(0,0,0,0.5), inset -2px -2px 5px rgba(255,255,255,0.05)'
+                            }}
+                          >
+                            <div className="w-full h-full flex items-center justify-center">
+                              <span className="text-2xl font-bold text-orange-400">
+                                {currentUser?.name?.charAt(0) || 'U'}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="absolute -inset-0.5 bg-gradient-to-r from-orange-500 to-pink-500 rounded-xl opacity-20 blur-sm" />
                         </div>
                         <div>
                           <p className="text-lg font-bold text-white">{currentUser?.name || 'User'}</p>
                           <p className="text-xs text-gray-400">{currentUser?.email || ''}</p>
-                          <div className="mt-2 inline-block px-2 py-1 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg border border-white/5">
-                            <span className="text-xs font-medium text-blue-300">
+                          <div className="mt-2 inline-block px-2 py-1 bg-gradient-to-r from-orange-500/20 to-pink-500/20 rounded-lg border border-white/5">
+                            <span className="text-xs font-medium text-orange-300">
                               {userOffice || 'MTO Office'}
                             </span>
                           </div>
@@ -737,39 +815,41 @@ const Navbar = () => {
                     </div>
 
                     {/* Menu Items */}
-                    <div className="p-2 space-y-1">
-                      <motion.button
-                        whileHover={{ x: 5 }}
+                    <div className="relative z-10 p-2 space-y-1">
+                      <button
                         onClick={() => {
                           setIsUserMenuOpen(false);
                           setIsChangePasswordOpen(true);
                         }}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-gray-300 hover:text-white transition-all duration-300"
+                        className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-gray-300 hover:text-white transition-all duration-200"
                         style={{
-                          background: 'linear-gradient(145deg, #1e293b, #0f172a)',
-                          boxShadow: '3px 3px 6px #0a0f1a, -3px -3px 6px #1e2a3a'
+                          background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+                          boxShadow: '3px 3px 6px #050505, -3px -3px 6px #1f1f2a'
                         }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(145deg, #1a1a2a, #0a0a0f)'}
                       >
                         <MdLock size={18} className="text-gray-400" />
                         <span className="text-sm">Change Password</span>
-                      </motion.button>
+                      </button>
 
-                      <motion.button
-                        whileHover={{ x: 5 }}
+                      <button
                         onClick={handleLogout}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-gray-300 hover:text-white transition-all duration-300"
+                        className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-gray-300 hover:text-white transition-all duration-200"
                         style={{
-                          background: 'linear-gradient(145deg, #1e293b, #0f172a)',
-                          boxShadow: '3px 3px 6px #0a0f1a, -3px -3px 6px #1e2a3a'
+                          background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+                          boxShadow: '3px 3px 6px #050505, -3px -3px 6px #1f1f2a'
                         }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(145deg, #1a1a2a, #0a0a0f)'}
                       >
                         <MdLogout size={18} className="text-gray-400" />
                         <span className="text-sm">Logout</span>
-                      </motion.button>
+                      </button>
                     </div>
 
                     {/* Footer */}
-                    <div className="p-3 border-t border-white/5">
+                    <div className="relative z-10 p-3 border-t border-white/5">
                       <p className="text-[10px] text-center text-gray-500">
                         Version 2.0.0 • Secure System
                       </p>
@@ -803,30 +883,33 @@ const Navbar = () => {
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
               className="fixed top-0 left-0 bottom-0 w-80 z-50 lg:hidden overflow-y-auto"
               style={{
-                background: 'linear-gradient(145deg, #0f172a, #1a2535)',
+                background: 'linear-gradient(145deg, #0a0a0f, #1a1a2a)',
                 boxShadow: '20px 0 40px -10px rgba(0,0,0,0.5), inset -1px 0 2px rgba(255,255,255,0.05)',
                 borderRight: '1px solid rgba(255,255,255,0.03)'
               }}
             >
+              {/* Abstract sphere overlay */}
+              <div className="absolute -right-20 -top-20 w-60 h-60 rounded-full bg-gradient-to-br from-orange-500/10 to-pink-500/10 blur-3xl pointer-events-none" />
+              
               {/* Mobile Menu Header with 3D effect */}
-              <div className="p-5 border-b border-white/5">
+              <div className="relative z-10 p-5 border-b border-white/5">
                 <div className="flex items-center gap-4">
                   <div className="relative">
                     <div className="w-14 h-14 rounded-xl overflow-hidden"
                       style={{
-                        boxShadow: '8px 8px 15px #0a0f1a, -8px -8px 15px #1e2a3a, inset 0 1px 2px rgba(255,255,255,0.1)',
+                        boxShadow: '8px 8px 15px #050505, -8px -8px 15px #1f1f2a, inset 0 1px 2px rgba(255,255,255,0.1)',
                       }}
                     >
                       <img src={logo} alt="Logo" className="w-full h-full object-cover" />
                     </div>
-                    <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl opacity-20 blur-sm" />
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-orange-500 to-pink-500 rounded-xl opacity-20 blur-sm" />
                   </div>
                   <div>
-                    <span className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                    <span className="text-xl font-bold bg-gradient-to-r from-orange-400 via-rose-400 to-purple-400 bg-clip-text text-transparent">
                       PAYROLL
                     </span>
                     <div className="mt-1 inline-block px-2 py-0.5 bg-white/5 rounded-lg border border-white/5">
-                      <span className="text-xs font-medium text-blue-300">
+                      <span className="text-xs font-medium text-orange-300">
                         {userOffice || 'MTO Office'}
                       </span>
                     </div>
@@ -835,7 +918,7 @@ const Navbar = () => {
               </div>
 
               {/* Mobile Navigation Links */}
-              <div className="p-3 space-y-1">
+              <div className="relative z-10 p-3 space-y-1">
                 {sidebarLinks.map((link) => (
                   <NavLink key={link.label} el={link} isMobile={true} />
                 ))}
@@ -844,33 +927,43 @@ const Navbar = () => {
               {/* Mobile User Info with 3D effect */}
               <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/5"
                 style={{
-                  background: 'linear-gradient(0deg, #0f172a, transparent)'
+                  background: 'linear-gradient(0deg, #0a0a0f, transparent)'
                 }}
               >
-                <div className="flex items-center gap-3 p-2 rounded-xl"
+                <div className="relative z-10 flex items-center gap-3 p-2 rounded-xl"
                   style={{
-                    background: 'linear-gradient(145deg, #1e293b, #0f172a)',
-                    boxShadow: 'inset 2px 2px 5px #0a0f1a, inset -2px -2px 5px #1e2a3a'
+                    background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+                    boxShadow: 'inset 2px 2px 5px #050505, inset -2px -2px 5px #1f1f2a'
                   }}
                 >
-                  <div className="w-10 h-10 rounded-lg overflow-hidden">
-                    
+                  <div className="w-10 h-10 rounded-lg overflow-hidden"
+                    style={{
+                      background: 'linear-gradient(135deg, #2a2a3a, #1a1a2a)',
+                      boxShadow: 'inset 2px 2px 5px rgba(0,0,0,0.5), inset -2px -2px 5px rgba(255,255,255,0.05)'
+                    }}
+                  >
+                    <div className="w-full h-full flex items-center justify-center">
+                      <span className="text-lg font-bold text-orange-400">
+                        {currentUser?.name?.charAt(0) || 'U'}
+                      </span>
+                    </div>
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-semibold text-white">{currentUser?.name || 'User'}</p>
                     <p className="text-xs text-gray-400 truncate">{currentUser?.email || ''}</p>
                   </div>
-                  <motion.button
-                    whileTap={{ scale: 0.95 }}
+                  <button
                     onClick={handleLogout}
                     className="p-2 rounded-lg text-gray-400 hover:text-white transition-colors"
                     style={{
-                      background: 'linear-gradient(145deg, #1e293b, #0f172a)',
-                      boxShadow: '3px 3px 6px #0a0f1a, -3px -3px 6px #1e2a3a'
+                      background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+                      boxShadow: '3px 3px 6px #050505, -3px -3px 6px #1f1f2a'
                     }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(145deg, #1a1a2a, #0a0a0f)'}
                   >
                     <MdLogout size={18} />
-                  </motion.button>
+                  </button>
                 </div>
               </div>
             </motion.div>
@@ -902,35 +995,39 @@ const Navbar = () => {
               <div
                 className="relative rounded-2xl overflow-hidden"
                 style={{
-                  background: 'linear-gradient(145deg, #1a2535, #0f1a2a)',
-                  boxShadow: '30px 30px 60px -15px #000000, -30px -30px 60px -15px #1e2a3a, inset 0 1px 2px rgba(255,255,255,0.05)',
+                  background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+                  boxShadow: '30px 30px 60px -15px #000000, -30px -30px 60px -15px #1f1f2a, inset 0 1px 2px rgba(255,255,255,0.05)',
                   border: '1px solid rgba(255,255,255,0.03)'
                 }}
               >
+                {/* Abstract sphere overlay */}
+                <div className="absolute -right-20 -top-20 w-60 h-60 rounded-full bg-gradient-to-br from-orange-500/10 to-pink-500/10 blur-3xl pointer-events-none" />
+                <div className="absolute -left-20 -bottom-20 w-60 h-60 rounded-full bg-gradient-to-tr from-purple-500/10 to-indigo-500/10 blur-3xl pointer-events-none" />
+                
                 {/* Modal Header */}
-                <div className="p-6 border-b border-white/5 flex items-center justify-between">
+                <div className="relative z-10 p-6 border-b border-white/5 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-blue-500/10">
-                      <MdLock className="text-blue-400" size={24} />
+                    <div className="p-2 rounded-lg bg-orange-500/10">
+                      <MdLock className="text-orange-400" size={24} />
                     </div>
                     <h3 className="text-xl font-bold text-white">Change Password</h3>
                   </div>
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
+                  <button
                     onClick={() => setIsChangePasswordOpen(false)}
                     className="p-1 rounded-lg text-gray-400 hover:text-white transition-colors"
                     style={{
-                      background: 'linear-gradient(145deg, #1e293b, #0f172a)',
-                      boxShadow: '3px 3px 6px #0a0f1a, -3px -3px 6px #1e2a3a'
+                      background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+                      boxShadow: '3px 3px 6px #050505, -3px -3px 6px #1f1f2a'
                     }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(145deg, #1a1a2a, #0a0a0f)'}
                   >
                     <MdCloseIcon size={20} />
-                  </motion.button>
+                  </button>
                 </div>
 
                 {/* Modal Body */}
-                <form onSubmit={handlePasswordChange} className="p-6 space-y-4">
+                <form onSubmit={handlePasswordChange} className="relative z-10 p-6 space-y-4">
                   {/* Current Password */}
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -943,8 +1040,8 @@ const Navbar = () => {
                         onChange={(e) => setPasswordData({...passwordData, currentPassword: e.target.value})}
                         className="w-full px-4 py-3 pr-10 rounded-xl text-white placeholder-gray-500 transition-all duration-300"
                         style={{
-                          background: 'linear-gradient(145deg, #0f172a, #1a2535)',
-                          boxShadow: 'inset 3px 3px 6px #0a0f1a, inset -3px -3px 6px #1e2a3a',
+                          background: 'linear-gradient(145deg, #0a0a0f, #1a1a2a)',
+                          boxShadow: 'inset 3px 3px 6px #050505, inset -3px -3px 6px #1f1f2a',
                           border: '1px solid rgba(255,255,255,0.03)'
                         }}
                         placeholder="Enter current password"
@@ -971,8 +1068,8 @@ const Navbar = () => {
                         onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})}
                         className="w-full px-4 py-3 pr-10 rounded-xl text-white placeholder-gray-500 transition-all duration-300"
                         style={{
-                          background: 'linear-gradient(145deg, #0f172a, #1a2535)',
-                          boxShadow: 'inset 3px 3px 6px #0a0f1a, inset -3px -3px 6px #1e2a3a',
+                          background: 'linear-gradient(145deg, #0a0a0f, #1a1a2a)',
+                          boxShadow: 'inset 3px 3px 6px #050505, inset -3px -3px 6px #1f1f2a',
                           border: '1px solid rgba(255,255,255,0.03)'
                         }}
                         placeholder="Enter new password"
@@ -999,8 +1096,8 @@ const Navbar = () => {
                         onChange={(e) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
                         className="w-full px-4 py-3 pr-10 rounded-xl text-white placeholder-gray-500 transition-all duration-300"
                         style={{
-                          background: 'linear-gradient(145deg, #0f172a, #1a2535)',
-                          boxShadow: 'inset 3px 3px 6px #0a0f1a, inset -3px -3px 6px #1e2a3a',
+                          background: 'linear-gradient(145deg, #0a0a0f, #1a1a2a)',
+                          boxShadow: 'inset 3px 3px 6px #050505, inset -3px -3px 6px #1f1f2a',
                           border: '1px solid rgba(255,255,255,0.03)'
                         }}
                         placeholder="Confirm new password"
@@ -1039,30 +1136,38 @@ const Navbar = () => {
 
                   {/* Action Buttons */}
                   <div className="flex gap-3 pt-4">
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
+                    <button
                       type="button"
                       onClick={() => setIsChangePasswordOpen(false)}
-                      className="flex-1 px-4 py-3 rounded-xl text-gray-300 hover:text-white transition-all duration-300"
+                      className="flex-1 px-4 py-3 rounded-xl text-gray-300 hover:text-white transition-all duration-200"
                       style={{
-                        background: 'linear-gradient(145deg, #1e293b, #0f172a)',
-                        boxShadow: '5px 5px 10px #0a0f1a, -5px -5px 10px #1e2a3a',
+                        background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+                        boxShadow: '5px 5px 10px #050505, -5px -5px 10px #1f1f2a',
                         border: '1px solid rgba(255,255,255,0.03)'
                       }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(145deg, #1a1a2a, #0a0a0f)'}
                     >
                       Cancel
-                    </motion.button>
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
+                    </button>
+                    <button
                       type="submit"
                       disabled={isLoading}
-                      className="flex-1 px-4 py-3 rounded-xl text-white font-medium transition-all duration-300 relative overflow-hidden"
+                      className="flex-1 px-4 py-3 rounded-xl text-white font-medium transition-all duration-200 relative overflow-hidden"
                       style={{
-                        background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
-                        boxShadow: '0 10px 20px -5px rgba(59, 130, 246, 0.5)',
+                        background: 'linear-gradient(135deg, #f97316, #ec4899)',
+                        boxShadow: '0 10px 20px -5px #f97316',
                         opacity: isLoading ? 0.7 : 1
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isLoading) {
+                          e.currentTarget.style.background = 'linear-gradient(135deg, #fb923c, #f472b6)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isLoading) {
+                          e.currentTarget.style.background = 'linear-gradient(135deg, #f97316, #ec4899)';
+                        }
                       }}
                     >
                       {isLoading ? (
@@ -1074,7 +1179,7 @@ const Navbar = () => {
                       ) : (
                         "Change Password"
                       )}
-                    </motion.button>
+                    </button>
                   </div>
                 </form>
               </div>

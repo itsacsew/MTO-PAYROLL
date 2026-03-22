@@ -9,7 +9,7 @@ import {
   MdAccessTime
 } from 'react-icons/md';
 
-export default function Payslip() {
+export default function Payslip3() {
   const [paperSize, setPaperSize] = useState("A3");
   const [orientation, setOrientation] = useState("landscape");
   const [employees, setEmployees] = useState([]);
@@ -84,15 +84,15 @@ export default function Payslip() {
     }
   };
 
-  // Function to extract employee data from Excel - UPDATED to match PAYROLL1.xlsx structure
+  // Function to extract employee data from Excel - UPDATED to match PAYROLL3.xlsx structure
   const extractEmployeeDataFromExcel = (workbook) => {
     if (!workbook) return [];
     
     try {
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
       
-      // Employee rows based on PAYROLL1.xlsx
-      const employeeRows = [15, 16, 17, 21, 22, 23, 24, 25, 29, 30, 34, 35];
+      // Employee rows based on PAYROLL3.xlsx
+      const employeeRows = [15, 16, 17, 18, 19, 20, 21, 25, 26, 27, 28, 32, 33, 37, 38];
       const employees = [];
       
       employeeRows.forEach(row => {
@@ -126,16 +126,16 @@ export default function Payslip() {
             const employeeName = cellC.v.toString().trim();
             
             // Skip empty rows or section headers
-            if (employeeName === '' || employeeName === 'MEO' || employeeName === 'MPDO' || employeeName === 'MSWDO') {
+            if (employeeName === '' || employeeName === 'MASO' || employeeName === 'LCRO' || employeeName === 'MSWDO') {
               return;
             }
             
-            // Determine section based on row ranges from PAYROLL1.xlsx
+            // Determine section based on row ranges from PAYROLL3.xlsx
             let section = '';
-            if (row >= 15 && row <= 17) section = 'SB MTO MENRO';
-            else if (row >= 21 && row <= 26) section = 'MEO';
-            else if (row >= 29 && row <= 31) section = 'MPDO';
-            else if (row >= 34 && row <= 36) section = 'MSWDO';
+            if (row >= 15 && row <= 22) section = 'SB MTO MENRO';
+            else if (row >= 25 && row <= 29) section = 'MASO';
+            else if (row >= 32 && row <= 34) section = 'LCRO';
+            else if (row >= 37 && row <= 39) section = 'MSWDO';
             
             employees.push({
               number: cellA?.v?.toString() || '',
@@ -194,8 +194,8 @@ export default function Payslip() {
 
   // Group employees by section
   const sbMtoMenroEmployees = employees.filter(emp => emp.section === 'SB MTO MENRO');
-  const meoEmployees = employees.filter(emp => emp.section === 'MEO');
-  const mpdoEmployees = employees.filter(emp => emp.section === 'MPDO');
+  const masoEmployees = employees.filter(emp => emp.section === 'MASO');
+  const lcroEmployees = employees.filter(emp => emp.section === 'LCRO');
   const mswdoEmployees = employees.filter(emp => emp.section === 'MSWDO');
 
   // Calculate totals for each section
@@ -240,28 +240,28 @@ export default function Payslip() {
   };
 
   const sbMtoMenroTotals = calculateSectionTotals(sbMtoMenroEmployees);
-  const meoTotals = calculateSectionTotals(meoEmployees);
-  const mpdoTotals = calculateSectionTotals(mpdoEmployees);
+  const masoTotals = calculateSectionTotals(masoEmployees);
+  const lcroTotals = calculateSectionTotals(lcroEmployees);
   const mswdoTotals = calculateSectionTotals(mswdoEmployees);
 
   // Calculate grand totals
   const grandTotals = {
-    monthlyRate: sbMtoMenroTotals.monthlyRate + meoTotals.monthlyRate + mpdoTotals.monthlyRate + mswdoTotals.monthlyRate,
-    amountAccrued: sbMtoMenroTotals.amountAccrued + meoTotals.amountAccrued + mpdoTotals.amountAccrued + mswdoTotals.amountAccrued,
-    gsisEduLoan: sbMtoMenroTotals.gsisEduLoan + meoTotals.gsisEduLoan + mpdoTotals.gsisEduLoan + mswdoTotals.gsisEduLoan,
-    gsisMplLoan: sbMtoMenroTotals.gsisMplLoan + meoTotals.gsisMplLoan + mpdoTotals.gsisMplLoan + mswdoTotals.gsisMplLoan,
-    philhealthPersonal: sbMtoMenroTotals.philhealthPersonal + meoTotals.philhealthPersonal + mpdoTotals.philhealthPersonal + mswdoTotals.philhealthPersonal,
-    philhealthGovernment: sbMtoMenroTotals.philhealthGovernment + meoTotals.philhealthGovernment + mpdoTotals.philhealthGovernment + mswdoTotals.philhealthGovernment,
-    gsisPersonal: sbMtoMenroTotals.gsisPersonal + meoTotals.gsisPersonal + mpdoTotals.gsisPersonal + mswdoTotals.gsisPersonal,
-    gsisGovernment: sbMtoMenroTotals.gsisGovernment + meoTotals.gsisGovernment + mpdoTotals.gsisGovernment + mswdoTotals.gsisGovernment,
-    pagibigPersonal: sbMtoMenroTotals.pagibigPersonal + meoTotals.pagibigPersonal + mpdoTotals.pagibigPersonal + mswdoTotals.pagibigPersonal,
-    pagibigGovernment: sbMtoMenroTotals.pagibigGovernment + meoTotals.pagibigGovernment + mpdoTotals.pagibigGovernment + mswdoTotals.pagibigGovernment,
-    lbpLoan: sbMtoMenroTotals.lbpLoan + meoTotals.lbpLoan + mpdoTotals.lbpLoan + mswdoTotals.lbpLoan,
-    gfalLoan: sbMtoMenroTotals.gfalLoan + meoTotals.gfalLoan + mpdoTotals.gfalLoan + mswdoTotals.gfalLoan,
-    gsisLiteLoan: sbMtoMenroTotals.gsisLiteLoan + meoTotals.gsisLiteLoan + mpdoTotals.gsisLiteLoan + mswdoTotals.gsisLiteLoan,
-    pagibigMpl: sbMtoMenroTotals.pagibigMpl + meoTotals.pagibigMpl + mpdoTotals.pagibigMpl + mswdoTotals.pagibigMpl,
-    ec: sbMtoMenroTotals.ec + meoTotals.ec + mpdoTotals.ec + mswdoTotals.ec,
-    paidInCash: sbMtoMenroTotals.paidInCash + meoTotals.paidInCash + mpdoTotals.paidInCash + mswdoTotals.paidInCash
+    monthlyRate: sbMtoMenroTotals.monthlyRate + masoTotals.monthlyRate + lcroTotals.monthlyRate + mswdoTotals.monthlyRate,
+    amountAccrued: sbMtoMenroTotals.amountAccrued + masoTotals.amountAccrued + lcroTotals.amountAccrued + mswdoTotals.amountAccrued,
+    gsisEduLoan: sbMtoMenroTotals.gsisEduLoan + masoTotals.gsisEduLoan + lcroTotals.gsisEduLoan + mswdoTotals.gsisEduLoan,
+    gsisMplLoan: sbMtoMenroTotals.gsisMplLoan + masoTotals.gsisMplLoan + lcroTotals.gsisMplLoan + mswdoTotals.gsisMplLoan,
+    philhealthPersonal: sbMtoMenroTotals.philhealthPersonal + masoTotals.philhealthPersonal + lcroTotals.philhealthPersonal + mswdoTotals.philhealthPersonal,
+    philhealthGovernment: sbMtoMenroTotals.philhealthGovernment + masoTotals.philhealthGovernment + lcroTotals.philhealthGovernment + mswdoTotals.philhealthGovernment,
+    gsisPersonal: sbMtoMenroTotals.gsisPersonal + masoTotals.gsisPersonal + lcroTotals.gsisPersonal + mswdoTotals.gsisPersonal,
+    gsisGovernment: sbMtoMenroTotals.gsisGovernment + masoTotals.gsisGovernment + lcroTotals.gsisGovernment + mswdoTotals.gsisGovernment,
+    pagibigPersonal: sbMtoMenroTotals.pagibigPersonal + masoTotals.pagibigPersonal + lcroTotals.pagibigPersonal + mswdoTotals.pagibigPersonal,
+    pagibigGovernment: sbMtoMenroTotals.pagibigGovernment + masoTotals.pagibigGovernment + lcroTotals.pagibigGovernment + mswdoTotals.pagibigGovernment,
+    lbpLoan: sbMtoMenroTotals.lbpLoan + masoTotals.lbpLoan + lcroTotals.lbpLoan + mswdoTotals.lbpLoan,
+    gfalLoan: sbMtoMenroTotals.gfalLoan + masoTotals.gfalLoan + lcroTotals.gfalLoan + mswdoTotals.gfalLoan,
+    gsisLiteLoan: sbMtoMenroTotals.gsisLiteLoan + masoTotals.gsisLiteLoan + lcroTotals.gsisLiteLoan + mswdoTotals.gsisLiteLoan,
+    pagibigMpl: sbMtoMenroTotals.pagibigMpl + masoTotals.pagibigMpl + lcroTotals.pagibigMpl + mswdoTotals.pagibigMpl,
+    ec: sbMtoMenroTotals.ec + masoTotals.ec + lcroTotals.ec + mswdoTotals.ec,
+    paidInCash: sbMtoMenroTotals.paidInCash + masoTotals.paidInCash + lcroTotals.paidInCash + mswdoTotals.paidInCash
   };
 
   // Format number with commas (for regular rows - show empty if zero)
@@ -645,7 +645,7 @@ export default function Payslip() {
           </div>
         </div>
 
-        {/* MAIN TABLE - UPDATED to match PAYROLL1.xlsx structure */}
+        {/* MAIN TABLE - UPDATED to match PAYROLL3.xlsx structure */}
         <table 
           ref={tableRef}
           className="w-full border-collapse border border-black" 
@@ -761,18 +761,18 @@ export default function Payslip() {
               </>
             )}
             
-            {/* MEO SECTION HEADER */}
-            {meoEmployees.length > 0 && (
+            {/* MASO SECTION HEADER */}
+            {masoEmployees.length > 0 && (
               <tr>
                 <td className="border border-black text-center align-middle font-bold" style={{ padding: '2px 2px', height: '10px' }}></td>
-                <td className="border border-black p-0 pl-1 font-bold align-middle" style={{ fontSize: `${fontSizes.main}px` }}>MEO</td>
+                <td className="border border-black p-0 pl-1 font-bold align-middle" style={{ fontSize: `${fontSizes.main}px` }}>MASO</td>
                 <td colSpan={21} className="border border-black p-0 align-middle"></td>
               </tr>
             )}
             
-            {/* MEO ROWS */}
-            {meoEmployees.map((emp, index) => (
-              <tr key={`meo-${index}`}>
+            {/* MASO ROWS */}
+            {masoEmployees.map((emp, index) => (
+              <tr key={`maso-${index}`}>
                 <td className="border border-black text-center align-middle bg-gray-50" style={{ padding: '2px 2px', height: '10px', fontSize: `${fontSizes.number}px` }}>{emp.number || index + 1}</td>
                 <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.name || ''}</td>
                 <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.designation || ''}</td>
@@ -799,43 +799,43 @@ export default function Payslip() {
               </tr>
             ))}
             
-            {/* MEO TOTAL ROW */}
-            {meoEmployees.length > 0 && (
+            {/* MASO TOTAL ROW */}
+            {masoEmployees.length > 0 && (
               <tr className="border border-black text-center align-middle font-bold" style={{padding: '2px 2px', height: '10px' }}>
                 <td colSpan={5} className="border border-black p-0 align-middle"></td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.monthlyRate)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.amountAccrued)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.gsisEduLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.gsisMplLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.philhealthPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.philhealthGovernment)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.gsisPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.gsisGovernment)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.pagibigPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.pagibigGovernment)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.lbpLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.gfalLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.gsisLiteLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.pagibigMpl)}</td>
-                <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.ec)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.paidInCash)}</td>
-                <td className="border border-black text-center p-0 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{sbMtoMenroEmployees.length + meoEmployees.length + 1}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(masoTotals.monthlyRate)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(masoTotals.amountAccrued)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(masoTotals.gsisEduLoan)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(masoTotals.gsisMplLoan)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(masoTotals.philhealthPersonal)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(masoTotals.philhealthGovernment)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(masoTotals.gsisPersonal)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(masoTotals.gsisGovernment)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(masoTotals.pagibigPersonal)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(masoTotals.pagibigGovernment)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(masoTotals.lbpLoan)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(masoTotals.gfalLoan)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(masoTotals.gsisLiteLoan)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(masoTotals.pagibigMpl)}</td>
+                <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(masoTotals.ec)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(masoTotals.paidInCash)}</td>
+                <td className="border border-black text-center p-0 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{sbMtoMenroEmployees.length + masoEmployees.length + 1}</td>
                 <td className="border border-black p-0 align-middle"></td>
               </tr>
             )}
             
-            {/* MPDO SECTION HEADER */}
-            {mpdoEmployees.length > 0 && (
+            {/* LCRO SECTION HEADER */}
+            {lcroEmployees.length > 0 && (
               <tr>
                 <td className="border border-black text-center align-middle font-bold" style={{ padding: '2px 2px', height: '10px' }}></td>
-                <td className="border border-black p-0 pl-1 font-bold align-middle" style={{ fontSize: `${fontSizes.main}px` }}>MPDO</td>
+                <td className="border border-black p-0 pl-1 font-bold align-middle" style={{ fontSize: `${fontSizes.main}px` }}>LCRO</td>
                 <td colSpan={21} className="border border-black p-0 align-middle"></td>
               </tr>
             )}
             
-            {/* MPDO ROWS */}
-            {mpdoEmployees.map((emp, index) => (
-              <tr key={`mpdo-${index}`}>
+            {/* LCRO ROWS */}
+            {lcroEmployees.map((emp, index) => (
+              <tr key={`lcro-${index}`}>
                 <td className="border border-black text-center align-middle bg-gray-50" style={{ padding: '2px 2px', height: '10px', fontSize: `${fontSizes.number}px` }}>{emp.number || index + 1}</td>
                 <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.name || ''}</td>
                 <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.designation || ''}</td>
@@ -862,27 +862,27 @@ export default function Payslip() {
               </tr>
             ))}
             
-            {/* MPDO TOTAL ROW */}
-            {mpdoEmployees.length > 0 && (
+            {/* LCRO TOTAL ROW */}
+            {lcroEmployees.length > 0 && (
               <tr className="border border-black text-center align-middle font-bold" style={{padding: '2px 2px', height: '10px' }}>
                 <td colSpan={5} className="border border-black p-0 align-middle"></td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.monthlyRate)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.amountAccrued)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.gsisEduLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.gsisMplLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.philhealthPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.philhealthGovernment)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.gsisPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.gsisGovernment)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.pagibigPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.pagibigGovernment)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.lbpLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.gfalLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.gsisLiteLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.pagibigMpl)}</td>
-                <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.ec)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.paidInCash)}</td>
-                <td className="border border-black text-center p-0 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{sbMtoMenroEmployees.length + meoEmployees.length + mpdoEmployees.length + 1}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(lcroTotals.monthlyRate)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(lcroTotals.amountAccrued)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(lcroTotals.gsisEduLoan)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(lcroTotals.gsisMplLoan)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(lcroTotals.philhealthPersonal)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(lcroTotals.philhealthGovernment)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(lcroTotals.gsisPersonal)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(lcroTotals.gsisGovernment)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(lcroTotals.pagibigPersonal)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(lcroTotals.pagibigGovernment)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(lcroTotals.lbpLoan)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(lcroTotals.gfalLoan)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(lcroTotals.gsisLiteLoan)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(lcroTotals.pagibigMpl)}</td>
+                <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(lcroTotals.ec)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(lcroTotals.paidInCash)}</td>
+                <td className="border border-black text-center p-0 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{sbMtoMenroEmployees.length + masoEmployees.length + lcroEmployees.length + 1}</td>
                 <td className="border border-black p-0 align-middle"></td>
               </tr>
             )}
@@ -945,7 +945,7 @@ export default function Payslip() {
                 <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.pagibigMpl)}</td>
                 <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.ec)}</td>
                 <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.paidInCash)}</td>
-                <td className="border border-black text-center p-0 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{sbMtoMenroEmployees.length + meoEmployees.length + mpdoEmployees.length + mswdoEmployees.length + 1}</td>
+                <td className="border border-black text-center p-0 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{sbMtoMenroEmployees.length + masoEmployees.length + lcroEmployees.length + mswdoEmployees.length + 1}</td>
                 <td className="border border-black p-0 align-middle"></td>
               </tr>
             )}
@@ -977,7 +977,7 @@ export default function Payslip() {
           </tbody>
         </table>
 
-        {/* FOOTER AND SIGNATURES SECTION */}
+        {/* FOOTER AND SIGNATURES SECTION - Updated to match PAYROLL3.xlsx */}
         <div className="mt-2 space-y-1" style={{ fontSize: `${fontSizes.small}px` }}>
           {/* First Row of Signatures */}
           <div className={`grid ${paperSize === "A3" ? "grid-cols-3 gap-3" : orientation === "landscape" ? "grid-cols-3 gap-2" : "grid-cols-3 gap-1"}`}>
@@ -992,8 +992,8 @@ export default function Payslip() {
                 <div className="ml-2">_____________________ , 20______</div>
                 <div className="ml-2 mt-1">(2) APPROVED for payment subject to preaudit:</div>
               </div>
-              <div className="text-left pl-80 font-bold" style={{ fontSize: `${fontSizes.medium}px` }}>JOVENTINO O. PACA, JR.</div>
-                <div className="text-left ml-14 pl-72">Mun. Engineer</div>
+              <div className="text-left pl-80 font-bold" style={{ fontSize: `${fontSizes.medium}px` }}>MARIA LORENDA B. ROYO</div>
+                <div className="text-left ml-14 pl-72">Municipal Health Officer I</div>
             </div>
             
             <div >
@@ -1034,13 +1034,13 @@ export default function Payslip() {
               <div className="mt-3">_____________________ , 20 ____________________________ </div>
                <div className="ml-40">Provincial Auditor</div>
               
-                 <div className=" font-bold pl-80" style={{ fontSize: `${fontSizes.medium}px` }}>JELOVE C. REYES</div>
-                <div className="pl-80 ml-3">MSWDO</div>
+                 <div className=" font-bold pl-80" style={{ fontSize: `${fontSizes.medium}px` }}>ANNE MARIE C. SERDAN</div>
+                <div className="pl-80 ml-12">MGDH I</div>
               
             </div>
             <div>
-              <div className="font-bold pl-1" style={{ fontSize: `${fontSizes.medium}px` }}>HERMENIA C. CERDEÑA</div>
-              <div className="pl-11 ml-3">MPDC</div>
+              <div className="font-bold pl-1" style={{ fontSize: `${fontSizes.medium}px` }}>RAQUEL M. CERO</div>
+              <div className=" ml-3">Mun. Civil Registrar</div>
             </div>            
             <div className="">
               <div className="">
@@ -1059,8 +1059,8 @@ export default function Payslip() {
             </div>
           </div>
           <div className=" pl-72 ml-52">
-                <div className="font-bold"style={{ fontSize: `${fontSizes.medium}px` }}>MICHAEL B. UY-OCO</div>
-                <div className="pl-3">MGDH I/LDRRMO</div>
+                <div className="font-bold"style={{ fontSize: `${fontSizes.medium}px` }}>NANNETH A. AQUIATAN</div>
+                <div className="pl-4">Municipal Agriculturist</div>
               </div>
           {/* Bottom Slogan */}
           <div className="pl-80 ml-96 font-bold" style={{ fontSize: `${fontSizes.medium}px` }}>
@@ -1071,4 +1071,3 @@ export default function Payslip() {
     </div>
   );
 }
-//MAONI
