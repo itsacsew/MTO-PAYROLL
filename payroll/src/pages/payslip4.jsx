@@ -430,9 +430,9 @@ export default function Payslip4() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] p-6 overflow-y-auto relative">
+    <div className="fixed inset-0 w-full h-full bg-[#0a0a0f] overflow-auto">
       {/* Animated abstract sphere background */}
-      <div className="fixed inset-0 overflow-hidden">
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <motion.div
           animate={{
             x: mousePosition.x,
@@ -477,66 +477,12 @@ export default function Payslip4() {
       </div>
 
       {/* Controls Section */}
-      <div className="relative z-10 mb-4 p-3 rounded-lg bg-gradient-to-br from-[#1a1a2a] to-[#0a0a0f] border border-white/5"
-        style={{
-          boxShadow: '30px 30px 60px -15px #050505, -30px -30px 60px -15px #1f1f2a',
-        }}
-      >
+      <div className="relative z-10 mb-4 p-3 rounded-lg bg-gradient-to-br from-[#1a1a2a] to-[#0a0a0f] border border-white/5 mx-4 mt-24"
+  style={{
+    boxShadow: '30px 30px 60px -15px #050505, -30px -30px 60px -15px #1f1f2a',
+  }}
+>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block mb-1 font-medium text-gray-300">Paper Size:</label>
-            <select 
-              value={paperSize} 
-              onChange={(e) => setPaperSize(e.target.value)}
-              className="w-full border border-white/10 rounded px-3 py-2 bg-[#1a1a2a] text-white"
-              style={{
-                background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
-                boxShadow: 'inset 2px 2px 5px #050505, inset -2px -2px 5px #1f1f2a',
-              }}
-            >
-              <option value="A3">A3 (297 × 420 mm) - Recommended</option>
-              <option value="A4">A4 (210 × 297 mm)</option>
-              <option value="Letter">Letter (8.5 × 11 in)</option>
-              <option value="Legal">Legal (8.5 × 14 in)</option>
-              <option value="Tabloid">Tabloid (11 × 17 in)</option>
-            </select>
-          </div>
-          
-          <div>
-            <label className="block mb-1 font-medium text-gray-300">Orientation:</label>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setOrientation("portrait")}
-                className={`flex-1 border border-white/10 rounded px-3 py-2 transition-all duration-200 ${
-                  orientation === "portrait" 
-                    ? 'bg-gradient-to-r from-orange-500 to-pink-500 text-white' 
-                    : 'bg-[#1a1a2a] text-gray-400'
-                }`}
-                style={{
-                  boxShadow: orientation === "portrait" 
-                    ? '0 5px 15px -5px #f97316' 
-                    : 'inset 2px 2px 5px #050505, inset -2px -2px 5px #1f1f2a',
-                }}
-              >
-                Portrait
-              </button>
-              <button
-                onClick={() => setOrientation("landscape")}
-                className={`flex-1 border border-white/10 rounded px-3 py-2 transition-all duration-200 ${
-                  orientation === "landscape" 
-                    ? 'bg-gradient-to-r from-orange-500 to-pink-500 text-white' 
-                    : 'bg-[#1a1a2a] text-gray-400'
-                }`}
-                style={{
-                  boxShadow: orientation === "landscape" 
-                    ? '0 5px 15px -5px #f97316' 
-                    : 'inset 2px 2px 5px #050505, inset -2px -2px 5px #1f1f2a',
-                }}
-              >
-                Landscape
-              </button>
-            </div>
-          </div>
         </div>
         
         {/* Print Button and File Info */}

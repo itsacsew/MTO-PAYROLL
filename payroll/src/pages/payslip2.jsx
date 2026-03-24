@@ -1,16 +1,35 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation } from 'react-router-dom';
 import * as XLSX from 'xlsx';
+import { motion } from 'framer-motion';
+import { 
+  MdPrint,
+  MdDescription,
+  MdWaves,
+  MdAccessTime
+} from 'react-icons/md';
 
 export default function Payslip() {
   const [paperSize, setPaperSize] = useState("A3");
   const [orientation, setOrientation] = useState("landscape");
   const [employees, setEmployees] = useState([]);
   const [excelData, setExcelData] = useState(null);
-  const [columnWidths, setColumnWidths] = useState({});
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const tableRef = useRef(null);
   const location = useLocation();
   const printRef = useRef(null);
+
+  // Track mouse position for parallax effects
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      setMousePosition({
+        x: (e.clientX / window.innerWidth - 0.5) * 10,
+        y: (e.clientY / window.innerHeight - 0.5) * 10
+      });
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
 
   // Paper size dimensions (in pixels for 96 DPI)
   const paperDimensions = {
@@ -272,7 +291,7 @@ export default function Payslip() {
           small: orientation === "landscape" ? 9 : 9.5,
           header: orientation === "landscape" ? 18 : 20,
           medium: orientation === "landscape" ? 11.5 : 12,
-          number: orientation === "landscape" ? 12 : 13 // Increased from 8/9 to 12/13
+          number: orientation === "landscape" ? 12 : 13
         };
       case "Legal":
       case "Tabloid":
@@ -281,7 +300,7 @@ export default function Payslip() {
           small: orientation === "landscape" ? 8.5 : 9,
           header: orientation === "landscape" ? 17 : 19,
           medium: orientation === "landscape" ? 11 : 12,
-          number: orientation === "landscape" ? 12 : 13 // Increased from 7.5/8 to 12/13
+          number: orientation === "landscape" ? 12 : 13
         };
       case "Letter":
         return {
@@ -289,7 +308,7 @@ export default function Payslip() {
           small: orientation === "landscape" ? 8 : 8.5,
           header: orientation === "landscape" ? 16 : 17,
           medium: orientation === "landscape" ? 10.5 : 11,
-          number: orientation === "landscape" ? 11 : 12 // Increased from 7/7.5 to 11/12
+          number: orientation === "landscape" ? 11 : 12
         };
       default: // A4
         return {
@@ -297,7 +316,7 @@ export default function Payslip() {
           small: orientation === "landscape" ? 7.5 : 8,
           header: orientation === "landscape" ? 15 : 16,
           medium: orientation === "landscape" ? 9.5 : 10,
-          number: orientation === "landscape" ? 11 : 12 // Increased from 6.5/7 to 11/12
+          number: orientation === "landscape" ? 11 : 12
         };
     }
   };
@@ -346,14 +365,16 @@ export default function Payslip() {
             margin: 0; 
             padding: 0; 
             font-family: Arial, sans-serif;
-            background: white;
+            background: #0a0a0f;
+            color: white;
           }
           
-          /* Print-specific styles */
           @media print {
             body { 
               margin: 0 !important; 
               padding: 0 !important;
+              background: white;
+              color: black;
             }
             
             .print-only { 
@@ -364,13 +385,11 @@ export default function Payslip() {
               display: none !important; 
             }
             
-            /* Ensure borders print */
             .border, .border-black, .border-gray-300 {
               border: 1px solid black !important;
             }
           }
           
-          /* Container for the payslip */
           .print-container {
             width: 100%;
             background: white;
@@ -404,48 +423,68 @@ export default function Payslip() {
   };
 
   return (
-    <div className="p-4">
-      {/* Controls Section */}
-      <div className="mb-4 p-3 bg-gray-100 rounded-lg shadow">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block mb-1 font-medium">Paper Size:</label>
-            <select 
-              value={paperSize} 
-              onChange={(e) => setPaperSize(e.target.value)}
-              className="w-full border rounded px-3 py-2"
-            >
-              <option value="A3">A3 (297 × 420 mm) - Recommended</option>
-              <option value="A4">A4 (210 × 297 mm)</option>
-              <option value="Letter">Letter (8.5 × 11 in)</option>
-              <option value="Legal">Legal (8.5 × 14 in)</option>
-              <option value="Tabloid">Tabloid (11 × 17 in)</option>
-            </select>
-          </div>
-          
-          <div>
-            <label className="block mb-1 font-medium">Orientation:</label>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setOrientation("portrait")}
-                className={`flex-1 border rounded px-3 py-2 ${orientation === "portrait" ? 'bg-blue-500 text-white' : 'bg-white'}`}
-              >
-                Portrait
-              </button>
-              <button
-                onClick={() => setOrientation("landscape")}
-                className={`flex-1 border rounded px-3 py-2 ${orientation === "landscape" ? 'bg-blue-500 text-white' : 'bg-white'}`}
-              >
-                Landscape
-              </button>
-            </div>
-          </div>
-        </div>
+    <div className="fixed inset-0 w-full h-full bg-[#0a0a0f] overflow-auto">
+      {/* Animated abstract sphere background */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <motion.div
+          animate={{
+            x: mousePosition.x,
+            y: mousePosition.y,
+          }}
+          transition={{ type: "spring", stiffness: 50, damping: 30 }}
+          className="absolute -top-20 -right-20 w-96 h-96 rounded-full"
+          style={{
+            background: 'radial-gradient(circle at 30% 30%, rgba(249, 115, 22, 0.15), transparent 70%)',
+            filter: 'blur(60px)',
+            pointerEvents: 'none'
+          }}
+        />
         
+        <motion.div
+          animate={{
+            x: -mousePosition.x * 0.5,
+            y: -mousePosition.y * 0.5,
+          }}
+          transition={{ type: "spring", stiffness: 50, damping: 30 }}
+          className="absolute -bottom-20 -left-20 w-[500px] h-[500px] rounded-full"
+          style={{
+            background: 'radial-gradient(circle at 70% 70%, rgba(168, 85, 247, 0.15), transparent 70%)',
+            filter: 'blur(60px)',
+            pointerEvents: 'none'
+          }}
+        />
+        
+        <motion.div
+          animate={{
+            x: mousePosition.x * 0.3,
+            y: mousePosition.y * 0.3,
+          }}
+          transition={{ type: "spring", stiffness: 50, damping: 30 }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full"
+          style={{
+            background: 'radial-gradient(circle, rgba(244, 63, 94, 0.1), transparent 70%)',
+            filter: 'blur(80px)',
+            pointerEvents: 'none'
+          }}
+        />
+      </div>
+
+      {/* Controls Section */}
+      <div className="relative z-10 mb-4 p-3 rounded-lg bg-gradient-to-br from-[#1a1a2a] to-[#0a0a0f] border border-white/5 mx-4 mt-24"
+  style={{
+    boxShadow: '30px 30px 60px -15px #050505, -30px -30px 60px -15px #1f1f2a',
+  }}
+>
         {/* Print Button and File Info */}
         <div className="mt-3 flex items-center justify-between">
-          <div className="p-2 bg-green-50 border border-green-200 rounded flex-1 mr-3">
-            <p className="text-sm text-green-700">
+          <div className="p-2 rounded-lg flex-1 mr-3"
+            style={{
+              background: 'linear-gradient(145deg, rgba(249, 115, 22, 0.1), #1a1a2a)',
+              border: '1px solid rgba(249, 115, 22, 0.2)'
+            }}
+          >
+            <p className="text-sm text-orange-400 flex items-center gap-2">
+              <MdDescription className="w-4 h-4" />
               📁 Loaded: {location.state?.fileData?.fileName || 'No file'} ({employees.length} employees)
             </p>
           </div>
@@ -453,11 +492,17 @@ export default function Payslip() {
           <button
             onClick={handlePrint}
             disabled={employees.length === 0}
-            className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium flex items-center gap-2"
+            className="px-6 py-2 rounded-lg font-medium flex items-center gap-2 text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              background: employees.length > 0 
+                ? 'linear-gradient(135deg, #f97316, #ec4899)'
+                : 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+              boxShadow: employees.length > 0 
+                ? '0 10px 20px -5px #f97316'
+                : '5px 5px 10px #050505, -5px -5px 10px #1f1f2a',
+            }}
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-            </svg>
+            <MdPrint className="w-5 h-5" />
             🖨️ Print Payroll ({employees.length})
           </button>
         </div>
@@ -466,7 +511,7 @@ export default function Payslip() {
       {/* Main Payslip Container */}
       <div 
         ref={printRef}
-        className="bg-white mx-auto px-8"
+        className="bg-white mx-auto px-8 relative z-10"
         style={{
           width: dimensions.width,
           minHeight: dimensions.height,
@@ -544,7 +589,7 @@ export default function Payslip() {
         >
           <thead>
             <tr>
-              <th rowSpan={3} className="border border-black p-0 align-middle text-center" style={{ width: '30px', padding: '8px 2px', height: '60px' }}>
+              <th rowSpan={3} className="border border-black p-0 align-middle text-center bg-gray-100" style={{ width: '30px', padding: '8px 2px', height: '60px' }}>
                 
                 <div className="flex flex-col items-center justify-center h-full" style={{ fontSize: `${fontSizes.number}px` }}>
                   <span>N</span>
@@ -555,36 +600,36 @@ export default function Payslip() {
                   <span>R</span>
                 </div>
               </th>
-              <th rowSpan={3} className="border border-black p-0 align-middle px-1">NAME</th>
-              <th rowSpan={3} className="border border-black p-0 align-middle px-1">DESIGNATION</th>
-              <th colSpan={2} className="border border-black p-0 px-1 text-center">PERIOD OF SERVICE<br/>(Inclusive Dates)</th>
-              <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center">Monthly<br/>Rate of Pay</th>
-              <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center">Amount<br/>Accrued<br/>for the<br/>Period</th>
+              <th rowSpan={3} className="border border-black p-0 align-middle px-1 bg-gray-100">NAME</th>
+              <th rowSpan={3} className="border border-black p-0 align-middle px-1 bg-gray-100">DESIGNATION</th>
+              <th colSpan={2} className="border border-black p-0 px-1 text-center bg-gray-100">PERIOD OF SERVICE<br/>(Inclusive Dates)</th>
+              <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center bg-gray-100">Monthly<br/>Rate of Pay</th>
+              <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center bg-gray-100">Amount<br/>Accrued<br/>for the<br/>Period</th>
               {hasGsisEduData && (
-                <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center">GSIS<br/>EDUC<br/>LOAN</th>
+                <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center bg-gray-100">GSIS<br/>EDUC<br/>LOAN</th>
               )}
               {hasGsisMplData && (
-                <th rowSpan={3} className="border border-black text-center align-middle" 
+                <th rowSpan={3} className="border border-black text-center align-middle bg-gray-100" 
     style={{ padding: '2px 2px', height: '5px'}}>GSIS<br/>MPL<br/>LOAN</th>
               )}
-              <th colSpan={6} className="border border-black p-0 align-middle text-center" rowSpan={1}></th>
+              <th colSpan={6} className="border border-black p-0 align-middle text-center bg-gray-100" rowSpan={1}></th>
               {hasGsisLiteData && (
-                <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center">GSIS<br/>MPL<br/>Lite</th>
+                <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center bg-gray-100">GSIS<br/>MPL<br/>Lite</th>
               )}
               {hasLbpData && (
-                <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center">LBP<br/>LOAN</th>
+                <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center bg-gray-100">LBP<br/>LOAN</th>
               )}
               {hasGfalData && (
-                <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center">GFAL<br/>LOAN</th>
+                <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center bg-gray-100">GFAL<br/>LOAN</th>
               )}
               {hasPagibigMplData && (
-                <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center">Pag-ibig<br/>LOAN</th>
+                <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center bg-gray-100">Pag-ibig<br/>LOAN</th>
               )}
               {hasEcData && (
-                <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center" style={{ width: '25px' }}>E.C.</th>
+                <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center bg-gray-100" style={{ width: '25px' }}>E.C.</th>
               )}
-              <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center">Amount<br/>Paid<br/>In<br/>Cash<br/>(Cr. A-1)</th>
-              <th rowSpan={3} className="border border-black p-0 align-middle text-center" style={{ width: '25px' }}>
+              <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center bg-gray-100">Amount<br/>Paid<br/>In<br/>Cash<br/>(Cr. A-1)</th>
+              <th rowSpan={3} className="border border-black p-0 align-middle text-center bg-gray-100" style={{ width: '25px' }}>
                 <div className="flex flex-col items-center justify-center h-full" style={{ fontSize: `${fontSizes.number}px` }}>
                   <span>N</span>
                   <span>U</span>
@@ -594,26 +639,26 @@ export default function Payslip() {
                   <span>R</span>
                 </div>
               </th>
-              <th rowSpan={3} className="border border-black p-0 align-middle px-5 text-center">Signature<br/>of<br/>Payee</th>
+              <th rowSpan={3} className="border border-black p-0 align-middle px-5 text-center bg-gray-100">Signature<br/>of<br/>Payee</th>
             </tr>
             
             <tr >
-              <th rowSpan={2} className="border border-black text-center align-middle" 
+              <th rowSpan={2} className="border border-black text-center align-middle bg-gray-100" 
     style={{ padding: '2px 2px', height: '10px'}}>From _____</th>
-              <th rowSpan={2} className="border border-black p-0 px-1 text-center align-middle">To ______</th>
-              <th colSpan={2} className="border border-black p-0 text-center">PHILHEALTH</th>
-              <th colSpan={2} className="border border-black p-0 text-center">GSIS Premiums</th>
-              <th colSpan={2} className="border border-black p-0 text-center">Pag-ibig</th>
+              <th rowSpan={2} className="border border-black p-0 px-1 text-center align-middle bg-gray-100">To ______</th>
+              <th colSpan={2} className="border border-black p-0 text-center bg-gray-100">PHILHEALTH</th>
+              <th colSpan={2} className="border border-black p-0 text-center bg-gray-100">GSIS Premiums</th>
+              <th colSpan={2} className="border border-black p-0 text-center bg-gray-100">Pag-ibig</th>
             </tr>
             
             <tr>
-              <th rowSpan={2} className="border border-black text-center align-middle" 
+              <th rowSpan={2} className="border border-black text-center align-middle bg-gray-100" 
     style={{ padding: '8px 2px', height: '30px' }}>Personal<br/>Share</th>
-              <th className="border border-black p-0 px-1 text-center align-middle">Government<br/>Share</th>
-              <th className="border border-black p-0 px-1 text-center align-middle">Personal<br/>Share</th>
-              <th className="border border-black p-0 px-1 text-center align-middle">Government<br/>Share</th>
-              <th className="border border-black p-0 px-1 text-center align-middle">Personal<br/>Share</th>
-              <th className="border border-black p-0 px-1 text-center align-middle">Government<br/>Share</th>
+              <th className="border border-black p-0 px-1 text-center align-middle bg-gray-100">Government<br/>Share</th>
+              <th className="border border-black p-0 px-1 text-center align-middle bg-gray-100">Personal<br/>Share</th>
+              <th className="border border-black p-0 px-1 text-center align-middle bg-gray-100">Government<br/>Share</th>
+              <th className="border border-black p-0 px-1 text-center align-middle bg-gray-100">Personal<br/>Share</th>
+              <th className="border border-black p-0 px-1 text-center align-middle bg-gray-100">Government<br/>Share</th>
             </tr>
           </thead>
 
@@ -621,26 +666,26 @@ export default function Payslip() {
             {/* SB SECTION */}
             {sbEmployees.map((emp, index) => (
               <tr key={`sb-${index}`}>
-                <td className="border border-black text-center align-middle" 
+                <td className="border border-black text-center align-middle bg-gray-50" 
     style={{ padding: '2px 2px', height: '10px', fontSize: `${fontSizes.number}px` }}>{emp.number || index + 1}</td>
                 <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.name || ''}</td>
                 <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.designation || ''}</td>
                 <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.periodFrom || ''}</td>
                 <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.periodTo || ''}</td>
                 <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.monthlyRate)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.amountAccrued)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.amountAccrued)}</td>
                 {hasGsisEduData && (
                   <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisEduLoan)}</td>
                 )}
                 {hasGsisMplData && (
                   <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisMplLoan)}</td>
                 )}
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.philhealthPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.philhealthGovernment)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisGovernment)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigGovernment)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.philhealthPersonal)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.philhealthGovernment)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisPersonal)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisGovernment)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigPersonal)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigGovernment)}</td>
                 {hasGsisLiteData && (
                   <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisLiteLoan)}</td>
                 )}
@@ -656,8 +701,8 @@ export default function Payslip() {
                 {hasEcData && (
                   <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.ec)}</td>
                 )}
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.paidInCash)}</td>
-                <td className="border border-black text-center p-0 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{emp.number || index + 1}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.paidInCash)}</td>
+                <td className="border border-black text-center p-0 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{emp.number || index + 1}</td>
                 <td className="border border-black p-0 align-middle"></td>
               </tr>
             ))}
@@ -715,26 +760,26 @@ export default function Payslip() {
             {/* MTO ROWS */}
             {mtoEmployees.map((emp, index) => (
               <tr key={`mto-${index}`}>
-                <td className="border border-black text-center align-middle" 
+                <td className="border border-black text-center align-middle bg-gray-50" 
     style={{ padding: '2px 2px', height: '10px', fontSize: `${fontSizes.number}px` }}>{emp.number || index + 1}</td>
                 <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.name || ''}</td>
                 <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.designation || ''}</td>
                 <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.periodFrom || ''}</td>
                 <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.periodTo || ''}</td>
                 <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.monthlyRate)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.amountAccrued)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.amountAccrued)}</td>
                 {hasGsisEduData && (
                   <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisEduLoan)}</td>
                 )}
                 {hasGsisMplData && (
                   <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisMplLoan)}</td>
                 )}
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.philhealthPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.philhealthGovernment)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisGovernment)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigGovernment)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.philhealthPersonal)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.philhealthGovernment)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisPersonal)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisGovernment)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigPersonal)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigGovernment)}</td>
                 {hasGsisLiteData && (
                   <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisLiteLoan)}</td>
                 )}
@@ -750,8 +795,8 @@ export default function Payslip() {
                 {hasEcData && (
                   <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.ec)}</td>
                 )}
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.paidInCash)}</td>
-                <td className="border border-black text-center p-0 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{emp.number || index + 1}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.paidInCash)}</td>
+                <td className="border border-black text-center p-0 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{emp.number || index + 1}</td>
                 <td className="border border-black p-0 align-middle"></td>
               </tr>
             ))}
@@ -809,26 +854,26 @@ export default function Payslip() {
             {/* MENRO ROWS */}
             {menroEmployees.map((emp, index) => (
               <tr key={`menro-${index}`}>
-                <td className="border border-black text-center align-middle" 
+                <td className="border border-black text-center align-middle bg-gray-50" 
     style={{ padding: '2px 2px', height: '10px', fontSize: `${fontSizes.number}px` }}>{emp.number || index + 1}</td>
                 <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.name || ''}</td>
                 <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.designation || ''}</td>
                 <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.periodFrom || ''}</td>
                 <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.periodTo || ''}</td>
                 <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.monthlyRate)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.amountAccrued)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.amountAccrued)}</td>
                 {hasGsisEduData && (
                   <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisEduLoan)}</td>
                 )}
                 {hasGsisMplData && (
                   <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisMplLoan)}</td>
                 )}
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.philhealthPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.philhealthGovernment)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisGovernment)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigGovernment)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.philhealthPersonal)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.philhealthGovernment)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisPersonal)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisGovernment)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigPersonal)}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigGovernment)}</td>
                 {hasGsisLiteData && (
                   <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisLiteLoan)}</td>
                 )}
@@ -844,8 +889,8 @@ export default function Payslip() {
                 {hasEcData && (
                   <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.ec)}</td>
                 )}
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.paidInCash)}</td>
-                <td className="border border-black text-center p-0 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{emp.number || index + 1}</td>
+                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.paidInCash)}</td>
+                <td className="border border-black text-center p-0 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{emp.number || index + 1}</td>
                 <td className="border border-black p-0 align-middle"></td>
               </tr>
             ))}

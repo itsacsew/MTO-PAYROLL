@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { saveAs } from 'file-saver';
 import { db } from '../config/firebase';
-import { collection, getDocs, deleteDoc, doc, onSnapshot, query, orderBy, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, deleteDoc, doc, onSnapshot, query, orderBy, updateDoc, serverTimestamp } from 'firebase/firestore';
 import ModalSend from './modalSend';
 import ModalSend_MDRRMO from './ModalSend_MDRRMO';
 import ModalSend_MAYOR from './ModalSend_MAYOR';
@@ -145,11 +145,11 @@ const ReceiveFile = () => {
             
             // Receiver information (who marked as received)
             receivedBy: fileData.receivedBy || null,
-            receivedAt: fileData.receivedAt || null,
+            receivedAt: fileData.receivedAt?.toDate?.() || (fileData.receivedAt instanceof Date ? fileData.receivedAt : null),
             
             // Checker information
             checkedBy: fileData.checkedBy || null,
-            checkedAt: fileData.checkedAt || null,
+            checkedAt: fileData.checkedAt?.toDate?.() || (fileData.checkedAt instanceof Date ? fileData.checkedAt : null),
             
             markedAsReceived: fileData.markedAsReceived || false,
             checked: fileData.checked || false
@@ -210,11 +210,11 @@ const ReceiveFile = () => {
               
               // Receiver information (who marked as received)
               receivedBy: fileData.receivedBy || null,
-              receivedAt: fileData.receivedAt || null,
+              receivedAt: fileData.receivedAt?.toDate?.() || (fileData.receivedAt instanceof Date ? fileData.receivedAt : null),
               
               // Checker information
               checkedBy: fileData.checkedBy || null,
-              checkedAt: fileData.checkedAt || null,
+              checkedAt: fileData.checkedAt?.toDate?.() || (fileData.checkedAt instanceof Date ? fileData.checkedAt : null),
               
               markedAsReceived: fileData.markedAsReceived || false,
               checked: fileData.checked || false
@@ -351,12 +351,12 @@ const ReceiveFile = () => {
             name: currentUser.name,
             email: currentUser.email,
             office: currentUser.office,
-            role: currentUser.role,
-            receivedAt: new Date()
+            role: currentUser.role
           };
         }
         updateData.markedAsReceived = true;
-        updateData.receivedAt = new Date();
+        // Use serverTimestamp para accurate ang time sa Firebase
+        updateData.receivedAt = serverTimestamp();
       } else if (newStatus === 'checked') {
         const currentUser = getCurrentUser();
         if (currentUser) {
@@ -365,13 +365,13 @@ const ReceiveFile = () => {
             name: currentUser.name,
             email: currentUser.email,
             office: currentUser.office,
-            role: currentUser.role,
-            checkedAt: new Date()
+            role: currentUser.role
           };
         }
         updateData.checked = true;
-        updateData.checkedAt = new Date();
-        updateData.lastCheckedAt = new Date();
+        // Use serverTimestamp para accurate ang time sa Firebase
+        updateData.checkedAt = serverTimestamp();
+        updateData.lastCheckedAt = serverTimestamp();
       }
       
       await updateDoc(doc(db, 'sentFiles', fileId), updateData);
@@ -396,7 +396,8 @@ const ReceiveFile = () => {
                   office: currentUser.office,
                   role: currentUser.role
                 };
-                updatedFile.receivedAt = new Date();
+                // Ang actual date kay i-set sa realtime listener
+                updatedFile.receivedAt = new Date(); // temporary local date
               }
             }
             
@@ -410,8 +411,9 @@ const ReceiveFile = () => {
                   office: currentUser.office,
                   role: currentUser.role
                 };
-                updatedFile.checkedAt = new Date();
-                updatedFile.lastCheckedAt = new Date();
+                // Ang actual date kay i-set sa realtime listener
+                updatedFile.checkedAt = new Date(); // temporary local date
+                updatedFile.lastCheckedAt = new Date(); // temporary local date
               }
             }
             
@@ -515,10 +517,10 @@ const ReceiveFile = () => {
           senderId: senderInfo.id || fileData.senderId || '',
           
           receivedBy: fileData.receivedBy || null,
-          receivedAt: fileData.receivedAt || null,
+          receivedAt: fileData.receivedAt?.toDate?.() || (fileData.receivedAt instanceof Date ? fileData.receivedAt : null),
           
           checkedBy: fileData.checkedBy || null,
-          checkedAt: fileData.checkedAt || null,
+          checkedAt: fileData.checkedAt?.toDate?.() || (fileData.checkedAt instanceof Date ? fileData.checkedAt : null),
           
           markedAsReceived: fileData.markedAsReceived || false,
           checked: fileData.checked || false
@@ -537,12 +539,14 @@ const ReceiveFile = () => {
   };
 
   const formatDate = (timestamp) => {
+    if (!timestamp) return 'N/A';
     return new Date(timestamp).toLocaleString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      second: '2-digit'
     });
   };
 

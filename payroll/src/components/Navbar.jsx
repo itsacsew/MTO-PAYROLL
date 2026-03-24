@@ -1,5 +1,5 @@
-// Navbar.jsx (with Real-time 12-Hour Clock)
-import React, { useState, useContext, useEffect } from "react";
+// Navbar.jsx (with Real-time Chat Feature and Database Link)
+import React, { useState, useContext, useEffect, useRef } from "react";
 import { 
   MdDashboard, 
   MdTaskAlt, 
@@ -10,14 +10,18 @@ import {
   MdMenu,
   MdClose,
   MdKeyboardArrowDown,
-  MdNotificationsNone,
+  MdChat,
   MdSettings,
   MdLock,
   MdVisibility,
   MdVisibilityOff,
   MdClose as MdCloseIcon,
   MdWaves,
-  MdAccessTime
+  MdAccessTime,
+  MdPerson,
+  MdAttachFile,
+  MdEmojiEmotions,
+  MdStorage // Added for Database icon
 } from "react-icons/md";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -27,9 +31,22 @@ import { motion, AnimatePresence } from "framer-motion";
 import UserAvatar from "./UserAvatar";
 import logo from "../assets/logo1.png";
 import { db } from '../config/firebase';
-import { doc, updateDoc, getDoc } from "firebase/firestore";
+import { 
+  doc, 
+  updateDoc, 
+  getDoc, 
+  collection, 
+  addDoc, 
+  query, 
+  orderBy, 
+  onSnapshot,
+  serverTimestamp,
+  limit,
+  getDocs,
+  where
+} from "firebase/firestore";
 
-// MTO Office Links
+// MTO Office Links (Updated with Database)
 const mtoLinks = [
   {
     label: "Dashboard",
@@ -48,6 +65,12 @@ const mtoLinks = [
     link: "file",
     icon: <MdDownload size={25} />,
     description: "Incoming files"
+  },
+  {
+    label: "Database",
+    link: "database",
+    icon: <MdStorage size={25} />,
+    description: "View all data records"
   }
 ];
 
@@ -87,7 +110,7 @@ const mayorLinks = [
   }
 ];
 
-// Accounting Office Links
+// Accounting Office Links (Updated with Database)
 const accountingLinks = [
   {
     label: "Tasks",
@@ -107,6 +130,12 @@ const accountingLinks = [
     icon: <MdSend size={20} />,
     description: "Transfer documents"
   },
+  {
+    label: "Database",
+    link: "database",
+    icon: <MdStorage size={20} />,
+    description: "View all data records"
+  }
 ];
 
 // Real-time Clock Component
@@ -174,6 +203,395 @@ const RealtimeClock = () => {
   );
 };
 
+// Chat Message Component
+const ChatMessage = ({ message, isOwnMessage }) => {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-3`}
+    >
+      <div className={`max-w-[70%] ${isOwnMessage ? 'items-end' : 'items-start'}`}>
+        {!isOwnMessage && (
+          <div className="flex items-center gap-2 mb-1 ml-1">
+            <div className="w-5 h-5 rounded-full bg-gradient-to-r from-orange-500 to-pink-500 flex items-center justify-center">
+              <span className="text-[10px] font-bold text-white">
+                {message.senderName?.charAt(0) || 'U'}
+              </span>
+            </div>
+            <span className="text-xs text-gray-400 font-medium">
+              {message.senderName}
+            </span>
+            <span className="text-[10px] text-gray-500">
+              {message.formattedTime}
+            </span>
+          </div>
+        )}
+        <div
+          className={`px-4 py-2 rounded-2xl ${
+            isOwnMessage
+              ? 'bg-gradient-to-r from-orange-500 to-pink-500 text-white'
+              : 'bg-gray-800 text-gray-200'
+          }`}
+          style={{
+            boxShadow: isOwnMessage 
+              ? '0 4px 12px rgba(249, 115, 22, 0.3)'
+              : '0 2px 8px rgba(0, 0, 0, 0.2)'
+          }}
+        >
+          <p className="text-sm break-words">{message.text}</p>
+        </div>
+        {isOwnMessage && (
+          <div className="flex items-center justify-end gap-1 mt-1 mr-1">
+            <span className="text-[10px] text-gray-500">
+              {message.formattedTime}
+            </span>
+            {/* Seen Status Indicator */}
+            {message.read && (
+              <div className="flex items-center gap-0.5">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="text-[10px] text-blue-400"
+                  title="Seen"
+                >
+                  ✓✓
+                </motion.div>
+              </div>
+            )}
+            {!message.read && message.sender !== message.receiver && (
+              <div className="text-[10px] text-gray-500" title="Sent">
+                ✓
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+};
+
+// Chat Component
+// Chat Component - With Auto Read Functionality
+const ChatComponent = ({ currentUser, onClose, onUnreadCountUpdate }) => {
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState("");
+  const [selectedOffice, setSelectedOffice] = useState("");
+  const [offices, setOffices] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef(null);
+  const chatContainerRef = useRef(null);
+  const [hasMarkedRead, setHasMarkedRead] = useState(false);
+
+  const currentOffice = currentUser?.office || 'MTO';
+  
+  // Fetch all available offices from users collection
+  useEffect(() => {
+    const fetchOffices = async () => {
+      try {
+        const usersRef = collection(db, "users");
+        const usersSnapshot = await getDocs(usersRef);
+        const uniqueOffices = new Set();
+        usersSnapshot.forEach(doc => {
+          const userData = doc.data();
+          if (userData.office && userData.office !== currentOffice) {
+            uniqueOffices.add(userData.office);
+          }
+        });
+        setOffices(Array.from(uniqueOffices));
+        if (uniqueOffices.size > 0) {
+          setSelectedOffice(Array.from(uniqueOffices)[0]);
+        }
+      } catch (error) {
+        console.error("Error fetching offices:", error);
+      }
+    };
+    fetchOffices();
+  }, [currentOffice]);
+
+  // Function to mark messages as read
+  const markMessagesAsRead = async (chatId) => {
+    if (!chatId || !selectedOffice) return;
+    
+    try {
+      const messagesRef = collection(db, "chats", chatId, "messages");
+      const q = query(
+        messagesRef, 
+        where("receiver", "==", currentOffice),
+        where("read", "==", false)
+      );
+      
+      const unreadMessages = await getDocs(q);
+      
+      // Update each unread message with read status and read timestamp
+      const updatePromises = unreadMessages.docs.map(async (messageDoc) => {
+        const messageRef = doc(db, "chats", chatId, "messages", messageDoc.id);
+        await updateDoc(messageRef, {
+          read: true,
+          readAt: serverTimestamp(),
+          readBy: currentOffice
+        });
+      });
+      
+      await Promise.all(updatePromises);
+      
+      if (unreadMessages.docs.length > 0) {
+        console.log(`Marked ${unreadMessages.docs.length} messages as read`);
+        // Notify parent to update unread count
+        if (onUnreadCountUpdate) {
+          onUnreadCountUpdate();
+        }
+      }
+    } catch (error) {
+      console.error("Error marking messages as read:", error);
+    }
+  };
+
+  // Subscribe to messages between current office and selected office with real-time updates
+  useEffect(() => {
+    if (!selectedOffice) return;
+
+    const chatId = [currentOffice, selectedOffice].sort().join('_');
+    
+    const messagesRef = collection(db, "chats", chatId, "messages");
+    const q = query(messagesRef, orderBy("timestamp", "asc"), limit(100));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const newMessages = [];
+      snapshot.forEach((doc) => {
+        newMessages.push({ id: doc.id, ...doc.data() });
+      });
+      setMessages(newMessages);
+      scrollToBottom();
+      
+      // Auto-mark messages as read when new messages arrive and chat is open
+      if (hasMarkedRead) {
+        markMessagesAsRead(chatId);
+      }
+    }, (error) => {
+      console.error("Error fetching messages:", error);
+    });
+    
+    // Mark messages as read when chat is opened or office changes
+    const markRead = async () => {
+      await markMessagesAsRead(chatId);
+      setHasMarkedRead(true);
+    };
+    
+    markRead();
+    
+    return () => unsubscribe();
+  }, [selectedOffice, currentOffice]);
+
+  // Effect to mark messages as read when chat is focused
+  useEffect(() => {
+    if (!selectedOffice || !hasMarkedRead) return;
+    
+    const chatId = [currentOffice, selectedOffice].sort().join('_');
+    
+    // Mark any new unread messages as read when component updates
+    const markNewMessages = async () => {
+      await markMessagesAsRead(chatId);
+    };
+    
+    markNewMessages();
+  }, [messages, selectedOffice, hasMarkedRead]);
+
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
+  };
+
+  const formatTime = (timestamp) => {
+    if (!timestamp) return '';
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const formattedHours = hours % 12 || 12;
+    return `${formattedHours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+  };
+
+  const formatReadTime = (timestamp) => {
+    if (!timestamp) return '';
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const formattedHours = hours % 12 || 12;
+    return `${formattedHours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+  };
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !selectedOffice) return;
+    
+    setIsLoading(true);
+    
+    try {
+      const chatId = [currentOffice, selectedOffice].sort().join('_');
+      const messagesRef = collection(db, "chats", chatId, "messages");
+      
+      await addDoc(messagesRef, {
+        text: newMessage.trim(),
+        sender: currentOffice,
+        senderName: currentUser?.name || currentOffice,
+        receiver: selectedOffice,
+        timestamp: serverTimestamp(),
+        read: false,
+        readAt: null
+      });
+      
+      setNewMessage("");
+    } catch (error) {
+      console.error("Error sending message:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Get unread count for current chat
+  const getUnreadCount = () => {
+    return messages.filter(msg => 
+      msg.receiver === currentOffice && 
+      !msg.read && 
+      msg.sender !== currentOffice
+    ).length;
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95, y: 20 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95, y: 20 }}
+      transition={{ type: "spring", damping: 25, stiffness: 300 }}
+      className="fixed bottom-24 right-6 w-[380px] h-[550px] rounded-2xl overflow-hidden z-[100] shadow-2xl flex flex-col"
+      style={{
+        background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+        border: '1px solid rgba(255,255,255,0.03)',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+      }}
+    >
+      {/* Chat Header - FIXED AT TOP */}
+      <div 
+        className="relative z-10 p-4 border-b border-white/5 flex-shrink-0"
+        style={{
+          background: 'linear-gradient(135deg, rgba(249, 115, 22, 0.1), rgba(236, 72, 153, 0.1))'
+        }}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-orange-500 to-pink-500 flex items-center justify-center">
+              <MdChat className="text-white" size={18} />
+            </div>
+            <div>
+              <h3 className="text-white font-semibold">Office Chat</h3>
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-gray-400">
+                  {selectedOffice ? `Chatting with ${selectedOffice}` : 'Select an office'}
+                </p>
+                {getUnreadCount() > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.5 bg-orange-500/20 text-orange-300 rounded-full">
+                    {getUnreadCount()} unread
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1 rounded-lg text-gray-400 hover:text-white transition-colors"
+            style={{
+              background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+              boxShadow: '3px 3px 6px #050505, -3px -3px 6px #1f1f2a'
+            }}
+          >
+            <MdClose size={18} />
+          </button>
+        </div>
+      </div>
+
+      {/* Office Selector - FIXED BELOW HEADER */}
+      <div className="relative z-10 p-3 border-b border-white/5 flex-shrink-0">
+        <select
+          value={selectedOffice}
+          onChange={(e) => setSelectedOffice(e.target.value)}
+          className="w-full px-3 py-2 rounded-xl text-white text-sm bg-transparent border border-white/10 focus:border-orange-500 transition-colors"
+          style={{
+            background: 'linear-gradient(145deg, #0a0a0f, #1a1a2a)'
+          }}
+        >
+          {offices.map(office => (
+            <option key={office} value={office} className="bg-gray-900">
+              {office}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Messages Container - SCROLLABLE AREA */}
+      <div 
+        ref={chatContainerRef}
+        className="relative z-10 flex-1 overflow-y-auto p-4 space-y-2 min-h-0"
+      >
+        {messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <MdChat className="text-gray-600 text-4xl mb-2" />
+            <p className="text-gray-400 text-sm">No messages yet</p>
+            <p className="text-gray-500 text-xs">Start a conversation with {selectedOffice}</p>
+          </div>
+        ) : (
+          messages.map((message) => (
+            <ChatMessage
+              key={message.id}
+              message={{
+                ...message,
+                formattedTime: formatTime(message.timestamp),
+                readTime: message.readAt ? formatReadTime(message.readAt) : null
+              }}
+              isOwnMessage={message.sender === currentOffice}
+            />
+          ))
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Message Input - FIXED AT BOTTOM */}
+      <form onSubmit={handleSendMessage} className="relative z-10 p-3 border-t border-white/5 flex-shrink-0">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            placeholder={`Message ${selectedOffice || 'office'}...`}
+            disabled={!selectedOffice}
+            className="flex-1 px-4 py-2 rounded-xl text-white placeholder-gray-500 text-sm transition-all duration-300"
+            style={{
+              background: 'linear-gradient(145deg, #0a0a0f, #1a1a2a)',
+              boxShadow: 'inset 3px 3px 6px #050505, inset -3px -3px 6px #1f1f2a',
+              border: '1px solid rgba(255,255,255,0.03)'
+            }}
+          />
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            type="submit"
+            disabled={!selectedOffice || !newMessage.trim() || isLoading}
+            className="px-4 py-2 rounded-xl text-white font-medium transition-all duration-200 relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+            style={{
+              background: 'linear-gradient(135deg, #f97316, #ec4899)',
+              boxShadow: '0 4px 12px rgba(249, 115, 22, 0.3)'
+            }}
+          >
+            <MdSend size={18} />
+          </motion.button>
+        </div>
+      </form>
+    </motion.div>
+  );
+};
+
 const Navbar = () => {
   const { user } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
@@ -183,10 +601,11 @@ const Navbar = () => {
   const { isSidebarCollapsed, setIsSidebarCollapsed } = useContext(SidebarContext);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [isHovering, setIsHovering] = useState(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
   
   // Change Password States
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
@@ -231,43 +650,92 @@ const Navbar = () => {
   const currentUser = getCurrentUser();
   const userOffice = currentUser?.office || '';
 
-  // Sample notifications data
-  const notifications = [
-    {
-      id: 1,
-      title: "New File Received",
-      message: "Budget Report Q1 2024",
-      time: "5 minutes ago",
-      type: "receive",
-      read: false
-    },
-    {
-      id: 2,
-      title: "File Sent Successfully",
-      message: "Annual Financial Statement",
-      time: "1 hour ago",
-      type: "send",
-      read: false
-    },
-    {
-      id: 3,
-      title: "Print Job Completed",
-      message: "Payroll Summary - March",
-      time: "3 hours ago",
-      type: "print",
-      read: true
-    },
-    {
-      id: 4,
-      title: "Task Assigned",
-      message: "Review Q2 Documents",
-      time: "1 day ago",
-      type: "task",
-      read: true
-    }
-  ];
+  // Subscribe to unread messages count
+  // Update the unreadChatCount useEffect sa Navbar
+useEffect(() => {
+  if (!userOffice) return;
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const fetchUnreadCount = async () => {
+    try {
+      const usersRef = collection(db, "users");
+      const usersSnapshot = await getDocs(usersRef);
+      const otherOffices = [];
+      usersSnapshot.forEach(doc => {
+        const userData = doc.data();
+        if (userData.office && userData.office !== userOffice) {
+          otherOffices.push(userData.office);
+        }
+      });
+
+      let totalUnread = 0;
+      for (const office of otherOffices) {
+        const chatId = [userOffice, office].sort().join('_');
+        const messagesRef = collection(db, "chats", chatId, "messages");
+        const q = query(messagesRef, where("receiver", "==", userOffice), where("read", "==", false));
+        const snapshot = await getDocs(q);
+        totalUnread += snapshot.size;
+      }
+      setUnreadChatCount(totalUnread);
+    } catch (error) {
+      console.error("Error fetching unread count:", error);
+    }
+  };
+
+  fetchUnreadCount();
+  
+  // Set up real-time listener for unread messages
+  const setupUnreadListener = async () => {
+    try {
+      const usersRef = collection(db, "users");
+      const usersSnapshot = await getDocs(usersRef);
+      const otherOffices = [];
+      usersSnapshot.forEach(doc => {
+        const userData = doc.data();
+        if (userData.office && userData.office !== userOffice) {
+          otherOffices.push(userData.office);
+        }
+      });
+
+      // Set up listeners for each chat
+      const unsubscribes = [];
+      for (const office of otherOffices) {
+        const chatId = [userOffice, office].sort().join('_');
+        const messagesRef = collection(db, "chats", chatId, "messages");
+        const q = query(messagesRef, where("receiver", "==", userOffice), where("read", "==", false));
+        
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+          // Update total unread count
+          setUnreadChatCount(prev => {
+            // Recalculate all unread counts
+            const recalculateUnread = async () => {
+              let newTotal = 0;
+              for (const otherOffice of otherOffices) {
+                const otherChatId = [userOffice, otherOffice].sort().join('_');
+                const otherMessagesRef = collection(db, "chats", otherChatId, "messages");
+                const otherQ = query(otherMessagesRef, where("receiver", "==", userOffice), where("read", "==", false));
+                const otherSnapshot = await getDocs(otherQ);
+                newTotal += otherSnapshot.size;
+              }
+              return newTotal;
+            };
+            recalculateUnread().then(setUnreadChatCount);
+            return prev;
+          });
+        });
+        
+        unsubscribes.push(unsubscribe);
+      }
+      
+      return () => {
+        unsubscribes.forEach(unsubscribe => unsubscribe());
+      };
+    } catch (error) {
+      console.error("Error setting up unread listener:", error);
+    }
+  };
+  
+  setupUnreadListener();
+}, [userOffice]);
 
   // Determine which links to show based on office
   const getOfficeLinks = () => {
@@ -284,6 +752,33 @@ const Navbar = () => {
     dispatch(logout());
     navigate('/log-in');
   };
+  const refreshUnreadCount = async () => {
+  if (!userOffice) return;
+  
+  try {
+    const usersRef = collection(db, "users");
+    const usersSnapshot = await getDocs(usersRef);
+    const otherOffices = [];
+    usersSnapshot.forEach(doc => {
+      const userData = doc.data();
+      if (userData.office && userData.office !== userOffice) {
+        otherOffices.push(userData.office);
+      }
+    });
+
+    let totalUnread = 0;
+    for (const office of otherOffices) {
+      const chatId = [userOffice, office].sort().join('_');
+      const messagesRef = collection(db, "chats", chatId, "messages");
+      const q = query(messagesRef, where("receiver", "==", userOffice), where("read", "==", false));
+      const snapshot = await getDocs(q);
+      totalUnread += snapshot.size;
+    }
+    setUnreadChatCount(totalUnread);
+  } catch (error) {
+    console.error("Error refreshing unread count:", error);
+  }
+};
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -324,7 +819,6 @@ const Navbar = () => {
     setIsLoading(true);
     
     try {
-      // Get the current user ID from localStorage or Redux
       const userId = currentUser?.id || currentUser?.uid;
       
       if (!userId) {
@@ -333,10 +827,7 @@ const Navbar = () => {
         return;
       }
       
-      // Reference to the user document in Firestore
       const userRef = doc(db, "users", userId);
-      
-      // Get the current user data to verify old password
       const userDoc = await getDoc(userRef);
       
       if (!userDoc.exists()) {
@@ -347,21 +838,18 @@ const Navbar = () => {
       
       const userData = userDoc.data();
       
-      // Verify current password matches the one in Firestore
       if (userData.password !== passwordData.currentPassword) {
         setPasswordError("Current password is incorrect");
         setIsLoading(false);
         return;
       }
       
-      // Update password in Firestore
       await updateDoc(userRef, {
         password: passwordData.newPassword,
         passwordUpdatedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       });
       
-      // Update local storage if user data is stored there
       const storedUser = localStorage.getItem("auth_user_v1");
       if (storedUser) {
         const parsedUser = JSON.parse(storedUser);
@@ -369,16 +857,14 @@ const Navbar = () => {
         localStorage.setItem("auth_user_v1", JSON.stringify(parsedUser));
       }
       
-      setPasswordSuccess("Password changed successfully in Firestore!");
+      setPasswordSuccess("Password changed successfully!");
       
-      // Clear form
       setPasswordData({
         currentPassword: "",
         newPassword: "",
         confirmPassword: ""
       });
       
-      // Close modal after 2 seconds
       setTimeout(() => {
         setIsChangePasswordOpen(false);
         setPasswordSuccess("");
@@ -399,23 +885,7 @@ const Navbar = () => {
     }));
   };
 
-  const NotificationIcon = ({ type }) => {
-    switch(type) {
-      case 'receive':
-        return <MdDownload className="text-amber-400" size={16} />;
-      case 'send':
-        return <MdSend className="text-orange-400" size={16} />;
-      case 'print':
-        return <MdPrint className="text-purple-400" size={16} />;
-      case 'task':
-        return <MdTaskAlt className="text-rose-400" size={16} />;
-      default:
-        return <MdNotificationsNone className="text-gray-400" size={16} />;
-    }
-  };
-
   const NavLink = ({ el, isMobile = false }) => {
-    // Better path matching to determine active state
     const currentPath = location.pathname;
     const linkPath = `/${el.link}`;
     const isActive = currentPath === linkPath || 
@@ -437,7 +907,6 @@ const Navbar = () => {
           color: isActive ? '#ffffff' : '#9ca3af',
         }}
       >
-        {/* Simple background for active state */}
         {isActive && (
           <div 
             className="absolute inset-0 rounded-xl"
@@ -447,24 +916,10 @@ const Navbar = () => {
             }}
           />
         )}
-
-        {/* Icon */}
-        <span 
-          className="relative z-10"
-          style={{
-            color: isActive ? '#ffffff' : '#9ca3af',
-          }}
-        >
+        <span className="relative z-10" style={{ color: isActive ? '#ffffff' : '#9ca3af' }}>
           {el.icon}
         </span>
-
-        {/* Label */}
-        <span 
-          className="relative z-10 font-medium whitespace-nowrap"
-          style={{
-            color: isActive ? '#ffffff' : '#9ca3af',
-          }}
-        >
+        <span className="relative z-10 font-medium whitespace-nowrap" style={{ color: isActive ? '#ffffff' : '#9ca3af' }}>
           {el.label}
         </span>
       </Link>
@@ -484,7 +939,6 @@ const Navbar = () => {
       >
         {/* Abstract sphere background effects */}
         <div className="absolute inset-0 overflow-hidden">
-          {/* Floating spheres */}
           <motion.div
             animate={{
               x: mousePosition.x,
@@ -546,7 +1000,6 @@ const Navbar = () => {
         <div className="relative z-10 px-4 sm:px-6 py-3 flex items-center justify-between">
           {/* Left Section - Logo and Mobile Menu Button */}
           <div className="flex items-center gap-4">
-            {/* Mobile Menu Toggle */}
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={toggleMobileMenu}
@@ -559,13 +1012,11 @@ const Navbar = () => {
               {isMobileMenuOpen ? <MdClose /> : <MdMenu />}
             </motion.button>
 
-            {/* Logo and Title with 3D effect */}
             <motion.div 
               whileHover={{ scale: 1.05 }}
               className="flex items-center gap-3"
             >
               <div className="relative">
-                {/* 3D Logo Container */}
                 <div className="w-11 h-11 rounded-xl overflow-hidden"
                   style={{
                     boxShadow: '8px 8px 15px #050505, -8px -8px 15px #1f1f2a, inset 0 1px 2px rgba(255,255,255,0.1)',
@@ -577,7 +1028,6 @@ const Navbar = () => {
                     className="w-full h-full object-cover"
                   />
                 </div>
-                {/* Glow effect */}
                 <div className="absolute -inset-0.5 bg-gradient-to-r from-orange-500 to-pink-500 rounded-xl opacity-20 blur-sm" />
               </div>
               
@@ -611,25 +1061,25 @@ const Navbar = () => {
 
           {/* Right Section - User Info, Clock, and Avatar */}
           <div className="flex items-center gap-2">
-            {/* Real-time Clock - REPLACED question mark icon */}
+            {/* Real-time Clock */}
             <RealtimeClock />
 
-            {/* Standalone Notification Bell */}
+            {/* Chat Button - REPLACED notification bell */}
             <div className="relative">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                onClick={() => setIsChatOpen(!isChatOpen)}
                 className="relative p-2.5 rounded-xl text-gray-400 hover:text-white transition-all duration-300"
                 style={{
                   background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
-                  boxShadow: isNotificationOpen 
+                  boxShadow: isChatOpen 
                     ? 'inset 3px 3px 6px #050505, inset -3px -3px 6px #1f1f2a'
                     : '5px 5px 10px #050505, -5px -5px 10px #1f1f2a',
                 }}
               >
-                <MdNotificationsNone size={20} />
-                {unreadCount > 0 && (
+                <MdChat size={20} />
+                {unreadChatCount > 0 && (
                   <motion.span
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
@@ -639,88 +1089,10 @@ const Navbar = () => {
                       border: '2px solid #0a0a0f'
                     }}
                   >
-                    {unreadCount}
+                    {unreadChatCount}
                   </motion.span>
                 )}
               </motion.button>
-
-              {/* Notifications Dropdown */}
-              <AnimatePresence>
-                {isNotificationOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                    transition={{ duration: 0.2 }}
-                    className="absolute right-0 mt-3 w-96 rounded-2xl overflow-hidden z-50"
-                    style={{
-                      background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
-                      boxShadow: '20px 20px 40px -10px #050505, -20px -20px 40px -10px #1f1f2a, inset 0 1px 2px rgba(255,255,255,0.05)',
-                      border: '1px solid rgba(255,255,255,0.03)'
-                    }}
-                  >
-                    {/* Abstract sphere overlay */}
-                    <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-gradient-to-br from-orange-500/10 to-pink-500/10 blur-2xl pointer-events-none" />
-                    
-                    {/* Header */}
-                    <div className="relative z-10 p-4 border-b border-white/5 flex items-center justify-between">
-                      <h3 className="text-white font-semibold">Notifications</h3>
-                      {unreadCount > 0 && (
-                        <span className="text-xs text-orange-400 bg-orange-500/10 px-2 py-1 rounded-full">
-                          {unreadCount} unread
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Notifications List */}
-                    <div className="relative z-10 max-h-96 overflow-y-auto">
-                      {notifications.map((notification) => (
-                        <motion.div
-                          key={notification.id}
-                          whileHover={{ backgroundColor: 'rgba(255,255,255,0.03)' }}
-                          className={`p-4 border-b border-white/5 cursor-pointer transition-colors duration-200 ${
-                            !notification.read ? 'bg-orange-500/5' : ''
-                          }`}
-                        >
-                          <div className="flex gap-3">
-                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center
-                              ${notification.type === 'receive' ? 'bg-amber-500/10' : ''}
-                              ${notification.type === 'send' ? 'bg-orange-500/10' : ''}
-                              ${notification.type === 'print' ? 'bg-purple-500/10' : ''}
-                              ${notification.type === 'task' ? 'bg-rose-500/10' : ''}
-                            `}>
-                              <NotificationIcon type={notification.type} />
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between">
-                                <h4 className="text-sm font-semibold text-white">
-                                  {notification.title}
-                                </h4>
-                                {!notification.read && (
-                                  <span className="w-2 h-2 bg-orange-500 rounded-full" />
-                                )}
-                              </div>
-                              <p className="text-xs text-gray-400 mt-1">
-                                {notification.message}
-                              </p>
-                              <p className="text-[10px] text-gray-500 mt-1">
-                                {notification.time}
-                              </p>
-                            </div>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-
-                    {/* Footer */}
-                    <div className="relative z-10 p-3 border-t border-white/5">
-                      <button className="w-full text-center text-sm text-orange-400 hover:text-orange-300 transition-colors">
-                        Mark all as read
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </div>
 
             {/* User Menu with 3D effect */}
@@ -740,13 +1112,11 @@ const Navbar = () => {
                   border: '1px solid rgba(255,255,255,0.03)'
                 }}
               >
-                
                 <div className="hidden md:block text-left">
                   <p className="text-xs text-gray-400">Welcome back,</p>
                   <p className="text-sm font-semibold text-white flex items-center gap-2">
                     {currentUser?.name?.split(' ')[0] || 'User'}
                     
-                    {/* Office Badge with 3D effect */}
                     <span className="px-2 py-0.5 text-[10px] font-medium bg-gradient-to-r from-orange-500/20 to-pink-500/20 text-orange-300 rounded-md"
                       style={{
                         boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.1), 0 2px 4px rgba(0,0,0,0.2)',
@@ -766,7 +1136,7 @@ const Navbar = () => {
                 </motion.div>
               </motion.button>
 
-              {/* User Dropdown Menu with 3D effect */}
+              {/* User Dropdown Menu */}
               <AnimatePresence>
                 {isUserMenuOpen && (
                   <motion.div
@@ -781,10 +1151,8 @@ const Navbar = () => {
                       border: '1px solid rgba(255,255,255,0.03)'
                     }}
                   >
-                    {/* Abstract sphere overlay */}
                     <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-gradient-to-br from-orange-500/10 to-pink-500/10 blur-2xl pointer-events-none" />
                     
-                    {/* Header with user info */}
                     <div className="relative z-10 p-5 border-b border-white/5">
                       <div className="flex items-center gap-4">
                         <div className="relative">
@@ -814,7 +1182,6 @@ const Navbar = () => {
                       </div>
                     </div>
 
-                    {/* Menu Items */}
                     <div className="relative z-10 p-2 space-y-1">
                       <button
                         onClick={() => {
@@ -826,8 +1193,6 @@ const Navbar = () => {
                           background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
                           boxShadow: '3px 3px 6px #050505, -3px -3px 6px #1f1f2a'
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(145deg, #1a1a2a, #0a0a0f)'}
                       >
                         <MdLock size={18} className="text-gray-400" />
                         <span className="text-sm">Change Password</span>
@@ -840,15 +1205,12 @@ const Navbar = () => {
                           background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
                           boxShadow: '3px 3px 6px #050505, -3px -3px 6px #1f1f2a'
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(145deg, #1a1a2a, #0a0a0f)'}
                       >
                         <MdLogout size={18} className="text-gray-400" />
                         <span className="text-sm">Logout</span>
                       </button>
                     </div>
 
-                    {/* Footer */}
                     <div className="relative z-10 p-3 border-t border-white/5">
                       <p className="text-[10px] text-center text-gray-500">
                         Version 2.0.0 • Secure System
@@ -866,7 +1228,6 @@ const Navbar = () => {
       <AnimatePresence>
         {isMobileMenuOpen && (
           <>
-            {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -875,7 +1236,6 @@ const Navbar = () => {
               className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 lg:hidden"
             />
 
-            {/* Mobile Menu Panel with 3D effect */}
             <motion.div
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
@@ -888,10 +1248,8 @@ const Navbar = () => {
                 borderRight: '1px solid rgba(255,255,255,0.03)'
               }}
             >
-              {/* Abstract sphere overlay */}
               <div className="absolute -right-20 -top-20 w-60 h-60 rounded-full bg-gradient-to-br from-orange-500/10 to-pink-500/10 blur-3xl pointer-events-none" />
               
-              {/* Mobile Menu Header with 3D effect */}
               <div className="relative z-10 p-5 border-b border-white/5">
                 <div className="flex items-center gap-4">
                   <div className="relative">
@@ -917,14 +1275,12 @@ const Navbar = () => {
                 </div>
               </div>
 
-              {/* Mobile Navigation Links */}
               <div className="relative z-10 p-3 space-y-1">
                 {sidebarLinks.map((link) => (
                   <NavLink key={link.label} el={link} isMobile={true} />
                 ))}
               </div>
 
-              {/* Mobile User Info with 3D effect */}
               <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/5"
                 style={{
                   background: 'linear-gradient(0deg, #0a0a0f, transparent)'
@@ -959,8 +1315,6 @@ const Navbar = () => {
                       background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
                       boxShadow: '3px 3px 6px #050505, -3px -3px 6px #1f1f2a'
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(145deg, #1a1a2a, #0a0a0f)'}
                   >
                     <MdLogout size={18} />
                   </button>
@@ -971,11 +1325,22 @@ const Navbar = () => {
         )}
       </AnimatePresence>
 
-      {/* Change Password Modal - FIRESTORE VERSION */}
+      {/* Chat Modal */}
+     <AnimatePresence>
+  {isChatOpen && (
+    <ChatComponent 
+      currentUser={currentUser} 
+      onClose={() => setIsChatOpen(false)}
+      onUnreadCountUpdate={refreshUnreadCount}
+    />
+  )}
+</AnimatePresence>
+
+
+      {/* Change Password Modal */}
       <AnimatePresence>
         {isChangePasswordOpen && (
           <>
-            {/* Modal Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -984,7 +1349,6 @@ const Navbar = () => {
               className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100]"
             />
 
-            {/* Modal Content */}
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -1000,11 +1364,9 @@ const Navbar = () => {
                   border: '1px solid rgba(255,255,255,0.03)'
                 }}
               >
-                {/* Abstract sphere overlay */}
                 <div className="absolute -right-20 -top-20 w-60 h-60 rounded-full bg-gradient-to-br from-orange-500/10 to-pink-500/10 blur-3xl pointer-events-none" />
                 <div className="absolute -left-20 -bottom-20 w-60 h-60 rounded-full bg-gradient-to-tr from-purple-500/10 to-indigo-500/10 blur-3xl pointer-events-none" />
                 
-                {/* Modal Header */}
                 <div className="relative z-10 p-6 border-b border-white/5 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-orange-500/10">
@@ -1019,16 +1381,12 @@ const Navbar = () => {
                       background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
                       boxShadow: '3px 3px 6px #050505, -3px -3px 6px #1f1f2a'
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(145deg, #1a1a2a, #0a0a0f)'}
                   >
                     <MdCloseIcon size={20} />
                   </button>
                 </div>
 
-                {/* Modal Body */}
                 <form onSubmit={handlePasswordChange} className="relative z-10 p-6 space-y-4">
-                  {/* Current Password */}
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                       Current Password
@@ -1056,7 +1414,6 @@ const Navbar = () => {
                     </div>
                   </div>
 
-                  {/* New Password */}
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                       New Password
@@ -1084,7 +1441,6 @@ const Navbar = () => {
                     </div>
                   </div>
 
-                  {/* Confirm Password */}
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                       Confirm Password
@@ -1112,7 +1468,6 @@ const Navbar = () => {
                     </div>
                   </div>
 
-                  {/* Error Message */}
                   {passwordError && (
                     <motion.div
                       initial={{ opacity: 0, y: -10 }}
@@ -1123,7 +1478,6 @@ const Navbar = () => {
                     </motion.div>
                   )}
 
-                  {/* Success Message */}
                   {passwordSuccess && (
                     <motion.div
                       initial={{ opacity: 0, y: -10 }}
@@ -1134,7 +1488,6 @@ const Navbar = () => {
                     </motion.div>
                   )}
 
-                  {/* Action Buttons */}
                   <div className="flex gap-3 pt-4">
                     <button
                       type="button"
@@ -1145,8 +1498,6 @@ const Navbar = () => {
                         boxShadow: '5px 5px 10px #050505, -5px -5px 10px #1f1f2a',
                         border: '1px solid rgba(255,255,255,0.03)'
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(145deg, #1a1a2a, #0a0a0f)'}
                     >
                       Cancel
                     </button>
@@ -1158,16 +1509,6 @@ const Navbar = () => {
                         background: 'linear-gradient(135deg, #f97316, #ec4899)',
                         boxShadow: '0 10px 20px -5px #f97316',
                         opacity: isLoading ? 0.7 : 1
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isLoading) {
-                          e.currentTarget.style.background = 'linear-gradient(135deg, #fb923c, #f472b6)';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isLoading) {
-                          e.currentTarget.style.background = 'linear-gradient(135deg, #f97316, #ec4899)';
-                        }
                       }}
                     >
                       {isLoading ? (

@@ -260,6 +260,68 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
     }
   };
 
+  // ========== CALCULATION LOGIC FROM MODALSEND_MAYOR.JSX ==========
+  // Formula Functions (based on PAYROLL.xlsx)
+  const calculateAmountAccrued = (monthlyRate) => {
+    const rate = parseFloat(monthlyRate) || 0;
+    return (rate / 2).toFixed(2);
+  };
+
+  const calculatePhilhealthShare = (monthlyRate) => {
+    const rate = parseFloat(monthlyRate) || 0;
+    return (rate * 0.025).toFixed(2);
+  };
+
+  const calculateGSISPersonal = (monthlyRate) => {
+    const rate = parseFloat(monthlyRate) || 0;
+    return (rate * 0.09).toFixed(2);
+  };
+
+  const calculateGSISGovernment = (monthlyRate) => {
+    const rate = parseFloat(monthlyRate) || 0;
+    return (rate * 0.12).toFixed(2);
+  };
+
+  const calculatePagibigPersonal = (monthlyRate) => {
+    const rate = parseFloat(monthlyRate) || 0;
+    return (rate * 0.02).toFixed(2);
+  };
+
+  const calculatePagibigGovernment = () => {
+    return "200.00";
+  };
+
+  const calculatePaidInCash = (employee) => {
+    // Formula: = H - I - J - K - M - O - Q - R - S - T - U
+    // Includes ALL deductions and loans:
+    // H = Amount Accrued
+    // I = GSIS EDUC LOAN
+    // J = GSIS MPL LOAN
+    // K = PHILHEALTH Personal
+    // M = GSIS Personal
+    // O = Pag-ibig Personal
+    // Q = LBP LOAN
+    // R = GFAL LOAN
+    // S = GSIS MPL Lite
+    // T = Pag-ibig LOAN (MPL)
+    // U = E.C.
+    
+    const h = parseFloat(employee.amountAccrued) || 0;
+    const i = parseFloat(employee.gsisEduLoan) || 0;
+    const j = parseFloat(employee.gsisMplLoan) || 0;
+    const k = parseFloat(employee.philhealthPersonal) || 0;
+    const m = parseFloat(employee.gsisPersonal) || 0;
+    const o = parseFloat(employee.pagibigPersonal) || 0;
+    const q = parseFloat(employee.lbpLoan) || 0;
+    const r = parseFloat(employee.gfalLoan) || 0;
+    const s = parseFloat(employee.gsisLiteLoan) || 0;
+    const t = parseFloat(employee.pagibigMpl) || 0;
+    const u = parseFloat(employee.ec) || 0;
+    
+    return (h - i - j - k - m - o - q - r - s - t - u).toFixed(2);
+  };
+  // ========== END OF CALCULATION LOGIC ==========
+
   // Handle checkbox change for senior citizen status
   const handleCheckboxChange = useCallback((employeeName, isSenior) => {
     if (!editingEnabled) {
@@ -283,7 +345,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
     }
   }, [editingEnabled]);
 
-  // Memoized input change handler
+  // Memoized input change handler with auto-calculation
   const handleInputChange = useCallback((employeeName, field, value) => {
     if (!editingEnabled) {
       alert('⚠️ Please mark this file as received first before editing.');
@@ -293,18 +355,67 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
     try {
       setAllEmployeeChanges(prev => {
         const employeeChanges = prev[employeeName] || {};
+        const currentData = employeeData[employeeName] || {};
+        
+        // Get the updated monthly rate (either from changes or original)
+        let monthlyRate;
+        if (field === 'monthlyRate') {
+          monthlyRate = value;
+        } else {
+          monthlyRate = employeeChanges.monthlyRate !== undefined ? 
+            employeeChanges.monthlyRate : currentData.monthlyRate;
+        }
+        
+        // Create base changes
+        const newChanges = {
+          ...employeeChanges,
+          [field]: value
+        };
+        
+        // Auto-calculate dependent fields if monthlyRate changed
+        if (field === 'monthlyRate') {
+          const rate = parseFloat(value) || 0;
+          
+          // Auto-calculate all formula-based fields
+          newChanges.amountAccrued = calculateAmountAccrued(rate);
+          newChanges.philhealthPersonal = calculatePhilhealthShare(rate);
+          newChanges.philhealthGovernment = calculatePhilhealthShare(rate);
+          newChanges.gsisPersonal = calculateGSISPersonal(rate);
+          newChanges.gsisGovernment = calculateGSISGovernment(rate);
+          newChanges.pagibigPersonal = calculatePagibigPersonal(rate);
+          newChanges.pagibigGovernment = calculatePagibigGovernment();
+        }
+        
+        // Create updated employee object with ALL fields for Paid in Cash calculation
+        const updatedEmployee = {
+          ...currentData,
+          ...newChanges,
+          // Ensure all loan fields are included
+          gsisEduLoan: newChanges.gsisEduLoan !== undefined ? newChanges.gsisEduLoan : currentData.gsisEduLoan,
+          gsisMplLoan: newChanges.gsisMplLoan !== undefined ? newChanges.gsisMplLoan : currentData.gsisMplLoan,
+          lbpLoan: newChanges.lbpLoan !== undefined ? newChanges.lbpLoan : currentData.lbpLoan,
+          gfalLoan: newChanges.gfalLoan !== undefined ? newChanges.gfalLoan : currentData.gfalLoan,
+          gsisLiteLoan: newChanges.gsisLiteLoan !== undefined ? newChanges.gsisLiteLoan : currentData.gsisLiteLoan,
+          pagibigMpl: newChanges.pagibigMpl !== undefined ? newChanges.pagibigMpl : currentData.pagibigMpl,
+          ec: newChanges.ec !== undefined ? newChanges.ec : currentData.ec,
+          amountAccrued: newChanges.amountAccrued !== undefined ? newChanges.amountAccrued : currentData.amountAccrued,
+          philhealthPersonal: newChanges.philhealthPersonal !== undefined ? newChanges.philhealthPersonal : currentData.philhealthPersonal,
+          gsisPersonal: newChanges.gsisPersonal !== undefined ? newChanges.gsisPersonal : currentData.gsisPersonal,
+          pagibigPersonal: newChanges.pagibigPersonal !== undefined ? newChanges.pagibigPersonal : currentData.pagibigPersonal,
+        };
+        
+        // Recalculate Paid in Cash after any changes to deductions or loans
+        newChanges.paidInCash = calculatePaidInCash(updatedEmployee);
+        
         return {
           ...prev,
-          [employeeName]: {
-            ...employeeChanges,
-            [field]: value
-          }
+          [employeeName]: newChanges
         };
       });
     } catch (error) {
       console.error('Error in handleInputChange:', error);
     }
-  }, [editingEnabled]);
+  }, [editingEnabled, employeeData]);
 
   const getEmployeeValue = useCallback((employeeName, field) => {
     try {
@@ -326,7 +437,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
     return 'non-senior';
   }, [allEmployeeChanges]);
 
-  const calculateAmountAccrued = useCallback((monthlyRate) => {
+  const calculateAmountAccruedOld = useCallback((monthlyRate) => {
     try {
       if (monthlyRate) {
         return (parseFloat(monthlyRate) / 2).toFixed(2);
@@ -528,6 +639,13 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
     </div>
   ), []);
 
+  // FormulaCell component for auto-calculated cells
+  const FormulaCell = useCallback(({ value, className = '', bgColor = 'bg-gray-50' }) => (
+    <div className={`w-full px-1 py-0.5 text-right text-xs ${bgColor} ${className}`}>
+      {formatNumber(value)}
+    </div>
+  ), []);
+
   // Format number with commas (for regular rows - show empty if zero)
   const formatNumber = (value) => {
     if (value === undefined || value === null || value === '' || value === 0 || value === '0') {
@@ -715,7 +833,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
 
       const updateData = {
         timestamp: serverTimestamp(),
-        status: 'checked',
+        status: 'checked', // Always "checked" regardless of updates
         lastCheckedAt: new Date().toISOString(),
       };
 
@@ -732,7 +850,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
           fileData: base64String,
           updatedEmployees: updatedEmployees,
           seniorEmployees: seniorEmployees,
-          status: 'updated',
+          // REMOVED: status: 'updated', so status remains "checked"
           originalFileName: file.originalFileName || file.fileName
         });
       }
@@ -758,16 +876,18 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
 
       alert(successMessage);
       
-      if (Object.keys(allEmployeeChanges).length === 0) {
-        setAllEmployeeChanges({});
+      // 🔥 I-RESET ANG MGA CHANGES UG I-CLOSE ANG MODAL
+      setAllEmployeeChanges({});
+      
+      // ✅ GAMITAG setTimeout PARA SIGURADONG MAKITA ANG ALERT BEFORE CLOSE
+      setTimeout(() => {
         onClose();
-      } else {
-        setAllEmployeeChanges({});
-      }
+      }, 100);
       
     } catch (error) {
       console.error('Error checking/updating file in Firestore:', error);
       alert(`❌ Error ${Object.keys(allEmployeeChanges).length > 0 ? 'updating' : 'checking'} file in Firestore. Please try again.`);
+      setIsSending(false);
     } finally {
       setIsSending(false);
     }
@@ -951,23 +1071,29 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
   // Calculate totals for each section
   const calculateSectionTotals = (sectionEmployees) => {
     return sectionEmployees.reduce((totals, emp) => {
+      // Get current values (either changed or original)
+      const getValue = (field) => {
+        const changed = allEmployeeChanges[emp.name]?.[field];
+        return changed !== undefined ? parseFloat(changed) || 0 : parseFloat(emp[field]) || 0;
+      };
+
       return {
-        monthlyRate: totals.monthlyRate + (parseFloat(emp.monthlyRate) || 0),
-        amountAccrued: totals.amountAccrued + (parseFloat(emp.amountAccrued) || 0),
-        gsisEduLoan: totals.gsisEduLoan + (parseFloat(emp.gsisEduLoan) || 0),
-        gsisMplLoan: totals.gsisMplLoan + (parseFloat(emp.gsisMplLoan) || 0),
-        philhealthPersonal: totals.philhealthPersonal + (parseFloat(emp.philhealthPersonal) || 0),
-        philhealthGovernment: totals.philhealthGovernment + (parseFloat(emp.philhealthGovernment) || 0),
-        gsisPersonal: totals.gsisPersonal + (parseFloat(emp.gsisPersonal) || 0),
-        gsisGovernment: totals.gsisGovernment + (parseFloat(emp.gsisGovernment) || 0),
-        pagibigPersonal: totals.pagibigPersonal + (parseFloat(emp.pagibigPersonal) || 0),
-        pagibigGovernment: totals.pagibigGovernment + (parseFloat(emp.pagibigGovernment) || 0),
-        lbpLoan: totals.lbpLoan + (parseFloat(emp.lbpLoan) || 0),
-        gfalLoan: totals.gfalLoan + (parseFloat(emp.gfalLoan) || 0),
-        gsisLiteLoan: totals.gsisLiteLoan + (parseFloat(emp.gsisLiteLoan) || 0),
-        pagibigMpl: totals.pagibigMpl + (parseFloat(emp.pagibigMpl) || 0),
-        ec: totals.ec + (parseFloat(emp.ec) || 0),
-        paidInCash: totals.paidInCash + (parseFloat(emp.paidInCash) || 0)
+        monthlyRate: totals.monthlyRate + getValue('monthlyRate'),
+        amountAccrued: totals.amountAccrued + getValue('amountAccrued'),
+        gsisEduLoan: totals.gsisEduLoan + getValue('gsisEduLoan'),
+        gsisMplLoan: totals.gsisMplLoan + getValue('gsisMplLoan'),
+        philhealthPersonal: totals.philhealthPersonal + getValue('philhealthPersonal'),
+        philhealthGovernment: totals.philhealthGovernment + getValue('philhealthGovernment'),
+        gsisPersonal: totals.gsisPersonal + getValue('gsisPersonal'),
+        gsisGovernment: totals.gsisGovernment + getValue('gsisGovernment'),
+        pagibigPersonal: totals.pagibigPersonal + getValue('pagibigPersonal'),
+        pagibigGovernment: totals.pagibigGovernment + getValue('pagibigGovernment'),
+        lbpLoan: totals.lbpLoan + getValue('lbpLoan'),
+        gfalLoan: totals.gfalLoan + getValue('gfalLoan'),
+        gsisLiteLoan: totals.gsisLiteLoan + getValue('gsisLiteLoan'),
+        pagibigMpl: totals.pagibigMpl + getValue('pagibigMpl'),
+        ec: totals.ec + getValue('ec'),
+        paidInCash: totals.paidInCash + getValue('paidInCash')
       };
     }, {
       monthlyRate: 0,
@@ -1356,24 +1482,41 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
               <tbody>
                 {/* MDRRMO SECTION */}
                 {mdrrmoEmployees.map((emp, index) => {
-                  const monthlyRate = getEmployeeValue(emp.name, 'monthlyRate');
+                  // Get current values (either changed or original)
+                  const currentValues = {
+                    periodFrom: getEmployeeValue(emp.name, 'periodFrom'),
+                    periodTo: getEmployeeValue(emp.name, 'periodTo'),
+                    monthlyRate: getEmployeeValue(emp.name, 'monthlyRate'),
+                    amountAccrued: getEmployeeValue(emp.name, 'amountAccrued'),
+                    gsisEduLoan: getEmployeeValue(emp.name, 'gsisEduLoan'),
+                    gsisMplLoan: getEmployeeValue(emp.name, 'gsisMplLoan'),
+                    philhealthPersonal: getEmployeeValue(emp.name, 'philhealthPersonal'),
+                    philhealthGovernment: getEmployeeValue(emp.name, 'philhealthGovernment'),
+                    gsisPersonal: getEmployeeValue(emp.name, 'gsisPersonal'),
+                    gsisGovernment: getEmployeeValue(emp.name, 'gsisGovernment'),
+                    pagibigPersonal: getEmployeeValue(emp.name, 'pagibigPersonal'),
+                    pagibigGovernment: getEmployeeValue(emp.name, 'pagibigGovernment'),
+                    gsisLiteLoan: getEmployeeValue(emp.name, 'gsisLiteLoan'),
+                    lbpLoan: getEmployeeValue(emp.name, 'lbpLoan'),
+                    gfalLoan: getEmployeeValue(emp.name, 'gfalLoan'),
+                    pagibigMpl: getEmployeeValue(emp.name, 'pagibigMpl'),
+                    ec: getEmployeeValue(emp.name, 'ec'),
+                    paidInCash: getEmployeeValue(emp.name, 'paidInCash')
+                  };
+                  
                   const citizenType = getCitizenType(emp.name);
-                  const philhealth = calculatePhilhealth(monthlyRate);
-                  const gsisPremiums = calculateGSISPremiums(monthlyRate, citizenType);
-                  const pagibig = calculatePagibig(monthlyRate, citizenType);
-                  const amountAccrued = calculateAmountAccrued(monthlyRate);
                   const isSeniorRow = citizenType === 'senior';
 
                   return (
                     <tr key={`mdrrmo-${index}`} className={isSeniorRow ? 'bg-orange-50' : ''}>
                       <td className="border border-black text-center align-middle bg-gray-100" style={{ padding: '2px 2px', fontSize: `${fontSizes.number}px` }}>
                         {emp.number}
-                      </td>
+                       </td>
                       <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.name || ''}</td>
                       <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.designation || ''}</td>
                       <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'periodFrom')}
+                          value={currentValues.periodFrom}
                           onChange={(e) => handleInputChange(emp.name, 'periodFrom', e.target.value)}
                           placeholder="DD-MMM-YYYY"
                           className="text-center"
@@ -1384,7 +1527,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                       </td>
                       <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'periodTo')}
+                          value={currentValues.periodTo}
                           onChange={(e) => handleInputChange(emp.name, 'periodTo', e.target.value)}
                           placeholder="DD-MMM-YYYY"
                           className="text-center"
@@ -1395,7 +1538,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
-                          value={monthlyRate}
+                          value={currentValues.monthlyRate}
                           onChange={(e) => handleInputChange(emp.name, 'monthlyRate', e.target.value)}
                           type="number"
                           placeholder="0.00"
@@ -1406,11 +1549,11 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                         />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <DisplayCell value={amountAccrued} />
+                        <FormulaCell value={currentValues.amountAccrued} />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'gsisEduLoan')}
+                          value={currentValues.gsisEduLoan}
                           onChange={(e) => handleInputChange(emp.name, 'gsisEduLoan', e.target.value)}
                           type="number"
                           placeholder="0.00"
@@ -1422,7 +1565,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'gsisMplLoan')}
+                          value={currentValues.gsisMplLoan}
                           onChange={(e) => handleInputChange(emp.name, 'gsisMplLoan', e.target.value)}
                           type="number"
                           placeholder="0.00"
@@ -1433,26 +1576,26 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                         />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <DisplayCell value={philhealth.personal} />
+                        <FormulaCell value={currentValues.philhealthPersonal} />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <DisplayCell value={philhealth.government} />
+                        <FormulaCell value={currentValues.philhealthGovernment} />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <DisplayCell value={gsisPremiums.personal} />
+                        <FormulaCell value={currentValues.gsisPersonal} />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <DisplayCell value={gsisPremiums.government} />
+                        <FormulaCell value={currentValues.gsisGovernment} />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <DisplayCell value={pagibig.personal} />
+                        <FormulaCell value={currentValues.pagibigPersonal} />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <DisplayCell value={pagibig.government} />
+                        <FormulaCell value={currentValues.pagibigGovernment} />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'gsisLiteLoan')}
+                          value={currentValues.gsisLiteLoan}
                           onChange={(e) => handleInputChange(emp.name, 'gsisLiteLoan', e.target.value)}
                           type="number"
                           placeholder="0.00"
@@ -1464,7 +1607,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'lbpLoan')}
+                          value={currentValues.lbpLoan}
                           onChange={(e) => handleInputChange(emp.name, 'lbpLoan', e.target.value)}
                           type="number"
                           placeholder="0.00"
@@ -1476,7 +1619,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'gfalLoan')}
+                          value={currentValues.gfalLoan}
                           onChange={(e) => handleInputChange(emp.name, 'gfalLoan', e.target.value)}
                           type="number"
                           placeholder="0.00"
@@ -1488,7 +1631,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'pagibigMpl')}
+                          value={currentValues.pagibigMpl}
                           onChange={(e) => handleInputChange(emp.name, 'pagibigMpl', e.target.value)}
                           type="number"
                           placeholder="0.00"
@@ -1500,7 +1643,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                       </td>
                       <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'ec')}
+                          value={currentValues.ec}
                           onChange={(e) => handleInputChange(emp.name, 'ec', e.target.value)}
                           type="number"
                           placeholder="0.00"
@@ -1511,7 +1654,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                         />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <DisplayCell value={emp.paidInCash} />
+                        <FormulaCell value={currentValues.paidInCash} />
                       </td>
                       <td className="border border-black text-center p-0 align-middle bg-gray-100" style={{ fontSize: `${fontSizes.number}px` }}>
                         {emp.number}
@@ -1557,24 +1700,41 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                 
                 {/* MEO ROWS */}
                 {meoEmployees.map((emp, index) => {
-                  const monthlyRate = getEmployeeValue(emp.name, 'monthlyRate');
+                  // Get current values (either changed or original)
+                  const currentValues = {
+                    periodFrom: getEmployeeValue(emp.name, 'periodFrom'),
+                    periodTo: getEmployeeValue(emp.name, 'periodTo'),
+                    monthlyRate: getEmployeeValue(emp.name, 'monthlyRate'),
+                    amountAccrued: getEmployeeValue(emp.name, 'amountAccrued'),
+                    gsisEduLoan: getEmployeeValue(emp.name, 'gsisEduLoan'),
+                    gsisMplLoan: getEmployeeValue(emp.name, 'gsisMplLoan'),
+                    philhealthPersonal: getEmployeeValue(emp.name, 'philhealthPersonal'),
+                    philhealthGovernment: getEmployeeValue(emp.name, 'philhealthGovernment'),
+                    gsisPersonal: getEmployeeValue(emp.name, 'gsisPersonal'),
+                    gsisGovernment: getEmployeeValue(emp.name, 'gsisGovernment'),
+                    pagibigPersonal: getEmployeeValue(emp.name, 'pagibigPersonal'),
+                    pagibigGovernment: getEmployeeValue(emp.name, 'pagibigGovernment'),
+                    gsisLiteLoan: getEmployeeValue(emp.name, 'gsisLiteLoan'),
+                    lbpLoan: getEmployeeValue(emp.name, 'lbpLoan'),
+                    gfalLoan: getEmployeeValue(emp.name, 'gfalLoan'),
+                    pagibigMpl: getEmployeeValue(emp.name, 'pagibigMpl'),
+                    ec: getEmployeeValue(emp.name, 'ec'),
+                    paidInCash: getEmployeeValue(emp.name, 'paidInCash')
+                  };
+                  
                   const citizenType = getCitizenType(emp.name);
-                  const philhealth = calculatePhilhealth(monthlyRate);
-                  const gsisPremiums = calculateGSISPremiums(monthlyRate, citizenType);
-                  const pagibig = calculatePagibig(monthlyRate, citizenType);
-                  const amountAccrued = calculateAmountAccrued(monthlyRate);
                   const isSeniorRow = citizenType === 'senior';
 
                   return (
                     <tr key={`meo-${index}`} className={isSeniorRow ? 'bg-orange-50' : ''}>
                       <td className="border border-black text-center align-middle bg-gray-100" style={{ padding: '2px 2px', fontSize: `${fontSizes.number}px` }}>
                         {emp.number}
-                      </td>
+                       </td>
                       <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.name || ''}</td>
                       <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.designation || ''}</td>
                       <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'periodFrom')}
+                          value={currentValues.periodFrom}
                           onChange={(e) => handleInputChange(emp.name, 'periodFrom', e.target.value)}
                           placeholder="DD-MMM-YYYY"
                           className="text-center"
@@ -1585,7 +1745,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                       </td>
                       <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'periodTo')}
+                          value={currentValues.periodTo}
                           onChange={(e) => handleInputChange(emp.name, 'periodTo', e.target.value)}
                           placeholder="DD-MMM-YYYY"
                           className="text-center"
@@ -1596,7 +1756,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
-                          value={monthlyRate}
+                          value={currentValues.monthlyRate}
                           onChange={(e) => handleInputChange(emp.name, 'monthlyRate', e.target.value)}
                           type="number"
                           placeholder="0.00"
@@ -1607,11 +1767,11 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                         />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <DisplayCell value={amountAccrued} />
+                        <FormulaCell value={currentValues.amountAccrued} />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'gsisEduLoan')}
+                          value={currentValues.gsisEduLoan}
                           onChange={(e) => handleInputChange(emp.name, 'gsisEduLoan', e.target.value)}
                           type="number"
                           placeholder="0.00"
@@ -1623,7 +1783,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'gsisMplLoan')}
+                          value={currentValues.gsisMplLoan}
                           onChange={(e) => handleInputChange(emp.name, 'gsisMplLoan', e.target.value)}
                           type="number"
                           placeholder="0.00"
@@ -1634,26 +1794,26 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                         />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <DisplayCell value={philhealth.personal} />
+                        <FormulaCell value={currentValues.philhealthPersonal} />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <DisplayCell value={philhealth.government} />
+                        <FormulaCell value={currentValues.philhealthGovernment} />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <DisplayCell value={gsisPremiums.personal} />
+                        <FormulaCell value={currentValues.gsisPersonal} />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <DisplayCell value={gsisPremiums.government} />
+                        <FormulaCell value={currentValues.gsisGovernment} />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <DisplayCell value={pagibig.personal} />
+                        <FormulaCell value={currentValues.pagibigPersonal} />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <DisplayCell value={pagibig.government} />
+                        <FormulaCell value={currentValues.pagibigGovernment} />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'gsisLiteLoan')}
+                          value={currentValues.gsisLiteLoan}
                           onChange={(e) => handleInputChange(emp.name, 'gsisLiteLoan', e.target.value)}
                           type="number"
                           placeholder="0.00"
@@ -1665,7 +1825,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'lbpLoan')}
+                          value={currentValues.lbpLoan}
                           onChange={(e) => handleInputChange(emp.name, 'lbpLoan', e.target.value)}
                           type="number"
                           placeholder="0.00"
@@ -1677,7 +1837,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'gfalLoan')}
+                          value={currentValues.gfalLoan}
                           onChange={(e) => handleInputChange(emp.name, 'gfalLoan', e.target.value)}
                           type="number"
                           placeholder="0.00"
@@ -1689,7 +1849,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'pagibigMpl')}
+                          value={currentValues.pagibigMpl}
                           onChange={(e) => handleInputChange(emp.name, 'pagibigMpl', e.target.value)}
                           type="number"
                           placeholder="0.00"
@@ -1701,7 +1861,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                       </td>
                       <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'ec')}
+                          value={currentValues.ec}
                           onChange={(e) => handleInputChange(emp.name, 'ec', e.target.value)}
                           type="number"
                           placeholder="0.00"
@@ -1712,7 +1872,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                         />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <DisplayCell value={emp.paidInCash} />
+                        <FormulaCell value={currentValues.paidInCash} />
                       </td>
                       <td className="border border-black text-center p-0 align-middle bg-gray-100" style={{ fontSize: `${fontSizes.number}px` }}>
                         {emp.number}
@@ -1758,24 +1918,41 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                 
                 {/* MPDO ROWS */}
                 {mpdoEmployees.map((emp, index) => {
-                  const monthlyRate = getEmployeeValue(emp.name, 'monthlyRate');
+                  // Get current values (either changed or original)
+                  const currentValues = {
+                    periodFrom: getEmployeeValue(emp.name, 'periodFrom'),
+                    periodTo: getEmployeeValue(emp.name, 'periodTo'),
+                    monthlyRate: getEmployeeValue(emp.name, 'monthlyRate'),
+                    amountAccrued: getEmployeeValue(emp.name, 'amountAccrued'),
+                    gsisEduLoan: getEmployeeValue(emp.name, 'gsisEduLoan'),
+                    gsisMplLoan: getEmployeeValue(emp.name, 'gsisMplLoan'),
+                    philhealthPersonal: getEmployeeValue(emp.name, 'philhealthPersonal'),
+                    philhealthGovernment: getEmployeeValue(emp.name, 'philhealthGovernment'),
+                    gsisPersonal: getEmployeeValue(emp.name, 'gsisPersonal'),
+                    gsisGovernment: getEmployeeValue(emp.name, 'gsisGovernment'),
+                    pagibigPersonal: getEmployeeValue(emp.name, 'pagibigPersonal'),
+                    pagibigGovernment: getEmployeeValue(emp.name, 'pagibigGovernment'),
+                    gsisLiteLoan: getEmployeeValue(emp.name, 'gsisLiteLoan'),
+                    lbpLoan: getEmployeeValue(emp.name, 'lbpLoan'),
+                    gfalLoan: getEmployeeValue(emp.name, 'gfalLoan'),
+                    pagibigMpl: getEmployeeValue(emp.name, 'pagibigMpl'),
+                    ec: getEmployeeValue(emp.name, 'ec'),
+                    paidInCash: getEmployeeValue(emp.name, 'paidInCash')
+                  };
+                  
                   const citizenType = getCitizenType(emp.name);
-                  const philhealth = calculatePhilhealth(monthlyRate);
-                  const gsisPremiums = calculateGSISPremiums(monthlyRate, citizenType);
-                  const pagibig = calculatePagibig(monthlyRate, citizenType);
-                  const amountAccrued = calculateAmountAccrued(monthlyRate);
                   const isSeniorRow = citizenType === 'senior';
 
                   return (
                     <tr key={`mpdo-${index}`} className={isSeniorRow ? 'bg-orange-50' : ''}>
                       <td className="border border-black text-center align-middle bg-gray-100" style={{ padding: '2px 2px', fontSize: `${fontSizes.number}px` }}>
                         {emp.number}
-                      </td>
+                       </td>
                       <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.name || ''}</td>
                       <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.designation || ''}</td>
                       <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'periodFrom')}
+                          value={currentValues.periodFrom}
                           onChange={(e) => handleInputChange(emp.name, 'periodFrom', e.target.value)}
                           placeholder="DD-MMM-YYYY"
                           className="text-center"
@@ -1786,7 +1963,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                       </td>
                       <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'periodTo')}
+                          value={currentValues.periodTo}
                           onChange={(e) => handleInputChange(emp.name, 'periodTo', e.target.value)}
                           placeholder="DD-MMM-YYYY"
                           className="text-center"
@@ -1797,7 +1974,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
-                          value={monthlyRate}
+                          value={currentValues.monthlyRate}
                           onChange={(e) => handleInputChange(emp.name, 'monthlyRate', e.target.value)}
                           type="number"
                           placeholder="0.00"
@@ -1808,11 +1985,11 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                         />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <DisplayCell value={amountAccrued} />
+                        <FormulaCell value={currentValues.amountAccrued} />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'gsisEduLoan')}
+                          value={currentValues.gsisEduLoan}
                           onChange={(e) => handleInputChange(emp.name, 'gsisEduLoan', e.target.value)}
                           type="number"
                           placeholder="0.00"
@@ -1824,7 +2001,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'gsisMplLoan')}
+                          value={currentValues.gsisMplLoan}
                           onChange={(e) => handleInputChange(emp.name, 'gsisMplLoan', e.target.value)}
                           type="number"
                           placeholder="0.00"
@@ -1835,26 +2012,26 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                         />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <DisplayCell value={philhealth.personal} />
+                        <FormulaCell value={currentValues.philhealthPersonal} />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <DisplayCell value={philhealth.government} />
+                        <FormulaCell value={currentValues.philhealthGovernment} />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <DisplayCell value={gsisPremiums.personal} />
+                        <FormulaCell value={currentValues.gsisPersonal} />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <DisplayCell value={gsisPremiums.government} />
+                        <FormulaCell value={currentValues.gsisGovernment} />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <DisplayCell value={pagibig.personal} />
+                        <FormulaCell value={currentValues.pagibigPersonal} />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <DisplayCell value={pagibig.government} />
+                        <FormulaCell value={currentValues.pagibigGovernment} />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'gsisLiteLoan')}
+                          value={currentValues.gsisLiteLoan}
                           onChange={(e) => handleInputChange(emp.name, 'gsisLiteLoan', e.target.value)}
                           type="number"
                           placeholder="0.00"
@@ -1866,7 +2043,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'lbpLoan')}
+                          value={currentValues.lbpLoan}
                           onChange={(e) => handleInputChange(emp.name, 'lbpLoan', e.target.value)}
                           type="number"
                           placeholder="0.00"
@@ -1878,7 +2055,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'gfalLoan')}
+                          value={currentValues.gfalLoan}
                           onChange={(e) => handleInputChange(emp.name, 'gfalLoan', e.target.value)}
                           type="number"
                           placeholder="0.00"
@@ -1890,7 +2067,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'pagibigMpl')}
+                          value={currentValues.pagibigMpl}
                           onChange={(e) => handleInputChange(emp.name, 'pagibigMpl', e.target.value)}
                           type="number"
                           placeholder="0.00"
@@ -1902,7 +2079,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                       </td>
                       <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'ec')}
+                          value={currentValues.ec}
                           onChange={(e) => handleInputChange(emp.name, 'ec', e.target.value)}
                           type="number"
                           placeholder="0.00"
@@ -1913,7 +2090,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                         />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <DisplayCell value={emp.paidInCash} />
+                        <FormulaCell value={currentValues.paidInCash} />
                       </td>
                       <td className="border border-black text-center p-0 align-middle bg-gray-100" style={{ fontSize: `${fontSizes.number}px` }}>
                         {emp.number}
@@ -1940,7 +2117,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                     <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.gsisLiteLoan)}</td>
                     <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.lbpLoan)}</td>
                     <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.gfalLoan)}</td>
-                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.pagibigMpl)}</td>
+                                          <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.pagibigMpl)}</td>
                     <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.ec)}</td>
                     <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.paidInCash)}</td>
                     <td className="border border-black text-center p-0 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{mdrrmoEmployees.length + meoEmployees.length + mpdoEmployees.length + 1}</td>
@@ -1959,12 +2136,29 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                 
                 {/* MSWDO ROWS */}
                 {mswdoEmployees.map((emp, index) => {
-                  const monthlyRate = getEmployeeValue(emp.name, 'monthlyRate');
+                  // Get current values (either changed or original)
+                  const currentValues = {
+                    periodFrom: getEmployeeValue(emp.name, 'periodFrom'),
+                    periodTo: getEmployeeValue(emp.name, 'periodTo'),
+                    monthlyRate: getEmployeeValue(emp.name, 'monthlyRate'),
+                    amountAccrued: getEmployeeValue(emp.name, 'amountAccrued'),
+                    gsisEduLoan: getEmployeeValue(emp.name, 'gsisEduLoan'),
+                    gsisMplLoan: getEmployeeValue(emp.name, 'gsisMplLoan'),
+                    philhealthPersonal: getEmployeeValue(emp.name, 'philhealthPersonal'),
+                    philhealthGovernment: getEmployeeValue(emp.name, 'philhealthGovernment'),
+                    gsisPersonal: getEmployeeValue(emp.name, 'gsisPersonal'),
+                    gsisGovernment: getEmployeeValue(emp.name, 'gsisGovernment'),
+                    pagibigPersonal: getEmployeeValue(emp.name, 'pagibigPersonal'),
+                    pagibigGovernment: getEmployeeValue(emp.name, 'pagibigGovernment'),
+                    gsisLiteLoan: getEmployeeValue(emp.name, 'gsisLiteLoan'),
+                    lbpLoan: getEmployeeValue(emp.name, 'lbpLoan'),
+                    gfalLoan: getEmployeeValue(emp.name, 'gfalLoan'),
+                    pagibigMpl: getEmployeeValue(emp.name, 'pagibigMpl'),
+                    ec: getEmployeeValue(emp.name, 'ec'),
+                    paidInCash: getEmployeeValue(emp.name, 'paidInCash')
+                  };
+                  
                   const citizenType = getCitizenType(emp.name);
-                  const philhealth = calculatePhilhealth(monthlyRate);
-                  const gsisPremiums = calculateGSISPremiums(monthlyRate, citizenType);
-                  const pagibig = calculatePagibig(monthlyRate, citizenType);
-                  const amountAccrued = calculateAmountAccrued(monthlyRate);
                   const isSeniorRow = citizenType === 'senior';
 
                   return (
@@ -1976,7 +2170,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                       <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.designation || ''}</td>
                       <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'periodFrom')}
+                          value={currentValues.periodFrom}
                           onChange={(e) => handleInputChange(emp.name, 'periodFrom', e.target.value)}
                           placeholder="DD-MMM-YYYY"
                           className="text-center"
@@ -1987,7 +2181,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                       </td>
                       <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'periodTo')}
+                          value={currentValues.periodTo}
                           onChange={(e) => handleInputChange(emp.name, 'periodTo', e.target.value)}
                           placeholder="DD-MMM-YYYY"
                           className="text-center"
@@ -1998,7 +2192,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
-                          value={monthlyRate}
+                          value={currentValues.monthlyRate}
                           onChange={(e) => handleInputChange(emp.name, 'monthlyRate', e.target.value)}
                           type="number"
                           placeholder="0.00"
@@ -2009,11 +2203,11 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                         />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <DisplayCell value={amountAccrued} />
+                        <FormulaCell value={currentValues.amountAccrued} />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'gsisEduLoan')}
+                          value={currentValues.gsisEduLoan}
                           onChange={(e) => handleInputChange(emp.name, 'gsisEduLoan', e.target.value)}
                           type="number"
                           placeholder="0.00"
@@ -2025,7 +2219,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'gsisMplLoan')}
+                          value={currentValues.gsisMplLoan}
                           onChange={(e) => handleInputChange(emp.name, 'gsisMplLoan', e.target.value)}
                           type="number"
                           placeholder="0.00"
@@ -2036,26 +2230,26 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                         />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <DisplayCell value={philhealth.personal} />
+                        <FormulaCell value={currentValues.philhealthPersonal} />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <DisplayCell value={philhealth.government} />
+                        <FormulaCell value={currentValues.philhealthGovernment} />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <DisplayCell value={gsisPremiums.personal} />
+                        <FormulaCell value={currentValues.gsisPersonal} />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <DisplayCell value={gsisPremiums.government} />
+                        <FormulaCell value={currentValues.gsisGovernment} />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <DisplayCell value={pagibig.personal} />
+                        <FormulaCell value={currentValues.pagibigPersonal} />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <DisplayCell value={pagibig.government} />
+                        <FormulaCell value={currentValues.pagibigGovernment} />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'gsisLiteLoan')}
+                          value={currentValues.gsisLiteLoan}
                           onChange={(e) => handleInputChange(emp.name, 'gsisLiteLoan', e.target.value)}
                           type="number"
                           placeholder="0.00"
@@ -2067,7 +2261,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'lbpLoan')}
+                          value={currentValues.lbpLoan}
                           onChange={(e) => handleInputChange(emp.name, 'lbpLoan', e.target.value)}
                           type="number"
                           placeholder="0.00"
@@ -2079,7 +2273,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'gfalLoan')}
+                          value={currentValues.gfalLoan}
                           onChange={(e) => handleInputChange(emp.name, 'gfalLoan', e.target.value)}
                           type="number"
                           placeholder="0.00"
@@ -2091,7 +2285,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'pagibigMpl')}
+                          value={currentValues.pagibigMpl}
                           onChange={(e) => handleInputChange(emp.name, 'pagibigMpl', e.target.value)}
                           type="number"
                           placeholder="0.00"
@@ -2103,7 +2297,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                       </td>
                       <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
-                          value={getEmployeeValue(emp.name, 'ec')}
+                          value={currentValues.ec}
                           onChange={(e) => handleInputChange(emp.name, 'ec', e.target.value)}
                           type="number"
                           placeholder="0.00"
@@ -2114,7 +2308,7 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
                         />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <DisplayCell value={emp.paidInCash} />
+                        <FormulaCell value={currentValues.paidInCash} />
                       </td>
                       <td className="border border-black text-center p-0 align-middle bg-gray-100" style={{ fontSize: `${fontSizes.number}px` }}>
                         {emp.number}
@@ -2279,10 +2473,11 @@ const ModalSend_MDRRMO = ({ file, onClose, markedAsReceived, onMarkAsReceived })
             <ul className="list-disc list-inside space-y-1">
               <li><span className="text-orange-400">Click "Mark as Received" button</span> to enable editing</li>
               <li><span className="text-orange-400">Edit white input boxes</span> to change values (when enabled)</li>
-              <li><strong className="text-gray-300">Gray boxes are auto-calculated or from Excel (non-editable)</strong></li>
+              <li><strong className="text-gray-300">Gray boxes are auto-calculated</strong> - Amount Accrued, PHILHEALTH, GSIS Premiums, Pag-IBIG Government, and Paid in Cash</li>
+              <li><span className="text-orange-400">Editable loans:</span> GSIS EDUC LOAN, GSIS MPL LOAN, LBP LOAN, GFAL LOAN, GSIS MPL Lite, Pag-IBIG LOAN, E.C.</li>
               <li><span className="text-green-400">💾 Save Excel:</span> Download edited file to computer</li>
               <li><span className="text-orange-400">✓ Check File:</span> Validate file and update in Firestore</li>
-              <li><strong className="text-gray-300">Offices:</strong> MDRRMO, MEO, MPDO, MSWDO with section totals</li>
+              <li><strong className="text-gray-300">Formulas:</strong> Monthly Rate / 2 = Amount Accrued | Monthly Rate × 2.5% = PHILHEALTH | Monthly Rate × 9% = GSIS Personal | Monthly Rate × 12% = GSIS Government | Monthly Rate × 2% = Pag-IBIG Personal | Pag-IBIG Government = ₱200 | Paid in Cash = Amount Accrued - All Deductions</li>
             </ul>
           </div>
           {!editingEnabled && (

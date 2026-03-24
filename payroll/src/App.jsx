@@ -1,4 +1,4 @@
-// App.jsx (Updated with new color scheme and payslip4 route)
+// App.jsx (Updated with Database route)
 import React, { useState } from 'react';
 import Login from './pages/Login';
 import { Route, Routes, Navigate, Outlet, useLocation } from 'react-router-dom';
@@ -18,9 +18,13 @@ import Payslip2 from './pages/payslip2'; // ✅ IMPORT PAYSLIP2
 import Payslip3 from './pages/payslip3'; // ✅ IMPORT PAYSLIP3
 import Payslip4 from './pages/payslip4'; // ✅ IMPORT PAYSLIP4
 import VoucherGenerator from './pages/slip';
+import Slip2Generator from './pages/slip2'; // ✅ IMPORT SLIP2 (PAYROLL1 format - MDDRMO/MEO/MPDO/MSWDO)
+import Slip3Generator from './pages/slip3'; // ✅ IMPORT SLIP3 (PAYROLL3 format - RHU/MASO/MCR/HRMO)
+import Slip4Generator from './pages/slip4'; // ✅ IMPORT SLIP4 (PAYROLL4 format - MAYOR/ACCT/MBO/MASSO)
 import SendFile_MDRRMO from './pages/SendFile_MDRRMO';
 import SendFile_RHU from './pages/SendFile_RHU'; 
 import SendFile_MAYOR_Component from './pages/SendFile_MAYOR';
+import Database from './pages/database'; // ✅ IMPORT DATABASE COMPONENT
 
 // Import the modal components
 import ModalSend_MDRRMO from './pages/ModalSend_MDRRMO';
@@ -261,9 +265,21 @@ function App() {
           {/* ✅ ROUTE FOR PAYSLIP4 - For MAYOR, ACCT, MBO, MASSO office categories */}
           <Route path='/payslip4/:id' element={<Payslip4 />} />
           
+          {/* ✅ ROUTE FOR SLIP2 - PAYROLL1 format payslip generator (MDDRMO/MEO/MPDO/MSWDO) */}
+          <Route path='/slip2' element={<Slip2Generator />} />
+          
+          {/* ✅ ROUTE FOR SLIP3 - PAYROLL3 format payslip generator (RHU/MASO/MCR/HRMO) */}
+          <Route path='/slip3' element={<Slip3Generator />} />
+          
+          {/* ✅ ROUTE FOR SLIP4 - PAYROLL4 format payslip generator (MAYOR/ACCT/MBO/MASSO) */}
+          <Route path='/slip4' element={<Slip4Generator />} />
+          
           <Route path='/voucher' element={<VoucherGenerator />} />
           <Route path='/team' element={<Users/>}/>
           <Route path='/file' element={<FileReceived/>}/>
+
+          {/* ✅ DATABASE ROUTE - View all data from Firestore */}
+          <Route path='/database' element={<Database />} />
 
           <Route path='/create-task' element={
             <OfficeRoute 

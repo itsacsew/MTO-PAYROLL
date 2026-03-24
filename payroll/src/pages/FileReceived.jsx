@@ -21,7 +21,8 @@ import {
   MdAnalytics,
   MdWaves,
   MdBusiness,
-  MdFolder
+  MdFolder,
+  MdWarning
 } from 'react-icons/md';
 
 const FileReceived = () => {
@@ -57,6 +58,33 @@ const FileReceived = () => {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
+  // Helper function to safely convert Firebase Timestamp to Date
+  const convertTimestampToDate = (timestamp) => {
+    if (!timestamp) return null;
+    
+    // Check if it's a Firebase Timestamp object (has toDate method)
+    if (timestamp.toDate && typeof timestamp.toDate === 'function') {
+      return timestamp.toDate();
+    }
+    
+    // Check if it's already a Date object
+    if (timestamp instanceof Date) {
+      return timestamp;
+    }
+    
+    // Check if it's a string or number that can be converted to Date
+    try {
+      const date = new Date(timestamp);
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
+    } catch (e) {
+      console.error('Error converting timestamp:', e);
+    }
+    
+    return null;
+  };
+
   // Load only checked files from Firestore
   useEffect(() => {
     const loadCheckedFiles = async () => {
@@ -80,11 +108,14 @@ const FileReceived = () => {
             const receiverInfo = fileData.receivedBy || {};
             const checkerInfo = fileData.checkedBy || {};
             
+            // Get the checked date from lastCheckedAt (which is set via serverTimestamp)
+            const checkedDate = convertTimestampToDate(fileData.lastCheckedAt);
+            
             files.push({
               id: doc.id,
               fileName: fileData.fileName || 'Unknown File',
               fileData: fileData.fileData,
-              timestamp: fileData.timestamp?.toDate?.() || new Date(fileData.createdAt || Date.now()),
+              timestamp: convertTimestampToDate(fileData.timestamp) || new Date(fileData.createdAt || Date.now()),
               updatedEmployees: fileData.updatedEmployees || [],
               status: fileData.status || 'checked',
               originalFileName: fileData.originalFileName || '',
@@ -101,13 +132,13 @@ const FileReceived = () => {
               senderId: senderInfo.id || fileData.senderId || '',
               
               receivedBy: fileData.receivedBy || null,
-              receivedAt: fileData.receivedAt || null,
+              receivedAt: convertTimestampToDate(fileData.receivedAt),
               
               checkedBy: receiverInfo.id ? receiverInfo : checkerInfo,
-              checkedAt: fileData.checkedAt || fileData.receivedAt || null,
+              checkedAt: convertTimestampToDate(fileData.checkedAt),
               
-              // ✅ GAMITON ANG lastCheckedAt PARA SA DATE CHECKED
-              lastCheckedAt: fileData.lastCheckedAt?.toDate?.() || fileData.checkedAt?.toDate?.() || fileData.receivedAt?.toDate?.() || null,
+              // ✅ USE lastCheckedAt from Firebase (set via serverTimestamp)
+              lastCheckedAt: checkedDate,
               
               markedAsReceived: fileData.markedAsReceived || false,
               checked: fileData.checked || true
@@ -127,6 +158,7 @@ const FileReceived = () => {
 
     loadCheckedFiles();
 
+    // Real-time listener
     try {
       const q = query(
         collection(db, 'sentFiles'), 
@@ -144,11 +176,14 @@ const FileReceived = () => {
               const receiverInfo = fileData.receivedBy || {};
               const checkerInfo = fileData.checkedBy || {};
               
+              // Get the checked date from lastCheckedAt (which is set via serverTimestamp)
+              const checkedDate = convertTimestampToDate(fileData.lastCheckedAt);
+              
               files.push({
                 id: doc.id,
                 fileName: fileData.fileName || 'Unknown File',
                 fileData: fileData.fileData,
-                timestamp: fileData.timestamp?.toDate?.() || new Date(fileData.createdAt || Date.now()),
+                timestamp: convertTimestampToDate(fileData.timestamp) || new Date(fileData.createdAt || Date.now()),
                 updatedEmployees: fileData.updatedEmployees || [],
                 status: fileData.status || 'checked',
                 originalFileName: fileData.originalFileName || '',
@@ -165,13 +200,13 @@ const FileReceived = () => {
                 senderId: senderInfo.id || fileData.senderId || '',
                 
                 receivedBy: fileData.receivedBy || null,
-                receivedAt: fileData.receivedAt || null,
+                receivedAt: convertTimestampToDate(fileData.receivedAt),
                 
                 checkedBy: receiverInfo.id ? receiverInfo : checkerInfo,
-                checkedAt: fileData.checkedAt || fileData.receivedAt || null,
+                checkedAt: convertTimestampToDate(fileData.checkedAt),
                 
-                // ✅ GAMITON ANG lastCheckedAt PARA SA DATE CHECKED
-                lastCheckedAt: fileData.lastCheckedAt?.toDate?.() || fileData.checkedAt?.toDate?.() || fileData.receivedAt?.toDate?.() || null,
+                // ✅ USE lastCheckedAt from Firebase (set via serverTimestamp)
+                lastCheckedAt: checkedDate,
                 
                 markedAsReceived: fileData.markedAsReceived || false,
                 checked: fileData.checked || true
@@ -236,6 +271,10 @@ const FileReceived = () => {
       const headers = excelData[0] || [];
       const rows = excelData.slice(1);
       
+      // Get the checked date properly
+      const checkedDate = selectedFile?.lastCheckedAt || selectedFile?.checkedAt || selectedFile?.timestamp;
+      const formattedCheckedDate = checkedDate ? formatDate(checkedDate) : new Date().toLocaleDateString();
+      
       let html = `
         <!DOCTYPE html>
         <html>
@@ -261,7 +300,7 @@ const FileReceived = () => {
           <div class="file-info">
             <p><strong>Sender:</strong> ${selectedFile?.senderName || 'N/A'}</p>
             <p><strong>Checked By:</strong> ${selectedFile?.checkedBy?.name || selectedFile?.receivedBy?.name || 'N/A'}</p>
-            <p><strong>Date Checked:</strong> ${selectedFile ? formatDate(selectedFile.lastCheckedAt || selectedFile.checkedAt || selectedFile.timestamp) : new Date().toLocaleDateString()}</p>
+            <p><strong>Date Checked:</strong> ${formattedCheckedDate}</p>
             <p><strong>Sheet:</strong> ${excelSheets[activeSheet] || 'Sheet1'}</p>
             <p><strong>Rows:</strong> ${rows.length} | <strong>Columns:</strong> ${headers.length}</p>
           </div>
@@ -269,20 +308,20 @@ const FileReceived = () => {
       
       if (headers.length > 0) {
         html += `
-          <table>
+           <table>
             <thead>
-              <tr>
+               <tr>
                 ${headers.map(header => `<th>${header || ''}</th>`).join('')}
-              </tr>
+               </tr>
             </thead>
             <tbody>
               ${rows.map(row => `
-                <tr>
+                 <tr>
                   ${headers.map((_, index) => `<td>${row[index] !== undefined ? row[index] : ''}</td>`).join('')}
-                </tr>
+                 </tr>
               `).join('')}
             </tbody>
-          </table>
+           </table>
         `;
       } else {
         html += '<p>No data available in this sheet.</p>';
@@ -382,7 +421,7 @@ const FileReceived = () => {
     }, 300);
   };
 
-  // ✅ UPDATED: Function to handle View Payslip - Now checks multiple office categories
+  // Function to handle View Payslip - Now checks multiple office categories
   const handleViewPayslip = (file) => {
     setSelectedFile(file);
     setDropdownOpen(null);
@@ -415,7 +454,7 @@ const FileReceived = () => {
         }
       });
     }
-    // ✅ NEW: Check if office category is MAYOR, ACCT, MBO, or MASSO → go to payslip4
+    // Check if office category is MAYOR, ACCT, MBO, or MASSO → go to payslip4
     else if (officeCategory.includes('mayor') || 
              officeCategory.includes('acct') || 
              officeCategory.includes('mbo') || 
@@ -431,6 +470,75 @@ const FileReceived = () => {
     // Otherwise go to regular payslip
     else {
       navigate(`/payslip/${file.id}`, {
+        state: {
+          fileData: file
+        }
+      });
+    }
+  };
+
+  // Handle Create Voucher with office-based routing
+  const handleCreateVoucher = (file) => {
+    setSelectedFile(file);
+    setDropdownOpen(null);
+    
+    // Get office category and convert to lowercase for comparison
+    const officeCategory = (file.officeCategory || '').toLowerCase();
+    
+    // Check if office category is MDDRMO, MEO, MPDO, or MSWDO → go to slip2 (PAYROLL1 format)
+    if (officeCategory.includes('mddrmo') || 
+        officeCategory.includes('meo') || 
+        officeCategory.includes('mpdo') || 
+        officeCategory.includes('mswdo')) {
+      
+      // Navigate to slip2 for MDDRMO, MEO, MPDO, MSWDO (PAYROLL1 format)
+      navigate('/slip2', {
+        state: {
+          fileData: file
+        }
+      });
+    }
+    // Check if office category is RHU, MASO, MCR, or HRMO → go to slip3 (PAYROLL3 format)
+    else if (officeCategory.includes('rhu') || 
+             officeCategory.includes('maso') || 
+             officeCategory.includes('mcr') || 
+             officeCategory.includes('hrmo')) {
+      
+      // Navigate to slip3 for RHU, MASO, MCR, HRMO (PAYROLL3 format)
+      navigate('/slip3', {
+        state: {
+          fileData: file
+        }
+      });
+    }
+    // Check if office category is MAYOR, ACCT, MBO, or MASSO → go to slip4 (PAYROLL4 format)
+    else if (officeCategory.includes('mayor') || 
+             officeCategory.includes('acct') || 
+             officeCategory.includes('mbo') || 
+             officeCategory.includes('masso')) {
+      
+      // Navigate to slip4 for MAYOR, ACCT, MBO, MASSO (PAYROLL4 format)
+      navigate('/slip4', {
+        state: {
+          fileData: file
+        }
+      });
+    }
+    // Check if office category is SB, MTO, or MENRO → go to voucher (regular voucher)
+    else if (officeCategory.includes('sb') || 
+             officeCategory.includes('mto') || 
+             officeCategory.includes('menro')) {
+      
+      // Navigate to voucher for SB, MTO, MENRO
+      navigate('/voucher', {
+        state: {
+          fileData: file
+        }
+      });
+    }
+    // Default to regular voucher
+    else {
+      navigate('/voucher', {
         state: {
           fileData: file
         }
@@ -479,18 +587,6 @@ const FileReceived = () => {
     };
   }, []);
 
-  // Handle Create Voucher
-  const handleCreateVoucher = (file) => {
-    setSelectedFile(file);
-    setDropdownOpen(null);
-    
-    navigate('/voucher', {
-      state: {
-        fileData: file
-      }
-    });
-  };
-
   // Handle View File Details
   const handleViewFileDetails = (file) => {
     setSelectedFile(file);
@@ -522,11 +618,14 @@ const FileReceived = () => {
           const receiverInfo = fileData.receivedBy || {};
           const checkerInfo = fileData.checkedBy || {};
           
+          // Get the checked date from lastCheckedAt (which is set via serverTimestamp)
+          const checkedDate = convertTimestampToDate(fileData.lastCheckedAt);
+          
           files.push({
             id: doc.id,
             fileName: fileData.fileName || 'Unknown File',
             fileData: fileData.fileData,
-            timestamp: fileData.timestamp?.toDate?.() || new Date(fileData.createdAt || Date.now()),
+            timestamp: convertTimestampToDate(fileData.timestamp) || new Date(fileData.createdAt || Date.now()),
             updatedEmployees: fileData.updatedEmployees || [],
             status: fileData.status || 'checked',
             originalFileName: fileData.originalFileName || '',
@@ -543,13 +642,13 @@ const FileReceived = () => {
             senderId: senderInfo.id || fileData.senderId || '',
             
             receivedBy: fileData.receivedBy || null,
-            receivedAt: fileData.receivedAt || null,
+            receivedAt: convertTimestampToDate(fileData.receivedAt),
             
             checkedBy: receiverInfo.id ? receiverInfo : checkerInfo,
-            checkedAt: fileData.checkedAt || fileData.receivedAt || null,
+            checkedAt: convertTimestampToDate(fileData.checkedAt),
             
-            // ✅ GAMITON ANG lastCheckedAt PARA SA DATE CHECKED
-            lastCheckedAt: fileData.lastCheckedAt?.toDate?.() || fileData.checkedAt?.toDate?.() || fileData.receivedAt?.toDate?.() || null,
+            // ✅ USE lastCheckedAt from Firebase (set via serverTimestamp)
+            lastCheckedAt: checkedDate,
             
             markedAsReceived: fileData.markedAsReceived || false,
             checked: fileData.checked || true
@@ -558,7 +657,6 @@ const FileReceived = () => {
       });
 
       setReceivedFiles(files);
-     
       
     } catch (error) {
       console.error('Error refreshing files:', error);
@@ -571,12 +669,16 @@ const FileReceived = () => {
   const formatDate = (timestamp) => {
     if (!timestamp) return 'Invalid Date';
     try {
-      return new Date(timestamp).toLocaleString('en-US', {
+      const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
+      if (isNaN(date.getTime())) return 'Invalid Date';
+      
+      return date.toLocaleString('en-US', {
         year: 'numeric',
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
+        second: '2-digit'
       });
     } catch {
       return 'Invalid Date';
@@ -831,6 +933,8 @@ const FileReceived = () => {
                 <div className="relative z-10 divide-y divide-white/5">
                   {receivedFiles.map((file, index) => {
                     const statusInfo = getStatusInfo(file.status);
+                    // Get the checked date - using lastCheckedAt from Firebase
+                    const checkedDate = file.lastCheckedAt || file.checkedAt || file.receivedAt || file.timestamp;
                     return (
                       <div
                         key={file.id}
@@ -879,15 +983,12 @@ const FileReceived = () => {
                           </span>
                         </div>
 
-                        {/* DATE CHECKED - GAMIT ANG lastCheckedAt */}
+                        {/* DATE CHECKED - USING lastCheckedAt FROM FIREBASE */}
                         <div className="col-span-2 flex items-center">
                           <div className="flex items-center gap-2">
                             <MdDateRange className="w-4 h-4 text-gray-500" />
                             <span className="text-gray-300 text-sm">
-                              {file.lastCheckedAt ? formatDate(file.lastCheckedAt) : 
-                               file.checkedAt ? formatDate(file.checkedAt) : 
-                               file.receivedAt ? formatDate(file.receivedAt) : 
-                               formatDate(file.timestamp)}
+                              {formatDate(checkedDate)}
                             </span>
                           </div>
                         </div>
@@ -1017,7 +1118,7 @@ const FileReceived = () => {
         </motion.div>
       </div>
 
-      {/* PRINT PREVIEW MODAL - Keep existing modal code */}
+      {/* PRINT PREVIEW MODAL */}
       <AnimatePresence>
         {showPrintPreview && selectedFile && (
           <>
@@ -1061,7 +1162,28 @@ const FileReceived = () => {
                     <MdClose className="text-gray-400" size={20} />
                   </motion.button>
                 </div>
+                
+                {/* Excel Sheet Tabs */}
+                {excelSheets.length > 1 && (
+                  <div className="relative z-10 px-6 pt-4 flex gap-2 border-b border-white/5">
+                    {excelSheets.map((sheet, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => handleSwitchSheet(idx, selectedFile)}
+                        className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-all ${
+                          activeSheet === idx
+                            ? 'bg-orange-500/20 text-orange-400 border-b-2 border-orange-400'
+                            : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
+                        }`}
+                      >
+                        {sheet}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                
                 <div className="relative z-10 flex-1 p-6 overflow-y-auto">
+                  {/* Action Buttons */}
                   <div className="flex justify-end gap-4 mb-6">
                     <motion.button
                       whileHover={{ scale: 1.02 }}
@@ -1091,6 +1213,88 @@ const FileReceived = () => {
                       DOWNLOAD EXCEL
                     </motion.button>
                   </div>
+                  
+                  {/* File Info */}
+                  <div className="mb-6 p-4 rounded-xl" style={{
+                    background: 'linear-gradient(145deg, rgba(249, 115, 22, 0.1), #1a1a2a)',
+                    border: '1px solid rgba(249, 115, 22, 0.2)'
+                  }}>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <p className="text-xs text-gray-400">File Name</p>
+                        <p className="text-sm text-white font-medium truncate">{selectedFile.fileName}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400">Sender</p>
+                        <p className="text-sm text-white font-medium">{selectedFile.senderName}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400">Checked By</p>
+                        <p className="text-sm text-white font-medium">{selectedFile.checkedBy?.name || selectedFile.receivedBy?.name || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400">Date Checked</p>
+                        <p className="text-sm text-white font-medium">{formatDate(selectedFile.lastCheckedAt || selectedFile.checkedAt || selectedFile.timestamp)}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Excel Data Preview */}
+                  {previewError ? (
+                    <div className="p-8 text-center rounded-xl" style={{
+                      background: 'linear-gradient(145deg, rgba(239, 68, 68, 0.1), #1a1a2a)',
+                      border: '1px solid rgba(239, 68, 68, 0.2)'
+                    }}>
+                      <MdWarning className="w-12 h-12 text-red-400 mx-auto mb-3" />
+                      <p className="text-red-400">{previewError}</p>
+                    </div>
+                  ) : !excelData ? (
+                    <div className="p-8 text-center">
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        className="w-10 h-10 border-2 border-orange-400 border-t-transparent rounded-full mx-auto mb-4"
+                      />
+                      <p className="text-gray-400">Loading Excel data...</p>
+                    </div>
+                  ) : excelData.length === 0 ? (
+                    <div className="p-8 text-center rounded-xl" style={{
+                      background: 'linear-gradient(145deg, rgba(249, 115, 22, 0.1), #1a1a2a)',
+                      border: '1px solid rgba(249, 115, 22, 0.2)'
+                    }}>
+                      <p className="text-gray-400">No data available in this sheet.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="border-b border-white/10">
+                            {(excelData[0] || []).map((header, idx) => (
+                              <th key={idx} className="text-left p-3 text-sm font-semibold text-orange-400 bg-white/5">
+                                {header || `Column ${idx + 1}`}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {excelData.slice(1, 100).map((row, rowIdx) => (
+                            <tr key={rowIdx} className="border-b border-white/5 hover:bg-white/5">
+                              {(excelData[0] || []).map((_, colIdx) => (
+                                <td key={colIdx} className="p-3 text-sm text-gray-300">
+                                  {row[colIdx] !== undefined && row[colIdx] !== null ? String(row[colIdx]) : ''}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {excelData.length > 100 && (
+                        <p className="text-center text-gray-400 text-sm mt-4">
+                          Showing first 100 rows of {excelData.length - 1} total rows
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -1143,6 +1347,153 @@ const FileReceived = () => {
                   </motion.button>
                 </div>
                 <div className="relative z-10 p-6 overflow-y-auto max-h-[calc(90vh-8rem)]">
+                  <div className="grid grid-cols-2 gap-6">
+                    {/* File Information */}
+                    <div>
+                      <h4 className="text-lg font-medium text-white mb-4">File Information</h4>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="text-sm font-medium text-gray-400">File Name:</label>
+                          <p className="mt-1 text-white">{selectedFile.fileName}</p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-400">Office:</label>
+                          <p className="mt-1">
+                            <span className={`${getOfficeBadgeClass(selectedFile.officeCategory)} px-3 py-1 rounded-full text-xs`}>
+                              {selectedFile.officeCategory}
+                            </span>
+                          </p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-400">File Size:</label>
+                          <p className="mt-1 text-white">{formatFileSize(selectedFile.fileSize)}</p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-400">Status:</label>
+                          <span className={`mt-1 inline-block px-3 py-1 rounded-full text-sm bg-purple-500/10 text-purple-400 border border-purple-500/20`}>
+                            CHECKED
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <h4 className="text-lg font-medium text-white mt-6 mb-4">Sender Information</h4>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="text-sm font-medium text-gray-400">Sender Name:</label>
+                          <p className="mt-1 text-white">{selectedFile.senderName}</p>
+                        </div>
+                        {selectedFile.senderEmail && (
+                          <div>
+                            <label className="text-sm font-medium text-gray-400">Sender Email:</label>
+                            <p className="mt-1 text-white">{selectedFile.senderEmail}</p>
+                          </div>
+                        )}
+                        {selectedFile.senderOffice && (
+                          <div>
+                            <label className="text-sm font-medium text-gray-400">Sender Office:</label>
+                            <p className="mt-1 text-white">{selectedFile.senderOffice}</p>
+                          </div>
+                        )}
+                        <div>
+                          <label className="text-sm font-medium text-gray-400">Sent Date:</label>
+                          <p className="mt-1 text-white">{formatDate(selectedFile.timestamp)}</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Checked Information */}
+                    <div>
+                      <h4 className="text-lg font-medium text-white mb-4">Checked Information</h4>
+                      {selectedFile.checkedBy ? (
+                        <div className="space-y-3 p-4 rounded-xl" style={{
+                          background: 'linear-gradient(145deg, rgba(168, 85, 247, 0.1), #1a1a2a)',
+                          border: '1px solid rgba(168, 85, 247, 0.2)'
+                        }}>
+                          <div>
+                            <label className="text-sm font-medium text-gray-400">Checked By:</label>
+                            <p className="mt-1 text-white">{selectedFile.checkedBy.name}</p>
+                          </div>
+                          {selectedFile.checkedBy.email && (
+                            <div>
+                              <label className="text-sm font-medium text-gray-400">Checker Email:</label>
+                              <p className="mt-1 text-white">{selectedFile.checkedBy.email}</p>
+                            </div>
+                          )}
+                          {selectedFile.checkedBy.office && (
+                            <div>
+                              <label className="text-sm font-medium text-gray-400">Checker Office:</label>
+                              <p className="mt-1 text-white">{selectedFile.checkedBy.office}</p>
+                            </div>
+                          )}
+                          <div>
+                            <label className="text-sm font-medium text-gray-400">Date Checked:</label>
+                            <p className="mt-1 text-white">{formatDate(selectedFile.lastCheckedAt || selectedFile.checkedAt)}</p>
+                          </div>
+                        </div>
+                      ) : selectedFile.receivedBy ? (
+                        <div className="space-y-3 p-4 rounded-xl" style={{
+                          background: 'linear-gradient(145deg, rgba(16, 185, 129, 0.1), #1a1a2a)',
+                          border: '1px solid rgba(16, 185, 129, 0.2)'
+                        }}>
+                          <div>
+                            <label className="text-sm font-medium text-gray-400">Received By:</label>
+                            <p className="mt-1 text-white">{selectedFile.receivedBy.name}</p>
+                          </div>
+                          {selectedFile.receivedBy.email && (
+                            <div>
+                              <label className="text-sm font-medium text-gray-400">Receiver Email:</label>
+                              <p className="mt-1 text-white">{selectedFile.receivedBy.email}</p>
+                            </div>
+                          )}
+                          {selectedFile.receivedBy.office && (
+                            <div>
+                              <label className="text-sm font-medium text-gray-400">Receiver Office:</label>
+                              <p className="mt-1 text-white">{selectedFile.receivedBy.office}</p>
+                            </div>
+                          )}
+                          <div>
+                            <label className="text-sm font-medium text-gray-400">Received Date:</label>
+                            <p className="mt-1 text-white">{formatDate(selectedFile.receivedAt)}</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-gray-400">No checker information available</p>
+                      )}
+                      
+                      {selectedFile.updatedEmployees && selectedFile.updatedEmployees.length > 0 && (
+                        <div className="mt-6 p-4 rounded-xl" style={{
+                          background: 'linear-gradient(145deg, rgba(16, 185, 129, 0.1), #1a1a2a)',
+                          border: '1px solid rgba(16, 185, 129, 0.2)'
+                        }}>
+                          <h5 className="font-medium text-green-400 mb-2">Updated Employees:</h5>
+                          <ul className="space-y-1">
+                            {selectedFile.updatedEmployees.map((employee, idx) => (
+                              <li key={idx} className="text-sm text-green-300 flex items-center">
+                                <MdCheckCircle className="h-4 w-4 mr-2 text-green-400" />
+                                {employee}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      
+                      <div className="mt-6 p-4 rounded-xl" style={{
+                        background: 'linear-gradient(145deg, rgba(249, 115, 22, 0.1), #1a1a2a)',
+                        border: '1px solid rgba(249, 115, 22, 0.2)'
+                      }}>
+                        <h5 className="font-medium text-orange-400 mb-2">Document Information:</h5>
+                        <p className="text-sm text-gray-300">
+                          <strong>Document ID:</strong> {selectedFile.id}
+                        </p>
+                        <p className="text-sm text-gray-300 mt-1">
+                          <strong>Collection:</strong> sentFiles
+                        </p>
+                        <p className="text-sm text-gray-300 mt-1">
+                          <strong>Office:</strong> {selectedFile.officeCategory}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </motion.div>

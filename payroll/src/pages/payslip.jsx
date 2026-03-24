@@ -430,9 +430,9 @@ export default function Payslip() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] p-6 overflow-y-auto relative">
+    <div className="fixed inset-0 w-full h-full bg-[#0a0a0f] overflow-auto">
       {/* Animated abstract sphere background */}
-      <div className="fixed inset-0 overflow-hidden">
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <motion.div
           animate={{
             x: mousePosition.x,
@@ -477,11 +477,12 @@ export default function Payslip() {
       </div>
 
       {/* Controls Section */}
-      <div className="relative z-10 mb-4 p-3 rounded-lg bg-gradient-to-br from-[#1a1a2a] to-[#0a0a0f] border border-white/5"
-        style={{
-          boxShadow: '30px 30px 60px -15px #050505, -30px -30px 60px -15px #1f1f2a',
-        }}
-      >
+      {/* Controls Section */}
+<div className="relative z-10 mb-4 p-3 rounded-lg bg-gradient-to-br from-[#1a1a2a] to-[#0a0a0f] border border-white/5 mx-4 mt-24"
+  style={{
+    boxShadow: '30px 30px 60px -15px #050505, -30px -30px 60px -15px #1f1f2a',
+  }}
+>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block mb-1 font-medium text-gray-300">Paper Size:</label>
@@ -502,41 +503,7 @@ export default function Payslip() {
             </select>
           </div>
           
-          <div>
-            <label className="block mb-1 font-medium text-gray-300">Orientation:</label>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setOrientation("portrait")}
-                className={`flex-1 border border-white/10 rounded px-3 py-2 transition-all duration-200 ${
-                  orientation === "portrait" 
-                    ? 'bg-gradient-to-r from-orange-500 to-pink-500 text-white' 
-                    : 'bg-[#1a1a2a] text-gray-400'
-                }`}
-                style={{
-                  boxShadow: orientation === "portrait" 
-                    ? '0 5px 15px -5px #f97316' 
-                    : 'inset 2px 2px 5px #050505, inset -2px -2px 5px #1f1f2a',
-                }}
-              >
-                Portrait
-              </button>
-              <button
-                onClick={() => setOrientation("landscape")}
-                className={`flex-1 border border-white/10 rounded px-3 py-2 transition-all duration-200 ${
-                  orientation === "landscape" 
-                    ? 'bg-gradient-to-r from-orange-500 to-pink-500 text-white' 
-                    : 'bg-[#1a1a2a] text-gray-400'
-                }`}
-                style={{
-                  boxShadow: orientation === "landscape" 
-                    ? '0 5px 15px -5px #f97316' 
-                    : 'inset 2px 2px 5px #050505, inset -2px -2px 5px #1f1f2a',
-                }}
-              >
-                Landscape
-              </button>
-            </div>
-          </div>
+          
         </div>
         
         {/* Print Button and File Info */}
@@ -572,503 +539,503 @@ export default function Payslip() {
         </div>
       </div>
 
-      {/* Main Payslip Container */}
-      <div 
-        ref={printRef}
-        className="bg-white mx-auto px-8 relative z-10"
-        style={{
-          width: dimensions.width,
-          minHeight: dimensions.height,
-          maxWidth: dimensions.width,
-          fontSize: `${fontSizes.main}px`,
-          fontFamily: "Arial, sans-serif"
-        }}
-      >
-        {/* HEADER - Top Section */}
-        <div className="text-right mb-1 mt-3 mr-48">
-          <div 
-            className="font-bold mb-0"
-            style={{ 
-              fontSize: `${fontSizes.header}px`,
-              marginRight: paperSize === "A3" && orientation === "landscape" ? "450px" : 
-                          paperSize === "A3" ? "350px" : 
-                          orientation === "landscape" ? "400px" : "384px",
-            }}
-          >
-            PAYROLL
-          </div>
-        </div>
-        
-        <div className="text-center mb-1">
-          <div className={`flex ${orientation === "landscape" ? "justify-between" : "justify-between"} items-start`}>
+      {/* Main Payslip Container - Centered */}
+      <div className="relative z-10 flex justify-center items-start w-full">
+        <div 
+          ref={printRef}
+          className="bg-white mx-auto my-4 px-8"
+          style={{
+            width: dimensions.width,
+            minHeight: dimensions.height,
+            maxWidth: dimensions.width,
+            fontSize: `${fontSizes.main}px`,
+            fontFamily: "Arial, sans-serif"
+          }}
+        >
+          {/* HEADER - Top Section */}
+          <div className="text-right mb-1 mt-3 mr-48">
             <div 
-              className="font-bold mb-0 text-center"
+              className="font-bold mb-0"
               style={{ 
-                fontSize: `${fontSizes.main}px`,
-                marginLeft: paperSize === "A3" && orientation === "landscape" ? "500px" : 
-                           paperSize === "A3" ? "300px" : 
-                           orientation === "landscape" ? "200px" : "384px",
-                paddingLeft: paperSize === "A3" && orientation === "landscape" ? "80px" : 
-                            paperSize === "A3" ? "100px" : 
-                            orientation === "landscape" ? "64px" : "128px",
+                fontSize: `${fontSizes.header}px`,
+                marginRight: paperSize === "A3" && orientation === "landscape" ? "450px" : 
+                            paperSize === "A3" ? "350px" : 
+                            orientation === "landscape" ? "400px" : "384px",
               }}
             >
-              MUNICIPALITY OF LILOAN<br/>
-              (Provincial, City or Municipal)
+              PAYROLL
+            </div>
+          </div>
+          
+          <div className="text-center mb-1">
+            <div className={`flex ${orientation === "landscape" ? "justify-between" : "justify-between"} items-start`}>
+              <div 
+                className="font-bold mb-0 text-center"
+                style={{ 
+                  fontSize: `${fontSizes.main}px`,
+                  marginLeft: paperSize === "A3" && orientation === "landscape" ? "500px" : 
+                             paperSize === "A3" ? "300px" : 
+                             orientation === "landscape" ? "200px" : "384px",
+                  paddingLeft: paperSize === "A3" && orientation === "landscape" ? "80px" : 
+                              paperSize === "A3" ? "100px" : 
+                              orientation === "landscape" ? "64px" : "128px",
+                }}
+              >
+                MUNICIPALITY OF LILOAN<br/>
+                (Provincial, City or Municipal)
+              </div>
+              
+              <div 
+                className="mb-2 text-right mr-56"
+                style={{ fontSize: `${fontSizes.small}px` }}
+              >
+                Provincial Form No. 38(A)<br/>
+                (Revised March, 1973)<br/>
+                Sheet No.________________
+              </div>
             </div>
             
             <div 
-              className="mb-2 text-right mr-56"
-              style={{ fontSize: `${fontSizes.small}px` }}
+              className="leading-tight mb-5"
+              style={{ 
+                fontSize: `${fontSizes.small}px`,
+                marginLeft: paperSize === "A3" && orientation === "landscape" ? "50px" : 
+                           paperSize === "A3" ? "60px" : 
+                           orientation === "landscape" ? "40px" : "80px",
+                marginRight: paperSize === "A3" && orientation === "landscape" ? "50px" : "40px",
+              }}
             >
-              Provincial Form No. 38(A)<br/>
-              (Revised March, 1973)<br/>
-              Sheet No.________________
+              We hereby acknowledge to have received from, <span style={{ fontWeight: 'bold' }}>DANNIE LYN I. VILLAFLOR</span> Mun. Treasurer of, 
+              <span style={{ fontWeight: 'bold' }}> LILOAN, SOUTHERN LEYTE</span> the sums herein specified opposite our respective names, 
+              the same, being full 
+              <div>compensation for our services rendered during the period stated below, 
+              to the correctness of which we hereby severally certify</div>
             </div>
           </div>
-          
-          <div 
-            className="leading-tight mb-5"
-            style={{ 
-              fontSize: `${fontSizes.small}px`,
-              marginLeft: paperSize === "A3" && orientation === "landscape" ? "50px" : 
-                         paperSize === "A3" ? "60px" : 
-                         orientation === "landscape" ? "40px" : "80px",
-              marginRight: paperSize === "A3" && orientation === "landscape" ? "50px" : "40px",
-            }}
+
+          {/* MAIN TABLE - UPDATED to match PAYROLL1.xlsx structure */}
+          <table 
+            ref={tableRef}
+            className="w-full border-collapse border border-black" 
+            style={{ fontSize: `${fontSizes.small}px`, tableLayout: 'auto' }}
           >
-            We hereby acknowledge to have received from, <span style={{ fontWeight: 'bold' }}>DANNIE LYN I. VILLAFLOR</span> Mun. Treasurer of, 
-            <span style={{ fontWeight: 'bold' }}> LILOAN, SOUTHERN LEYTE</span> the sums herein specified opposite our respective names, 
-            the same, being full 
-            <div>compensation for our services rendered during the period stated below, 
-            to the correctness of which we hereby severally certify</div>
-          </div>
-        </div>
+            <thead>
+              <tr>
+                <th rowSpan={3} className="border border-black p-0 align-middle text-center bg-gray-100" style={{ width: '30px', padding: '8px 2px', height: '60px' }}>
+                  <div className="flex flex-col items-center justify-center h-full" style={{ fontSize: `${fontSizes.number}px` }}>
+                    <span>N</span>
+                    <span>U</span>
+                    <span>M</span>
+                    <span>B</span>
+                    <span>E</span>
+                    <span>R</span>
+                  </div>
+                </th>
+                <th rowSpan={3} className="border border-black p-0 align-middle px-1 bg-gray-100">NAME</th>
+                <th rowSpan={3} className="border border-black p-0 align-middle px-1 bg-gray-100">DESIGNATION</th>
+                <th colSpan={2} className="border border-black p-0 px-1 text-center bg-gray-100">PERIOD OF SERVICE<br/>(Inclusive Dates)</th>
+                <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center bg-gray-100">Monthly<br/>Rate</th>
+                <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center bg-gray-100">Amount<br/>Accrued</th>
+                <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center bg-gray-100">GSIS<br/>EDUC<br/>LOAN</th>
+                <th rowSpan={3} className="border border-black text-center align-middle bg-gray-100" style={{ padding: '2px 2px', height: '5px'}}>GSIS<br/>MPL<br/>LOAN</th>
+                <th colSpan={2} className="border border-black p-0 text-center bg-gray-100">PHILHEALTH</th>
+                <th colSpan={2} className="border border-black p-0 text-center bg-gray-100">GSIS Premiums</th>
+                <th colSpan={2} className="border border-black p-0 text-center bg-gray-100">Pag-ibig</th>
+                <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center bg-gray-100">LBP<br/>LOAN</th>
+                <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center bg-gray-100">GFAL<br/>LOAN</th>
+                <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center bg-gray-100">GSIS<br/>MPL<br/>Lite</th>
+                <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center bg-gray-100">Pag-ibig<br/>MPL</th>
+                <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center bg-gray-100" style={{ width: '25px' }}>E.C.</th>
+                <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center bg-gray-100">Amount<br/>Paid<br/>In<br/>Cash</th>
+                <th rowSpan={3} className="border border-black p-0 align-middle text-center bg-gray-100" style={{ width: '25px' }}>
+                  <div className="flex flex-col items-center justify-center h-full" style={{ fontSize: `${fontSizes.number}px` }}>
+                    <span>N</span>
+                    <span>U</span>
+                    <span>M</span>
+                    <span>B</span>
+                    <span>E</span>
+                    <span>R</span>
+                  </div>
+                </th>
+                <th rowSpan={3} className="border border-black p-0 align-middle px-5 text-center bg-gray-100">Signature<br/>of<br/>Payee</th>
+              </tr>
+              
+              <tr>
+                <th rowSpan={2} className="border border-black text-center align-middle bg-gray-100" style={{ padding: '2px 2px', height: '10px'}}>From _____</th>
+                <th rowSpan={2} className="border border-black p-0 px-1 text-center align-middle bg-gray-100">To ______</th>
+                <th rowSpan={2} className="border border-black text-center align-middle bg-gray-100" style={{ padding: '8px 2px', height: '30px' }}>Personal<br/>Share</th>
+                <th rowSpan={2} className="border border-black p-0 px-1 text-center align-middle bg-gray-100">Government<br/>Share</th>
+                <th rowSpan={2} className="border border-black p-0 px-1 text-center align-middle bg-gray-100">Personal<br/>Share</th>
+                <th rowSpan={2} className="border border-black p-0 px-1 text-center align-middle bg-gray-100">Government<br/>Share</th>
+                <th rowSpan={2} className="border border-black p-0 px-1 text-center align-middle bg-gray-100">Personal<br/>Share</th>
+                <th rowSpan={2} className="border border-black p-0 px-1 text-center align-middle bg-gray-100">Government<br/>Share</th>
+               </tr>
+            </thead>
 
-        {/* MAIN TABLE - UPDATED to match PAYROLL1.xlsx structure */}
-        <table 
-          ref={tableRef}
-          className="w-full border-collapse border border-black" 
-          style={{ fontSize: `${fontSizes.small}px`, tableLayout: 'auto' }}
-        >
-          <thead>
-            <tr>
-              <th rowSpan={3} className="border border-black p-0 align-middle text-center bg-gray-100" style={{ width: '30px', padding: '8px 2px', height: '60px' }}>
-                <div className="flex flex-col items-center justify-center h-full" style={{ fontSize: `${fontSizes.number}px` }}>
-                  <span>N</span>
-                  <span>U</span>
-                  <span>M</span>
-                  <span>B</span>
-                  <span>E</span>
-                  <span>R</span>
-                </div>
-              </th>
-              <th rowSpan={3} className="border border-black p-0 align-middle px-1 bg-gray-100">NAME</th>
-              <th rowSpan={3} className="border border-black p-0 align-middle px-1 bg-gray-100">DESIGNATION</th>
-              <th colSpan={2} className="border border-black p-0 px-1 text-center bg-gray-100">PERIOD OF SERVICE<br/>(Inclusive Dates)</th>
-              <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center bg-gray-100">Monthly<br/>Rate</th>
-              <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center bg-gray-100">Amount<br/>Accrued</th>
-              <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center bg-gray-100">GSIS<br/>EDUC<br/>LOAN</th>
-              <th rowSpan={3} className="border border-black text-center align-middle bg-gray-100" style={{ padding: '2px 2px', height: '5px'}}>GSIS<br/>MPL<br/>LOAN</th>
-              <th colSpan={2} className="border border-black p-0 text-center bg-gray-100">PHILHEALTH</th>
-              <th colSpan={2} className="border border-black p-0 text-center bg-gray-100">GSIS Premiums</th>
-              <th colSpan={2} className="border border-black p-0 text-center bg-gray-100">Pag-ibig</th>
-              <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center bg-gray-100">LBP<br/>LOAN</th>
-              <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center bg-gray-100">GFAL<br/>LOAN</th>
-              <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center bg-gray-100">GSIS<br/>MPL<br/>Lite</th>
-              <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center bg-gray-100">Pag-ibig<br/>MPL</th>
-              <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center bg-gray-100" style={{ width: '25px' }}>E.C.</th>
-              <th rowSpan={3} className="border border-black p-0 align-middle px-1 text-center bg-gray-100">Amount<br/>Paid<br/>In<br/>Cash</th>
-              <th rowSpan={3} className="border border-black p-0 align-middle text-center bg-gray-100" style={{ width: '25px' }}>
-                <div className="flex flex-col items-center justify-center h-full" style={{ fontSize: `${fontSizes.number}px` }}>
-                  <span>N</span>
-                  <span>U</span>
-                  <span>M</span>
-                  <span>B</span>
-                  <span>E</span>
-                  <span>R</span>
-                </div>
-              </th>
-              <th rowSpan={3} className="border border-black p-0 align-middle px-5 text-center bg-gray-100">Signature<br/>of<br/>Payee</th>
-            </tr>
-            
-            <tr>
-              <th rowSpan={2} className="border border-black text-center align-middle bg-gray-100" style={{ padding: '2px 2px', height: '10px'}}>From _____</th>
-              <th rowSpan={2} className="border border-black p-0 px-1 text-center align-middle bg-gray-100">To ______</th>
-              <th rowSpan={2} className="border border-black text-center align-middle bg-gray-100" style={{ padding: '8px 2px', height: '30px' }}>Personal<br/>Share</th>
-              <th rowSpan={2} className="border border-black p-0 px-1 text-center align-middle bg-gray-100">Government<br/>Share</th>
-              <th rowSpan={2} className="border border-black p-0 px-1 text-center align-middle bg-gray-100">Personal<br/>Share</th>
-              <th rowSpan={2} className="border border-black p-0 px-1 text-center align-middle bg-gray-100">Government<br/>Share</th>
-              <th rowSpan={2} className="border border-black p-0 px-1 text-center align-middle bg-gray-100">Personal<br/>Share</th>
-              <th rowSpan={2} className="border border-black p-0 px-1 text-center align-middle bg-gray-100">Government<br/>Share</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {/* SB MTO MENRO SECTION */}
-            {sbMtoMenroEmployees.length > 0 && (
-              <>
-                {sbMtoMenroEmployees.map((emp, index) => (
-                  <tr key={`sb-${index}`}>
-                    <td className="border border-black text-center align-middle bg-gray-50" style={{ padding: '2px 2px', height: '10px', fontSize: `${fontSizes.number}px` }}>{emp.number || index + 1}</td>
-                    <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.name || ''}</td>
-                    <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.designation || ''}</td>
-                    <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.periodFrom || ''}</td>
-                    <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.periodTo || ''}</td>
-                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.monthlyRate)}</td>
-                    <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.amountAccrued)}</td>
-                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisEduLoan)}</td>
-                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisMplLoan)}</td>
-                    <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.philhealthPersonal)}</td>
-                    <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.philhealthGovernment)}</td>
-                    <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisPersonal)}</td>
-                    <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisGovernment)}</td>
-                    <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigPersonal)}</td>
-                    <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigGovernment)}</td>
-                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.lbpLoan)}</td>
-                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gfalLoan)}</td>
-                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisLiteLoan)}</td>
-                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigMpl)}</td>
-                    <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.ec)}</td>
-                    <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.paidInCash)}</td>
-                    <td className="border border-black text-center p-0 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{emp.number || index + 1}</td>
+            <tbody>
+              {/* SB MTO MENRO SECTION */}
+              {sbMtoMenroEmployees.length > 0 && (
+                <>
+                  {sbMtoMenroEmployees.map((emp, index) => (
+                    <tr key={`sb-${index}`}>
+                      <td className="border border-black text-center align-middle bg-gray-50" style={{ padding: '2px 2px', height: '10px', fontSize: `${fontSizes.number}px` }}>{emp.number || index + 1}</td>
+                      <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.name || ''}</td>
+                      <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.designation || ''}</td>
+                      <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.periodFrom || ''}</td>
+                      <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.periodTo || ''}</td>
+                      <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.monthlyRate)}</td>
+                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.amountAccrued)}</td>
+                      <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisEduLoan)}</td>
+                      <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisMplLoan)}</td>
+                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.philhealthPersonal)}</td>
+                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.philhealthGovernment)}</td>
+                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisPersonal)}</td>
+                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisGovernment)}</td>
+                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigPersonal)}</td>
+                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigGovernment)}</td>
+                      <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.lbpLoan)}</td>
+                      <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gfalLoan)}</td>
+                      <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisLiteLoan)}</td>
+                      <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigMpl)}</td>
+                      <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.ec)}</td>
+                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.paidInCash)}</td>
+                      <td className="border border-black text-center p-0 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{emp.number || index + 1}</td>
+                      <td className="border border-black p-0 align-middle"></td>
+                    </tr>
+                  ))}
+                  
+                  {/* SB MTO MENRO TOTAL ROW */}
+                  <tr className="border border-black text-center align-middle font-bold" style={{ padding: '2px 2px', height: '10px' }}>
+                    <td colSpan={5} className="border border-black p-0 text-right pr-1 align-middle">P</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbMtoMenroTotals.monthlyRate)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbMtoMenroTotals.amountAccrued)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbMtoMenroTotals.gsisEduLoan)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbMtoMenroTotals.gsisMplLoan)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbMtoMenroTotals.philhealthPersonal)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbMtoMenroTotals.philhealthGovernment)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbMtoMenroTotals.gsisPersonal)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbMtoMenroTotals.gsisGovernment)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbMtoMenroTotals.pagibigPersonal)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbMtoMenroTotals.pagibigGovernment)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbMtoMenroTotals.lbpLoan)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbMtoMenroTotals.gfalLoan)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbMtoMenroTotals.gsisLiteLoan)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbMtoMenroTotals.pagibigMpl)}</td>
+                    <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbMtoMenroTotals.ec)}</td>
+                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbMtoMenroTotals.paidInCash)}</td>
+                    <td className="border border-black text-center p-0 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{sbMtoMenroEmployees.length + 1}</td>
                     <td className="border border-black p-0 align-middle"></td>
                   </tr>
-                ))}
-                
-                {/* SB MTO MENRO TOTAL ROW */}
-                <tr className="border border-black text-center align-middle font-bold" style={{ padding: '2px 2px', height: '10px' }}>
-                  <td colSpan={5} className="border border-black p-0 text-right pr-1 align-middle">P</td>
-                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbMtoMenroTotals.monthlyRate)}</td>
-                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbMtoMenroTotals.amountAccrued)}</td>
-                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbMtoMenroTotals.gsisEduLoan)}</td>
-                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbMtoMenroTotals.gsisMplLoan)}</td>
-                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbMtoMenroTotals.philhealthPersonal)}</td>
-                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbMtoMenroTotals.philhealthGovernment)}</td>
-                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbMtoMenroTotals.gsisPersonal)}</td>
-                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbMtoMenroTotals.gsisGovernment)}</td>
-                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbMtoMenroTotals.pagibigPersonal)}</td>
-                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbMtoMenroTotals.pagibigGovernment)}</td>
-                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbMtoMenroTotals.lbpLoan)}</td>
-                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbMtoMenroTotals.gfalLoan)}</td>
-                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbMtoMenroTotals.gsisLiteLoan)}</td>
-                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbMtoMenroTotals.pagibigMpl)}</td>
-                  <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbMtoMenroTotals.ec)}</td>
-                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(sbMtoMenroTotals.paidInCash)}</td>
-                  <td className="border border-black text-center p-0 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{sbMtoMenroEmployees.length + 1}</td>
+                </>
+              )}
+              
+              {/* MEO SECTION HEADER */}
+              {meoEmployees.length > 0 && (
+                <tr>
+                  <td className="border border-black text-center align-middle font-bold" style={{ padding: '2px 2px', height: '10px' }}></td>
+                  <td className="border border-black p-0 pl-1 font-bold align-middle" style={{ fontSize: `${fontSizes.main}px` }}>MEO</td>
+                  <td colSpan={21} className="border border-black p-0 align-middle"></td>
+                </tr>
+              )}
+              
+              {/* MEO ROWS */}
+              {meoEmployees.map((emp, index) => (
+                <tr key={`meo-${index}`}>
+                  <td className="border border-black text-center align-middle bg-gray-50" style={{ padding: '2px 2px', height: '10px', fontSize: `${fontSizes.number}px` }}>{emp.number || index + 1}</td>
+                  <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.name || ''}</td>
+                  <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.designation || ''}</td>
+                  <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.periodFrom || ''}</td>
+                  <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.periodTo || ''}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.monthlyRate)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.amountAccrued)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisEduLoan)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisMplLoan)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.philhealthPersonal)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.philhealthGovernment)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisPersonal)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisGovernment)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigPersonal)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigGovernment)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.lbpLoan)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gfalLoan)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisLiteLoan)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigMpl)}</td>
+                  <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.ec)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.paidInCash)}</td>
+                  <td className="border border-black text-center p-0 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{emp.number || index + 1}</td>
                   <td className="border border-black p-0 align-middle"></td>
                 </tr>
-              </>
-            )}
-            
-            {/* MEO SECTION HEADER */}
-            {meoEmployees.length > 0 && (
-              <tr>
-                <td className="border border-black text-center align-middle font-bold" style={{ padding: '2px 2px', height: '10px' }}></td>
-                <td className="border border-black p-0 pl-1 font-bold align-middle" style={{ fontSize: `${fontSizes.main}px` }}>MEO</td>
-                <td colSpan={21} className="border border-black p-0 align-middle"></td>
-              </tr>
-            )}
-            
-            {/* MEO ROWS */}
-            {meoEmployees.map((emp, index) => (
-              <tr key={`meo-${index}`}>
-                <td className="border border-black text-center align-middle bg-gray-50" style={{ padding: '2px 2px', height: '10px', fontSize: `${fontSizes.number}px` }}>{emp.number || index + 1}</td>
-                <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.name || ''}</td>
-                <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.designation || ''}</td>
-                <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.periodFrom || ''}</td>
-                <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.periodTo || ''}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.monthlyRate)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.amountAccrued)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisEduLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisMplLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.philhealthPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.philhealthGovernment)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisGovernment)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigGovernment)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.lbpLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gfalLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisLiteLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigMpl)}</td>
-                <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.ec)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.paidInCash)}</td>
-                <td className="border border-black text-center p-0 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{emp.number || index + 1}</td>
-                <td className="border border-black p-0 align-middle"></td>
-              </tr>
-            ))}
-            
-            {/* MEO TOTAL ROW */}
-            {meoEmployees.length > 0 && (
-              <tr className="border border-black text-center align-middle font-bold" style={{padding: '2px 2px', height: '10px' }}>
-                <td colSpan={5} className="border border-black p-0 align-middle"></td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.monthlyRate)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.amountAccrued)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.gsisEduLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.gsisMplLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.philhealthPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.philhealthGovernment)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.gsisPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.gsisGovernment)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.pagibigPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.pagibigGovernment)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.lbpLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.gfalLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.gsisLiteLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.pagibigMpl)}</td>
-                <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.ec)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.paidInCash)}</td>
-                <td className="border border-black text-center p-0 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{sbMtoMenroEmployees.length + meoEmployees.length + 1}</td>
-                <td className="border border-black p-0 align-middle"></td>
-              </tr>
-            )}
-            
-            {/* MPDO SECTION HEADER */}
-            {mpdoEmployees.length > 0 && (
-              <tr>
-                <td className="border border-black text-center align-middle font-bold" style={{ padding: '2px 2px', height: '10px' }}></td>
-                <td className="border border-black p-0 pl-1 font-bold align-middle" style={{ fontSize: `${fontSizes.main}px` }}>MPDO</td>
-                <td colSpan={21} className="border border-black p-0 align-middle"></td>
-              </tr>
-            )}
-            
-            {/* MPDO ROWS */}
-            {mpdoEmployees.map((emp, index) => (
-              <tr key={`mpdo-${index}`}>
-                <td className="border border-black text-center align-middle bg-gray-50" style={{ padding: '2px 2px', height: '10px', fontSize: `${fontSizes.number}px` }}>{emp.number || index + 1}</td>
-                <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.name || ''}</td>
-                <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.designation || ''}</td>
-                <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.periodFrom || ''}</td>
-                <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.periodTo || ''}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.monthlyRate)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.amountAccrued)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisEduLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisMplLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.philhealthPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.philhealthGovernment)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisGovernment)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigGovernment)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.lbpLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gfalLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisLiteLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigMpl)}</td>
-                <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.ec)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.paidInCash)}</td>
-                <td className="border border-black text-center p-0 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{emp.number || index + 1}</td>
-                <td className="border border-black p-0 align-middle"></td>
-              </tr>
-            ))}
-            
-            {/* MPDO TOTAL ROW */}
-            {mpdoEmployees.length > 0 && (
-              <tr className="border border-black text-center align-middle font-bold" style={{padding: '2px 2px', height: '10px' }}>
-                <td colSpan={5} className="border border-black p-0 align-middle"></td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.monthlyRate)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.amountAccrued)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.gsisEduLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.gsisMplLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.philhealthPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.philhealthGovernment)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.gsisPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.gsisGovernment)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.pagibigPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.pagibigGovernment)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.lbpLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.gfalLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.gsisLiteLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.pagibigMpl)}</td>
-                <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.ec)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.paidInCash)}</td>
-                <td className="border border-black text-center p-0 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{sbMtoMenroEmployees.length + meoEmployees.length + mpdoEmployees.length + 1}</td>
-                <td className="border border-black p-0 align-middle"></td>
-              </tr>
-            )}
-            
-            {/* MSWDO SECTION HEADER */}
-            {mswdoEmployees.length > 0 && (
-              <tr>
-                <td className="border border-black text-center align-middle font-bold" style={{ padding: '2px 2px', height: '10px' }}></td>
-                <td className="border border-black p-0 pl-1 font-bold align-middle" style={{ fontSize: `${fontSizes.main}px` }}>MSWDO</td>
-                <td colSpan={21} className="border border-black p-0 align-middle"></td>
-              </tr>
-            )}
-            
-            {/* MSWDO ROWS */}
-            {mswdoEmployees.map((emp, index) => (
-              <tr key={`mswdo-${index}`}>
-                <td className="border border-black text-center align-middle bg-gray-50" style={{ padding: '2px 2px', height: '10px', fontSize: `${fontSizes.number}px` }}>{emp.number || index + 1}</td>
-                <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.name || ''}</td>
-                <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.designation || ''}</td>
-                <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.periodFrom || ''}</td>
-                <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.periodTo || ''}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.monthlyRate)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.amountAccrued)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisEduLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisMplLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.philhealthPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.philhealthGovernment)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisGovernment)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigGovernment)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.lbpLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gfalLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisLiteLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigMpl)}</td>
-                <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.ec)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.paidInCash)}</td>
-                <td className="border border-black text-center p-0 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{emp.number || index + 1}</td>
-                <td className="border border-black p-0 align-middle"></td>
-              </tr>
-            ))}
-            
-            {/* MSWDO TOTAL ROW */}
-            {mswdoEmployees.length > 0 && (
-              <tr className="border border-black text-center align-middle font-bold" style={{padding: '2px 2px', height: '10px' }}>
-                <td colSpan={5} className="border border-black p-0 align-middle"></td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.monthlyRate)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.amountAccrued)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.gsisEduLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.gsisMplLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.philhealthPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.philhealthGovernment)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.gsisPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.gsisGovernment)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.pagibigPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.pagibigGovernment)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.lbpLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.gfalLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.gsisLiteLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.pagibigMpl)}</td>
-                <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.ec)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.paidInCash)}</td>
-                <td className="border border-black text-center p-0 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{sbMtoMenroEmployees.length + meoEmployees.length + mpdoEmployees.length + mswdoEmployees.length + 1}</td>
-                <td className="border border-black p-0 align-middle"></td>
-              </tr>
-            )}
-            
-            {/* GRAND TOTAL ROW */}
-            {employees.length > 0 && (
-              <tr className="font-bold">
-                <td colSpan={5} className="border border-black align-middle font-bold" style={{ padding: '4px 2px', height: '20px', fontSize: `${fontSizes.number}px` }}>Total or Carried forward</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.monthlyRate)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.amountAccrued)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.gsisEduLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.gsisMplLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.philhealthPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.philhealthGovernment)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.gsisPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.gsisGovernment)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.pagibigPersonal)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.pagibigGovernment)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.lbpLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.gfalLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.gsisLiteLoan)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.pagibigMpl)}</td>
-                <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.ec)}</td>
-                <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.paidInCash)}</td>
-                <td className="border border-black text-center p-0 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{employees.length + 4}</td>
-                <td className="border border-black p-0 align-middle"></td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              ))}
+              
+              {/* MEO TOTAL ROW */}
+              {meoEmployees.length > 0 && (
+                <tr className="border border-black text-center align-middle font-bold" style={{padding: '2px 2px', height: '10px' }}>
+                  <td colSpan={5} className="border border-black p-0 align-middle"></td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.monthlyRate)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.amountAccrued)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.gsisEduLoan)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.gsisMplLoan)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.philhealthPersonal)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.philhealthGovernment)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.gsisPersonal)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.gsisGovernment)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.pagibigPersonal)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.pagibigGovernment)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.lbpLoan)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.gfalLoan)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.gsisLiteLoan)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.pagibigMpl)}</td>
+                  <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.ec)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(meoTotals.paidInCash)}</td>
+                  <td className="border border-black text-center p-0 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{sbMtoMenroEmployees.length + meoEmployees.length + 1}</td>
+                  <td className="border border-black p-0 align-middle"></td>
+                </tr>
+              )}
+              
+              {/* MPDO SECTION HEADER */}
+              {mpdoEmployees.length > 0 && (
+                <tr>
+                  <td className="border border-black text-center align-middle font-bold" style={{ padding: '2px 2px', height: '10px' }}></td>
+                  <td className="border border-black p-0 pl-1 font-bold align-middle" style={{ fontSize: `${fontSizes.main}px` }}>MPDO</td>
+                  <td colSpan={21} className="border border-black p-0 align-middle"></td>
+                </tr>
+              )}
+              
+              {/* MPDO ROWS */}
+              {mpdoEmployees.map((emp, index) => (
+                <tr key={`mpdo-${index}`}>
+                  <td className="border border-black text-center align-middle bg-gray-50" style={{ padding: '2px 2px', height: '10px', fontSize: `${fontSizes.number}px` }}>{emp.number || index + 1}</td>
+                  <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.name || ''}</td>
+                  <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.designation || ''}</td>
+                  <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.periodFrom || ''}</td>
+                  <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.periodTo || ''}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.monthlyRate)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.amountAccrued)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisEduLoan)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisMplLoan)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.philhealthPersonal)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.philhealthGovernment)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisPersonal)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisGovernment)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigPersonal)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigGovernment)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.lbpLoan)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gfalLoan)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisLiteLoan)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigMpl)}</td>
+                  <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.ec)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.paidInCash)}</td>
+                  <td className="border border-black text-center p-0 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{emp.number || index + 1}</td>
+                  <td className="border border-black p-0 align-middle"></td>
+                </tr>
+              ))}
+              
+              {/* MPDO TOTAL ROW */}
+              {mpdoEmployees.length > 0 && (
+                <tr className="border border-black text-center align-middle font-bold" style={{padding: '2px 2px', height: '10px' }}>
+                  <td colSpan={5} className="border border-black p-0 align-middle"></td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.monthlyRate)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.amountAccrued)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.gsisEduLoan)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.gsisMplLoan)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.philhealthPersonal)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.philhealthGovernment)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.gsisPersonal)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.gsisGovernment)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.pagibigPersonal)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.pagibigGovernment)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.lbpLoan)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.gfalLoan)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.gsisLiteLoan)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.pagibigMpl)}</td>
+                  <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.ec)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mpdoTotals.paidInCash)}</td>
+                  <td className="border border-black text-center p-0 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{sbMtoMenroEmployees.length + meoEmployees.length + mpdoEmployees.length + 1}</td>
+                  <td className="border border-black p-0 align-middle"></td>
+                </tr>
+              )}
+              
+              {/* MSWDO SECTION HEADER */}
+              {mswdoEmployees.length > 0 && (
+                <tr>
+                  <td className="border border-black text-center align-middle font-bold" style={{ padding: '2px 2px', height: '10px' }}></td>
+                  <td className="border border-black p-0 pl-1 font-bold align-middle" style={{ fontSize: `${fontSizes.main}px` }}>MSWDO</td>
+                  <td colSpan={21} className="border border-black p-0 align-middle"></td>
+                </tr>
+              )}
+              
+              {/* MSWDO ROWS */}
+              {mswdoEmployees.map((emp, index) => (
+                <tr key={`mswdo-${index}`}>
+                  <td className="border border-black text-center align-middle bg-gray-50" style={{ padding: '2px 2px', height: '10px', fontSize: `${fontSizes.number}px` }}>{emp.number || index + 1}</td>
+                  <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.name || ''}</td>
+                  <td className="border border-black p-0 pl-1 align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.designation || ''}</td>
+                  <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.periodFrom || ''}</td>
+                  <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.main}px` }}>{emp.periodTo || ''}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.monthlyRate)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.amountAccrued)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisEduLoan)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisMplLoan)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.philhealthPersonal)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.philhealthGovernment)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisPersonal)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisGovernment)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigPersonal)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigGovernment)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.lbpLoan)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gfalLoan)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.gsisLiteLoan)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.pagibigMpl)}</td>
+                  <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.ec)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{formatNumber(emp.paidInCash)}</td>
+                  <td className="border border-black text-center p-0 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>{emp.number || index + 1}</td>
+                  <td className="border border-black p-0 align-middle"></td>
+                </tr>
+              ))}
+              
+              {/* MSWDO TOTAL ROW */}
+              {mswdoEmployees.length > 0 && (
+                <tr className="border border-black text-center align-middle font-bold" style={{padding: '2px 2px', height: '10px' }}>
+                  <td colSpan={5} className="border border-black p-0 align-middle"></td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.monthlyRate)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.amountAccrued)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.gsisEduLoan)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.gsisMplLoan)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.philhealthPersonal)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.philhealthGovernment)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.gsisPersonal)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.gsisGovernment)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.pagibigPersonal)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.pagibigGovernment)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.lbpLoan)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.gfalLoan)}</td>
+                                    <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.gsisLiteLoan)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.pagibigMpl)}</td>
+                  <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.ec)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(mswdoTotals.paidInCash)}</td>
+                  <td className="border border-black text-center p-0 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{sbMtoMenroEmployees.length + meoEmployees.length + mpdoEmployees.length + mswdoEmployees.length + 1}</td>
+                  <td className="border border-black p-0 align-middle"></td>
+                </tr>
+              )}
+              
+              {/* GRAND TOTAL ROW */}
+              {employees.length > 0 && (
+                <tr className="font-bold">
+                  <td colSpan={5} className="border border-black align-middle font-bold" style={{ padding: '4px 2px', height: '20px', fontSize: `${fontSizes.number}px` }}>Total or Carried forward</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.monthlyRate)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.amountAccrued)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.gsisEduLoan)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.gsisMplLoan)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.philhealthPersonal)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.philhealthGovernment)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.gsisPersonal)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.gsisGovernment)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.pagibigPersonal)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.pagibigGovernment)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.lbpLoan)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.gfalLoan)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.gsisLiteLoan)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.pagibigMpl)}</td>
+                  <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.ec)}</td>
+                  <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{formatTotal(grandTotals.paidInCash)}</td>
+                  <td className="border border-black text-center p-0 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>{employees.length + 4}</td>
+                  <td className="border border-black p-0 align-middle"></td>
+                </tr>
+              )}
+            </tbody>
+          </table>
 
-        {/* FOOTER AND SIGNATURES SECTION */}
-        <div className="mt-2 space-y-1" style={{ fontSize: `${fontSizes.small}px` }}>
-          {/* First Row of Signatures */}
-          <div className={`grid ${paperSize === "A3" ? "grid-cols-3 gap-3" : orientation === "landscape" ? "grid-cols-3 gap-2" : "grid-cols-3 gap-1"}`}>
-            <div>
-              <div className="leading-tight ml-4 mt-1">
-                <p className="pl-5">(1) I HEREBY CERTIFY on my official oath that the above PAYROLL is correct, 
-                and that services</p> <p className="mt-1"> above stated have been duly rendered. Payment for such services 
-                is also hereby approved from the </p><p className="mt-1">appropriation indicated.</p>
+          {/* FOOTER AND SIGNATURES SECTION */}
+          <div className="mt-2 space-y-1" style={{ fontSize: `${fontSizes.small}px` }}>
+            {/* First Row of Signatures */}
+            <div className={`grid ${paperSize === "A3" ? "grid-cols-3 gap-3" : orientation === "landscape" ? "grid-cols-3 gap-2" : "grid-cols-3 gap-1"}`}>
+              <div>
+                <div className="leading-tight ml-4 mt-1">
+                  <p className="pl-5">(1) I HEREBY CERTIFY on my official oath that the above PAYROLL is correct, 
+                  and that services</p> <p className="mt-1"> above stated have been duly rendered. Payment for such services 
+                  is also hereby approved from the </p><p className="mt-1">appropriation indicated.</p>
+                </div>
+                <div className="mt-2 ml-4">
+                  <div className="inline-block"></div>
+                  <div className="ml-2">_____________________ , 20______</div>
+                  <div className="ml-2 mt-1">(2) APPROVED for payment subject to preaudit:</div>
+                </div>
+                <div className="text-left pl-80 font-bold" style={{ fontSize: `${fontSizes.medium}px` }}>JOVENTINO O. PACA, JR.</div>
+                  <div className="text-left ml-14 pl-72">Mun. Engineer</div>
               </div>
-              <div className="mt-2 ml-4">
-                <div className="inline-block"></div>
-                <div className="ml-2">_____________________ , 20______</div>
-                <div className="ml-2 mt-1">(2) APPROVED for payment subject to preaudit:</div>
+              
+              <div>
+                <div className="mt-3 ml-4">
+                  <div>(4) APPROVED:</div>
+                </div>
+                <div className="mt-11 ml-20 pl-20 pt-2 font-bold" style={{ fontSize: `${fontSizes.medium}px` }}>JONNA C. ADAN</div>
+                <div className="ml-7 pl-36">Municipal Mayor</div>
               </div>
-              <div className="text-left pl-80 font-bold" style={{ fontSize: `${fontSizes.medium}px` }}>JOVENTINO O. PACA, JR.</div>
-                <div className="text-left ml-14 pl-72">Mun. Engineer</div>
+              
+              <div>
+                <div className="mt-1">
+                  <p className="pl-5">(5) I HEREBY CERTIFY on my official oath that I have paid in cash to each official 
+                    and employee whose name</p> <p>appears on the above  roll the amount opposite his name,
+                    under column 19, they having signed or marked his </p><p className="mt-1">name under column 24 above, 
+                    in my presence and at the time that payment was made to him in acknowledgment </p><p className="mt-1">
+                    of receipt of the money paid him.</p>
+                </div>
+                <div className="mt-1 ml-56 text-center">
+                  <div className="inline-block"></div>
+                  <div className="font-bold" style={{ fontSize: `${fontSizes.medium}px` }}>DANNIE LYN I. VILLAFLOR</div>
+                  <div>Municipal Treasurer</div>
+                </div>
+                <div className="ml-10">__________________________________ , 20_________________</div>
+              </div>
             </div>
             
-            <div >
-            <div className="mt-3 ml-4">
-              <div>(4) APPROVED:</div>
-              </div>
-              <div className="mt-11 ml-20 pl-20 pt-2 font-bold" style={{ fontSize: `${fontSizes.medium}px` }}>JONNA C. ADAN</div>
-              <div className="ml-7 pl-36">Municipal Mayor</div>
-              
-            </div>
-            <div>
-              <div className=" mt-1">
-              <p className="pl-5">(5) I HEREBY CERTIFY on my official oath that I have paid in cash to each official 
-                and employee whose name</p> <p>appears on the above  roll the amount opposite his name,
-                under column 19, they having signed or marked his </p><p className="mt-1">name under column 24 above, 
-                in my presence and at the time that payment was made to him in acknowledgment </p><p className="mt-1">
-                of receipt of the money paid him.</p>
-              </div>
-              <div className="mt-1 ml-56 text-center">
-                <div className="inline-block"></div>
-                <div className="font-bold" style={{ fontSize: `${fontSizes.medium}px` }}>DANNIE LYN I. VILLAFLOR</div>
-                <div>Municipal Treasurer</div>
-              </div>
-              <div className="ml-10">__________________________________ , 20_________________</div>
-            </div>
-            <div className="">
-                <div>_____________________ , 20 ____________________________ Treasurer</div>
-              </div>
-          </div>
-          
-          {/* Second Row of Signatures */}
-          <div className={`grid ${paperSize === "A3" ? "grid-cols-3 gap-3" : orientation === "landscape" ? "grid-cols-3 gap-2" : "grid-cols-3 gap-1"} mt-1`}>
-            <div>
-              <div className="mt-2">
-                (3) Preaudit and approved for payment in the month of<p className="mt-1"><p className="mt-1">
-                _____________________ (P_________________ ) pesos only.</p></p> 
-              </div>
-              <div className="mt-3">_____________________ , 20 ____________________________ </div>
-               <div className="ml-40">Provincial Auditor</div>
-              
-                 <div className=" font-bold pl-80" style={{ fontSize: `${fontSizes.medium}px` }}>JELOVE C. REYES</div>
+            {/* Second Row of Signatures */}
+            <div className={`grid ${paperSize === "A3" ? "grid-cols-3 gap-3" : orientation === "landscape" ? "grid-cols-3 gap-2" : "grid-cols-3 gap-1"} mt-1`}>
+              <div>
+                <div className="mt-2">
+                  (3) Preaudit and approved for payment in the month of<p className="mt-1"><p className="mt-1">
+                  _____________________ (P_________________ ) pesos only.</p></p> 
+                </div>
+                <div className="mt-3">_____________________ , 20 ____________________________ </div>
+                <div className="ml-40">Provincial Auditor</div>
+                <div className="font-bold pl-80" style={{ fontSize: `${fontSizes.medium}px` }}>JELOVE C. REYES</div>
                 <div className="pl-80 ml-3">MSWDO</div>
+              </div>
               
+              <div>
+                <div className="font-bold pl-1" style={{ fontSize: `${fontSizes.medium}px` }}>HERMENIA C. CERDEÑA</div>
+                <div className="pl-11 ml-3">MPDC</div>
+              </div>
+              
+              <div>
+                <div className="">
+                  <p className="pl-5">(6) I HEREBY CERTIFY on my official oath that each employee whose name appears 
+                    on the above roll has been</p><p className="mt-1"> paid in cash or in check, and in no other mode, 
+                    the amount shown under column 19 above, opposite his name. The total of the 
+                    payments made by means this payroll amounts to __________________________________ 
+                    </p><p className="mt-1">( P ___________________ ) pesos only.</p>
+                </div>
+                <div className="mt-1 ml-56 text-center">
+                  <div className="mt-3"></div>
+                  <div className="font-bold" style={{ fontSize: `${fontSizes.medium}px` }}>DANNIE LYN I. VILLAFLOR</div>
+                  <div>Municipal Treasurer</div>
+                </div>
+                <div className="ml-10">__________________________________ , 20_________________</div>
+              </div>
             </div>
-            <div>
-              <div className="font-bold pl-1" style={{ fontSize: `${fontSizes.medium}px` }}>HERMENIA C. CERDEÑA</div>
-              <div className="pl-11 ml-3">MPDC</div>
-            </div>            
-            <div className="">
-              <div className="">
-              <p className="pl-5">(6) I HEREBY CERTIFY on my official oath that each employee whose name appears 
-                on the above roll has been</p><p className="mt-1"> paid in cash or in check, and in no other mode, 
-                the amount shown under column 19 above, opposite his name. The total of the 
-                payments made by means this payroll amounts to __________________________________ 
-                </p><p className="mt-1">( P ___________________ ) pesos only.</p>
-              </div>
-              <div className="mt-1 ml-56 text-center">
-                <div className="mt-3"></div>
-                <div className="font-bold" style={{ fontSize: `${fontSizes.medium}px` }}>DANNIE LYN I. VILLAFLOR</div>
-                <div>Municipal Treasurer</div>
-              </div>
-              <div className="ml-10">__________________________________ , 20_________________</div>
+            
+            <div className="pl-72 ml-52">
+              <div className="font-bold" style={{ fontSize: `${fontSizes.medium}px` }}>MICHAEL B. UY-OCO</div>
+              <div className="pl-3">MGDH I/LDRRMO</div>
             </div>
-          </div>
-          <div className=" pl-72 ml-52">
-                <div className="font-bold"style={{ fontSize: `${fontSizes.medium}px` }}>MICHAEL B. UY-OCO</div>
-                <div className="pl-3">MGDH I/LDRRMO</div>
-              </div>
-          {/* Bottom Slogan */}
-          <div className="pl-80 ml-96 font-bold" style={{ fontSize: `${fontSizes.medium}px` }}>
-            IPAKITA SA MUNDO, UMAASENSO NA TAYO.
+            
+            {/* Bottom Slogan */}
+            <div className="pl-80 ml-96 font-bold" style={{ fontSize: `${fontSizes.medium}px` }}>
+              IPAKITA SA MUNDO, UMAASENSO NA TAYO.
+            </div>
           </div>
         </div>
       </div>
     </div>
   );
 }
-//MAONI

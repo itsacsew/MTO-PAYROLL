@@ -3,7 +3,7 @@ import * as XLSX from 'xlsx';
 import { useLocation } from 'react-router-dom';
 import logo from '../assets/logo1.png';
 
-function PayslipGenerator() {
+function PayslipGenerator4() {
   const [payslips, setPayslips] = useState([]);
   const [excelData, setExcelData] = useState(null);
   const location = useLocation();
@@ -27,84 +27,98 @@ function PayslipGenerator() {
     }
   };
 
-  // Function to extract employee data using same logic as payslip.jsx
+  // Function to extract employee data from PAYROLL4.xlsx format
   const extractEmployeeDataFromExcel = (workbook) => {
     if (!workbook) return [];
     
     try {
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
       
-      // Same employee rows as payslip.jsx
-      const employeeRows = [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 30, 31, 32, 35];
+      // Employee rows based on PAYROLL4.xlsx structure
+      // Rows: MAYOR section, ACCOUNTING section, MUN. BUDGET OFFICE section, MASSO section
+      const employeeRows = [15, 16, 17, 18, 22, 23, 24, 28, 29, 33];
       const employees = [];
       
       employeeRows.forEach(row => {
         try {
-          // Get cell values - using same column mapping as payslip.jsx
-          const cellC = firstSheet[`C${row}`];
-          const cellA = firstSheet[`A${row}`];
-          const cellD = firstSheet[`D${row}`];
-          const cellE = firstSheet[`E${row}`];
-          const cellF = firstSheet[`F${row}`];
-          const cellH = firstSheet[`H${row}`];
-          const cellI = firstSheet[`I${row}`];
-          const cellJ = firstSheet[`J${row}`];
-          const cellK = firstSheet[`K${row}`];
-          const cellL = firstSheet[`L${row}`];
-          const cellM = firstSheet[`M${row}`];
-          const cellN = firstSheet[`N${row}`];
-          const cellO = firstSheet[`O${row}`];
-          const cellP = firstSheet[`P${row}`];
-          const cellQ = firstSheet[`Q${row}`];
-          const cellR = firstSheet[`R${row}`];
-          const cellS = firstSheet[`S${row}`];
-          const cellT = firstSheet[`T${row}`];
-          const cellU = firstSheet[`U${row}`];
-          const cellV = firstSheet[`V${row}`];
-          const cellX = firstSheet[`X${row}`];
+          // Get cell values from PAYROLL4 format
+          const cellA = firstSheet[`A${row}`];  // NUMBER
+          const cellC = firstSheet[`C${row}`];  // NAME
+          const cellD = firstSheet[`D${row}`];  // DESIGNATION
+          const cellE = firstSheet[`E${row}`];  // PERIOD FROM
+          const cellF = firstSheet[`F${row}`];  // PERIOD TO
+          const cellG = firstSheet[`G${row}`];  // SALARY AMOUNT ACCRUED
+          const cellH = firstSheet[`H${row}`];  // AMOUNT ACCRUED FOR THE PERIOD
+          const cellI = firstSheet[`I${row}`];  // EDUC LOAN
+          const cellJ = firstSheet[`J${row}`];  // GSIS MPL
+          const cellK = firstSheet[`K${row}`];  // PHILHEALTH Personal Share
+          const cellL = firstSheet[`L${row}`];  // PHILHEALTH Government Share
+          const cellM = firstSheet[`M${row}`];  // GSIS Premiums Personal Share
+          const cellN = firstSheet[`N${row}`];  // GSIS Premiums Government Share
+          const cellO = firstSheet[`O${row}`];  // Pag-ibig Personal Share
+          const cellP = firstSheet[`P${row}`];  // Pag-ibig Government Share
+          const cellQ = firstSheet[`Q${row}`];  // LBP LOAN
+          const cellR = firstSheet[`R${row}`];  // GFAL LOAN
+          const cellS = firstSheet[`S${row}`];  // GSIS MPL Lite
+          const cellT = firstSheet[`T${row}`];  // Pag-ibig MPL
+          const cellU = firstSheet[`U${row}`];  // E.C.
+          const cellW = firstSheet[`W${row}`];  // AMOUNT PAID
+          const cellX = firstSheet[`X${row}`];  // NUMBER (for signature)
           
           if (cellC && cellC.v) {
             const employeeName = cellC.v.toString().trim();
             
-            // Calculate earnings (Basic Salary + Amount Accrued)
-            const monthlyRate = parseFloat(cellH?.v || 0);
-            const amountAccrued = parseFloat(cellI?.v || 0);
+            // Calculate earnings - in PAYROLL4, the monthly rate is in column G (SALARY)
+            let monthlyRate = 0;
+            let amountAccrued = 0;
+            
+            if (cellH && cellH.v) {
+              // If there's an Amount Accrued column, use that
+              amountAccrued = parseFloat(cellH.v) || 0;
+            }
+            
+            if (cellG && cellG.v) {
+              // Column G is the salary amount for the period
+              monthlyRate = parseFloat(cellG.v) || 0;
+            }
+            
             const totalEarnings = monthlyRate + amountAccrued;
             
-            // Calculate total deductions (sum of all deduction columns)
-            const gsisEduLoan = parseFloat(cellJ?.v || 0);
-            const gsisMplLoan = parseFloat(cellK?.v || 0);
-            const philhealthPersonal = parseFloat(cellL?.v || 0);
-            const philhealthGovernment = parseFloat(cellM?.v || 0);
-            const gsisPersonal = parseFloat(cellN?.v || 0);
-            const gsisGovernment = parseFloat(cellO?.v || 0);
-            const pagibigPersonal = parseFloat(cellP?.v || 0);
-            const pagibigGovernment = parseFloat(cellQ?.v || 0);
-            const lbpLoan = parseFloat(cellR?.v || 0);
-            const gfalLoan = parseFloat(cellS?.v || 0);
-            const gsisLiteLoan = parseFloat(cellT?.v || 0);
-            const pagibigMpl = parseFloat(cellU?.v || 0);
-            const ec = parseFloat(cellV?.v || 0);
+            // Calculate total deductions
+            const educLoan = parseFloat(cellI?.v || 0);
+            const gsisMpl = parseFloat(cellJ?.v || 0);
+            const philhealthPersonal = parseFloat(cellK?.v || 0);
+            const philhealthGovernment = parseFloat(cellL?.v || 0);
+            const gsisPersonal = parseFloat(cellM?.v || 0);
+            const gsisGovernment = parseFloat(cellN?.v || 0);
+            const pagibigPersonal = parseFloat(cellO?.v || 0);
+            const pagibigGovernment = parseFloat(cellP?.v || 0);
+            const lbpLoan = parseFloat(cellQ?.v || 0);
+            const gfalLoan = parseFloat(cellR?.v || 0);
+            const gsisLiteLoan = parseFloat(cellS?.v || 0);
+            const pagibigMpl = parseFloat(cellT?.v || 0);
+            const ec = parseFloat(cellU?.v || 0);
             
             const totalDeductions = 
-              gsisEduLoan + gsisMplLoan + 
+              educLoan + gsisMpl + 
               philhealthPersonal + philhealthGovernment + 
               gsisPersonal + gsisGovernment + 
               pagibigPersonal + pagibigGovernment +
               lbpLoan + gfalLoan + gsisLiteLoan + pagibigMpl + ec;
             
             const netPay = totalEarnings - totalDeductions;
+            const paidAmount = cellW?.v ? parseFloat(cellW.v) : netPay;
             
-            // Build deductions array with all items (including zero values for display if needed)
+            // Build deductions array with all items
             const allDeductions = [
-              { name: "GSIS Edu Loan", value: gsisEduLoan.toFixed(2) },
-              { name: "GSIS MPL Loan", value: gsisMplLoan.toFixed(2) },
+              { name: "EDUC Loan", value: educLoan.toFixed(2) },
+              { name: "GSIS MPL", value: gsisMpl.toFixed(2) },
               { name: "PhilHealth Personal", value: philhealthPersonal.toFixed(2) },
-              { name: "PhilHealth Govt", value: philhealthGovernment.toFixed(2) },
+              { name: "PhilHealth Government", value: philhealthGovernment.toFixed(2) },
               { name: "GSIS Personal", value: gsisPersonal.toFixed(2) },
               { name: "GSIS Government", value: gsisGovernment.toFixed(2) },
               { name: "Pag-IBIG Personal", value: pagibigPersonal.toFixed(2) },
-              { name: "Pag-IBIG Govt", value: pagibigGovernment.toFixed(2) },
+              { name: "Pag-IBIG Government", value: pagibigGovernment.toFixed(2) },
               { name: "LBP Loan", value: lbpLoan.toFixed(2) },
               { name: "GFAL Loan", value: gfalLoan.toFixed(2) },
               { name: "GSIS Lite Loan", value: gsisLiteLoan.toFixed(2) },
@@ -112,26 +126,40 @@ function PayslipGenerator() {
               { name: "E.C.", value: ec.toFixed(2) }
             ];
             
+            // Build earnings array
+            const earnings = [];
+            if (monthlyRate > 0) {
+              earnings.push({ name: "Monthly Salary", value: monthlyRate.toFixed(2) });
+            }
+            if (amountAccrued > 0) {
+              earnings.push({ name: "Amount Accrued", value: amountAccrued.toFixed(2) });
+            }
+            
+            // Format period
+            let periodStr = '';
+            const fromDate = cellE?.v ? cellE.v.toString() : '';
+            const toDate = cellF?.v ? cellF.v.toString() : '';
+            if (fromDate || toDate) {
+              periodStr = `${fromDate} to ${toDate}`;
+            }
+            
             employees.push({
               name: employeeName,
-              id: cellA?.v?.toString() || 'N/A',
-              dept: '', // Not available in original data
+              id: cellA?.v?.toString() || (row - 14).toString(),
+              dept: '', // Department not directly available
               pos: cellD?.v?.toString() || 'N/A',
-              period: `${cellE?.v?.toString() || ''} to ${cellF?.v?.toString() || ''}`,
+              period: periodStr || 'Not specified',
               
               // Earnings breakdown
-              earnings: [
-                { name: "Monthly Rate", value: monthlyRate.toFixed(2) },
-                { name: "Amount Accrued", value: amountAccrued.toFixed(2) }
-              ].filter(item => parseFloat(item.value) > 0),
+              earnings: earnings,
               
-              // Deductions breakdown - include all for flexible display but we'll show all with zero handling in UI
+              // Deductions breakdown
               deductions: allDeductions,
               
               totalEarnings: totalEarnings.toFixed(2),
               totalDeductions: totalDeductions.toFixed(2),
               netPay: netPay.toFixed(2),
-              paidInCash: cellX?.v ? parseFloat(cellX.v).toFixed(2) : '0.00'
+              paidInCash: paidAmount.toFixed(2)
             });
           }
         } catch (error) {
@@ -354,7 +382,6 @@ function PayslipGenerator() {
     
     // Add each payslip to the print window
     payslips.forEach((slip, index) => {
-      // Filter deductions to show only non-zero for cleaner print, but we can show all with zero styling
       const nonZeroDeductions = slip.deductions.filter(d => parseFloat(d.value) !== 0);
       const displayDeductions = nonZeroDeductions.length > 0 ? nonZeroDeductions : slip.deductions;
       
@@ -449,7 +476,7 @@ function PayslipGenerator() {
                     (SGD) DANNIE LYN I. VILLAFLOR<br />
                     Municipal Treasurer
                     </td>
-                </tr>
+                  </tr>
               </tbody>
             </table>
           </div>
@@ -508,7 +535,7 @@ function PayslipGenerator() {
       {/* Remove all padding and margins */}
       <div className="w-full h-full min-h-screen">
         <div className="w-full px-3 pt-20 mt-2">
-          <h1 className="text-2xl font-bold mb-2 text-white">Liloan Payslip Generator</h1>
+          <h1 className="text-2xl font-bold mb-2 text-white">Liloan Payslip Generator (PAYROLL4 Format - MAYOR/ACCT/MBO/MASSO)</h1>
           
           <div className="mb-2">
             <input 
@@ -524,12 +551,11 @@ function PayslipGenerator() {
                 onClick={handleManualUpload}
                 className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
               >
-                📁 Upload Excel File
+                📁 Upload PAYROLL4 Excel File
               </button>
             )}
           </div>
           
-          {/* Gi-ubos gamay ang controls section - gi reduce ang margin-bottom */}
           <div className="controls mb-1 flex justify-between items-center flex-wrap gap-2">
             <div className="text-sm text-gray-300">
               {payslips.length > 0 ? `Showing ${payslips.length} employee payslip(s)` : 'No payslips to display'}
@@ -672,8 +698,8 @@ function PayslipGenerator() {
                 <h3 className="mt-4 text-lg font-medium text-white">No payslips to display</h3>
                 <p className="mt-2 text-gray-400 max-w-md mx-auto">
                   {location.state?.fileData 
-                    ? "The Excel file doesn't contain payroll data in the expected format."
-                    : "Please upload an Excel file with payroll data to generate payslips."
+                    ? "The Excel file doesn't contain payroll data in the PAYROLL4 format."
+                    : "Please upload a PAYROLL4 Excel file with payroll data to generate payslips."
                   }
                 </p>
                 {!location.state?.fileData && (
@@ -681,7 +707,7 @@ function PayslipGenerator() {
                     onClick={handleManualUpload}
                     className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
                   >
-                    📁 Upload Excel File
+                    📁 Upload PAYROLL4 Excel File
                   </button>
                 )}
               </div>
@@ -693,4 +719,4 @@ function PayslipGenerator() {
   );
 }
 
-export default PayslipGenerator;
+export default PayslipGenerator4;
