@@ -1050,16 +1050,7 @@ const FileReceived = () => {
                               onClick={(e) => e.stopPropagation()}
                             >
                               <div className="py-1">
-                                <button
-                                  onClick={() => {
-                                    handleViewPrintPreview(file);
-                                    setDropdownOpen(null);
-                                  }}
-                                  className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:text-white flex items-center gap-2 hover:bg-orange-500/10"
-                                >
-                                  <MdPrint className="w-4 h-4 text-orange-400" />
-                                  View Print Preview
-                                </button>
+                               
                                 
                                 <button
                                   onClick={() => {
