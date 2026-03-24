@@ -1069,7 +1069,7 @@ const FileReceived = () => {
                                   className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:text-white flex items-center gap-2 hover:bg-green-500/10"
                                 >
                                   <MdReceipt className="w-4 h-4 text-green-400" />
-                                  View Payslip
+                                  Print Payroll
                                 </button>
                                 
                                 <button
@@ -1080,7 +1080,7 @@ const FileReceived = () => {
                                   className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:text-white flex items-center gap-2 hover:bg-purple-500/10"
                                 >
                                   <MdDescription className="w-4 h-4 text-purple-400" />
-                                  Create Voucher
+                                  View Payslip
                                 </button>
                                 
                                 <button
