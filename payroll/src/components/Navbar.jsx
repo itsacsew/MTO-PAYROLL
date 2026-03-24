@@ -125,12 +125,6 @@ const accountingLinks = [
     description: "Incoming files"
   },
   {
-    label: "Send File",
-    link: "file-send",
-    icon: <MdSend size={20} />,
-    description: "Transfer documents"
-  },
-  {
     label: "Database",
     link: "database",
     icon: <MdStorage size={20} />,
