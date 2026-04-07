@@ -85,6 +85,139 @@ const ModalSend_MAYOR = ({ file, onClose, markedAsReceived, onMarkAsReceived }) 
   const fontSizes = getFontSizes();
   const dimensions = paperDimensions[paperSize][orientation];
 
+  // Add this function after the calculatePaidInCash function
+const getUpdatedGrossTotals = (workbook, officeCategory) => {
+  try {
+    console.log('🔍 ========== GETTING UPDATED GROSS TOTALS (MAYOR/ACCT/MBO/MASSO) ==========');
+    console.log('   Office Category:', officeCategory);
+    
+    const worksheet = workbook.getWorksheet(1);
+    const results = [];
+    
+    // For MAYOR/ACCT/MBO/MASSO category, get totals from specific cells
+    // MAYOR: C2, ACCT: C3, MBO: D2, MASSO: D3
+    
+    // Get MAYOR Total from cell C2
+    const mayorCell = worksheet.getCell('C2');
+    console.log('   📍 Cell C2 (MAYOR Total) details:');
+    console.log('      - Raw value:', mayorCell.value);
+    console.log('      - Type:', typeof mayorCell.value);
+    console.log('      - Has result?', mayorCell.value?.result !== undefined);
+    
+    let mayorTotal = 0;
+    if (mayorCell.value && typeof mayorCell.value === 'object' && mayorCell.value.result !== undefined) {
+      mayorTotal = parseFloat(mayorCell.value.result);
+      console.log(`   ✅ MAYOR Total from C2 (formula result): ₱${mayorTotal.toLocaleString()}`);
+      console.log(`      Formula: ${mayorCell.value.formula}`);
+    } else if (typeof mayorCell.value === 'number') {
+      mayorTotal = mayorCell.value;
+      console.log(`   ✅ MAYOR Total from C2 (number): ₱${mayorTotal.toLocaleString()}`);
+    } else if (typeof mayorCell.value === 'string') {
+      let cleanedValue = mayorCell.value.replace(/[₱,]/g, '').trim();
+      mayorTotal = parseFloat(cleanedValue);
+      if (!isNaN(mayorTotal)) {
+        console.log(`   ✅ MAYOR Total from C2 (string): ₱${mayorTotal.toLocaleString()}`);
+      }
+    }
+    
+    // Get ACCT Total from cell C3
+    const acctCell = worksheet.getCell('C3');
+    console.log('   📍 Cell C3 (ACCT Total) details:');
+    console.log('      - Raw value:', acctCell.value);
+    console.log('      - Type:', typeof acctCell.value);
+    console.log('      - Has result?', acctCell.value?.result !== undefined);
+    
+    let acctTotal = 0;
+    if (acctCell.value && typeof acctCell.value === 'object' && acctCell.value.result !== undefined) {
+      acctTotal = parseFloat(acctCell.value.result);
+      console.log(`   ✅ ACCT Total from C3 (formula result): ₱${acctTotal.toLocaleString()}`);
+      console.log(`      Formula: ${acctCell.value.formula}`);
+    } else if (typeof acctCell.value === 'number') {
+      acctTotal = acctCell.value;
+      console.log(`   ✅ ACCT Total from C3 (number): ₱${acctTotal.toLocaleString()}`);
+    } else if (typeof acctCell.value === 'string') {
+      let cleanedValue = acctCell.value.replace(/[₱,]/g, '').trim();
+      acctTotal = parseFloat(cleanedValue);
+      if (!isNaN(acctTotal)) {
+        console.log(`   ✅ ACCT Total from C3 (string): ₱${acctTotal.toLocaleString()}`);
+      }
+    }
+    
+    // Get MBO Total from cell D2
+    const mboCell = worksheet.getCell('D2');
+    console.log('   📍 Cell D2 (MBO Total) details:');
+    console.log('      - Raw value:', mboCell.value);
+    console.log('      - Type:', typeof mboCell.value);
+    console.log('      - Has result?', mboCell.value?.result !== undefined);
+    
+    let mboTotal = 0;
+    if (mboCell.value && typeof mboCell.value === 'object' && mboCell.value.result !== undefined) {
+      mboTotal = parseFloat(mboCell.value.result);
+      console.log(`   ✅ MBO Total from D2 (formula result): ₱${mboTotal.toLocaleString()}`);
+      console.log(`      Formula: ${mboCell.value.formula}`);
+    } else if (typeof mboCell.value === 'number') {
+      mboTotal = mboCell.value;
+      console.log(`   ✅ MBO Total from D2 (number): ₱${mboTotal.toLocaleString()}`);
+    } else if (typeof mboCell.value === 'string') {
+      let cleanedValue = mboCell.value.replace(/[₱,]/g, '').trim();
+      mboTotal = parseFloat(cleanedValue);
+      if (!isNaN(mboTotal)) {
+        console.log(`   ✅ MBO Total from D2 (string): ₱${mboTotal.toLocaleString()}`);
+      }
+    }
+    
+    // Get MASSO Total from cell D3
+    const massoCell = worksheet.getCell('D3');
+    console.log('   📍 Cell D3 (MASSO Total) details:');
+    console.log('      - Raw value:', massoCell.value);
+    console.log('      - Type:', typeof massoCell.value);
+    console.log('      - Has result?', massoCell.value?.result !== undefined);
+    
+    let massoTotal = 0;
+    if (massoCell.value && typeof massoCell.value === 'object' && massoCell.value.result !== undefined) {
+      massoTotal = parseFloat(massoCell.value.result);
+      console.log(`   ✅ MASSO Total from D3 (formula result): ₱${massoTotal.toLocaleString()}`);
+      console.log(`      Formula: ${massoCell.value.formula}`);
+    } else if (typeof massoCell.value === 'number') {
+      massoTotal = massoCell.value;
+      console.log(`   ✅ MASSO Total from D3 (number): ₱${massoTotal.toLocaleString()}`);
+    } else if (typeof massoCell.value === 'string') {
+      let cleanedValue = massoCell.value.replace(/[₱,]/g, '').trim();
+      massoTotal = parseFloat(cleanedValue);
+      if (!isNaN(massoTotal)) {
+        console.log(`   ✅ MASSO Total from D3 (string): ₱${massoTotal.toLocaleString()}`);
+      }
+    }
+    
+    results.push(
+      { office: 'MAYOR', totalGross: mayorTotal, source: 'C2 cell (SUM of Amount Accrued for MAYOR employees)' },
+      { office: 'ACCT', totalGross: acctTotal, source: 'C3 cell (SUM of Amount Accrued for ACCT employees)' },
+      { office: 'MBO', totalGross: mboTotal, source: 'D2 cell (SUM of Amount Accrued for MBO employees)' },
+      { office: 'MASSO', totalGross: massoTotal, source: 'D3 cell (SUM of Amount Accrued for MASSO employees)' }
+    );
+    
+    console.log('\n📊 ========== FINAL GROSS TOTALS (FORMULA RESULTS) ==========');
+    console.log(`   🧮 MAYOR TOTAL: ₱${mayorTotal.toLocaleString()} (from cell C2)`);
+    console.log(`      Formula: =SUM(Amount Accrued for MAYOR employees)`);
+    console.log(`   🧮 ACCT TOTAL: ₱${acctTotal.toLocaleString()} (from cell C3)`);
+    console.log(`      Formula: =SUM(Amount Accrued for ACCT employees)`);
+    console.log(`   🧮 MBO TOTAL: ₱${mboTotal.toLocaleString()} (from cell D2)`);
+    console.log(`      Formula: =SUM(Amount Accrued for MBO employees)`);
+    console.log(`   🧮 MASSO TOTAL: ₱${massoTotal.toLocaleString()} (from cell D3)`);
+    console.log(`      Formula: =SUM(Amount Accrued for MASSO employees)`);
+    
+    const totalAll = mayorTotal + acctTotal + mboTotal + massoTotal;
+    console.log(`\n   💰 GRAND TOTAL: ₱${totalAll.toLocaleString()}`);
+    console.log('========================================================\n');
+    
+    return results;
+    
+  } catch (error) {
+    console.error('❌ Error getting gross totals:', error);
+    return [];
+  }
+};
+
   // Function to format date from Excel serial to DD-MMM-YYYY
   const formatDate = (excelDate) => {
     if (!excelDate) return '';
@@ -258,7 +391,7 @@ const ModalSend_MAYOR = ({ file, onClose, markedAsReceived, onMarkAsReceived }) 
     }
   };
 
-  // ========== CALCULATION LOGIC FROM MODALSEND.JSX ==========
+  // ========== CALCULATION LOGIC ==========
   // Formula Functions (based on PAYROLL.xlsx)
   const calculateAmountAccrued = (monthlyRate) => {
     const rate = parseFloat(monthlyRate) || 0;
@@ -398,8 +531,11 @@ const ModalSend_MAYOR = ({ file, onClose, markedAsReceived, onMarkAsReceived }) 
           ec: newChanges.ec !== undefined ? newChanges.ec : currentData.ec,
           amountAccrued: newChanges.amountAccrued !== undefined ? newChanges.amountAccrued : currentData.amountAccrued,
           philhealthPersonal: newChanges.philhealthPersonal !== undefined ? newChanges.philhealthPersonal : currentData.philhealthPersonal,
+          philhealthGovernment: newChanges.philhealthGovernment !== undefined ? newChanges.philhealthGovernment : currentData.philhealthGovernment,
           gsisPersonal: newChanges.gsisPersonal !== undefined ? newChanges.gsisPersonal : currentData.gsisPersonal,
+          gsisGovernment: newChanges.gsisGovernment !== undefined ? newChanges.gsisGovernment : currentData.gsisGovernment,
           pagibigPersonal: newChanges.pagibigPersonal !== undefined ? newChanges.pagibigPersonal : currentData.pagibigPersonal,
+          pagibigGovernment: newChanges.pagibigGovernment !== undefined ? newChanges.pagibigGovernment : currentData.pagibigGovernment,
         };
         
         // Recalculate Paid in Cash after any changes to deductions or loans
@@ -435,67 +571,6 @@ const ModalSend_MAYOR = ({ file, onClose, markedAsReceived, onMarkAsReceived }) 
     return 'non-senior';
   }, [allEmployeeChanges]);
 
-  const calculateAmountAccruedOld = useCallback((monthlyRate) => {
-    try {
-      if (monthlyRate) {
-        return (parseFloat(monthlyRate) / 2).toFixed(2);
-      }
-      return '';
-    } catch (error) {
-      console.error('Error calculating amount accrued:', error);
-      return '0.00';
-    }
-  }, []);
-
-  const calculatePhilhealth = useCallback((monthlyRate) => {
-    try {
-      if (monthlyRate) {
-        const rate = parseFloat(monthlyRate);
-        const share = (rate * 0.025).toFixed(2);
-        return {
-          personal: share,
-          government: share
-        };
-      }
-      return { personal: '0.00', government: '0.00' };
-    } catch (error) {
-      console.error('Error calculating Philhealth:', error);
-      return { personal: '0.00', government: '0.00' };
-    }
-  }, []);
-
-  const calculateGSISPremiums = useCallback((monthlyRate, citizenType) => {
-    try {
-      if (monthlyRate && citizenType === 'non-senior') {
-        const rate = parseFloat(monthlyRate);
-        return {
-          personal: (rate * 0.09).toFixed(2),
-          government: (rate * 0.12).toFixed(2)
-        };
-      }
-      return { personal: '0.00', government: '0.00' };
-    } catch (error) {
-      console.error('Error calculating GSIS premiums:', error);
-      return { personal: '0.00', government: '0.00' };
-    }
-  }, []);
-
-  const calculatePagibig = useCallback((monthlyRate, citizenType) => {
-    try {
-      if (monthlyRate && citizenType === 'non-senior') {
-        const rate = parseFloat(monthlyRate);
-        return {
-          personal: (rate * 0.02).toFixed(2),
-          government: '200.00'
-        };
-      }
-      return { personal: '0.00', government: '0.00' };
-    } catch (error) {
-      console.error('Error calculating Pag-IBIG:', error);
-      return { personal: '0.00', government: '0.00' };
-    }
-  }, []);
-
   // Focus management effect
   useEffect(() => {
     if (lastFocusedInput) {
@@ -514,7 +589,7 @@ const ModalSend_MAYOR = ({ file, onClose, markedAsReceived, onMarkAsReceived }) 
     }
   }, [allEmployeeChanges, lastFocusedInput]);
 
-  // Memoized EditableCell component - UPDATED COLORS
+  // Memoized EditableCell component
   const EditableCell = useCallback(({ 
     value, 
     onChange, 
@@ -595,7 +670,7 @@ const ModalSend_MAYOR = ({ file, onClose, markedAsReceived, onMarkAsReceived }) 
     );
   }, []);
 
-  // Memoized Checkbox component - UPDATED COLORS
+  // Memoized Checkbox component
   const SeniorCheckbox = useCallback(({ employeeName, disabled = false }) => {
     const citizenType = getCitizenType(employeeName);
     const isSenior = citizenType === 'senior';
@@ -637,12 +712,47 @@ const ModalSend_MAYOR = ({ file, onClose, markedAsReceived, onMarkAsReceived }) 
     </div>
   ), []);
 
-  // FormulaCell component for auto-calculated cells
-  const FormulaCell = useCallback(({ value, className = '', bgColor = 'bg-gray-50' }) => (
-    <div className={`w-full px-1 py-0.5 text-right text-xs ${bgColor} ${className}`}>
-      {formatNumber(value)}
-    </div>
-  ), []);
+  // FormulaCell component - NOW EDITABLE for PHILHEALTH, GSIS, Pag-IBIG
+ const FormulaCell = useCallback(({ 
+  value, 
+  onChange, 
+  employeeName, 
+  field, 
+  className = '', 
+  bgColor = 'bg-gray-50',
+  disabled = false,
+  type = 'number'
+}) => {
+  // If this is amountAccrued or paidInCash field, ALWAYS display-only (no editing)
+  if (field === 'amountAccrued' || field === 'paidInCash') {
+    return (
+      <div className={`w-full px-1 py-0.5 text-right text-xs ${bgColor} ${className}`}>
+        {formatNumber(value)}
+      </div>
+    );
+  }
+  
+  if (disabled) {
+    return (
+      <div className={`w-full px-1 py-0.5 text-right text-xs ${bgColor} ${className}`}>
+        {formatNumber(value)}
+      </div>
+    );
+  }
+  
+  return (
+    <EditableCell
+      value={value}
+      onChange={onChange}
+      type={type}
+      placeholder="0.00"
+      className={`text-right ${className}`}
+      employeeName={employeeName}
+      field={field}
+      disabled={false}
+    />
+  );
+}, [EditableCell]);
 
   // Format number with commas (for regular rows - show empty if zero)
   const formatNumber = (value) => {
@@ -664,154 +774,203 @@ const ModalSend_MAYOR = ({ file, onClose, markedAsReceived, onMarkAsReceived }) 
     return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
-  // Handle Mark as Received button click
-  const handleMarkAsReceived = () => {
-    if (onMarkAsReceived) {
-      onMarkAsReceived();
-      setEditingEnabled(true);
-      alert('✅ File marked as received! You can now edit the file.');
-    }
-  };
+ // In ModalSend_MAYOR.jsx - Update the handleMarkAsReceived function
+const handleMarkAsReceived = () => {
+  console.log('🔵 Mark as Received clicked for file:', file?.id, file?.fileName);
+  
+  if (onMarkAsReceived) {
+    // Call the parent function which will update Firestore
+    onMarkAsReceived();
+    setEditingEnabled(true);
+    alert('✅ File marked as received! You can now edit the file.');
+  } else {
+    console.error('❌ onMarkAsReceived callback is not available');
+    alert('Error: Unable to mark file as received. Please try again.');
+  }
+};
 
-  const updateExcelWithInputs = async () => {
-    if (!excelData) return null;
+ const updateExcelWithInputs = async () => {
+  if (!excelData) return null;
 
-    try {
-      const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.load(excelData.originalData);
-      
-      const worksheet = workbook.getWorksheet(1);
+  try {
+    console.log('🟢 Starting Excel update with inputs...');
+    console.log('   Changes to apply:', allEmployeeChanges);
+    
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(excelData.originalData);
+    
+    const worksheet = workbook.getWorksheet(1);
+    let updatedCellsCount = 0;
 
-      Object.keys(allEmployeeChanges).forEach(employeeName => {
-        try {
-          const changes = allEmployeeChanges[employeeName];
-          const employeeRow = employeeData[employeeName]?.row;
-          if (!employeeRow) return;
-
-          const employeeCitizenType = changes.citizenType || 'non-senior';
-
-          // Period From - Column E
-          if (changes.periodFrom !== undefined) {
-            const cell = worksheet.getCell(`E${employeeRow}`);
-            cell.value = changes.periodFrom;
-          }
-          
-          // Period To - Column F
-          if (changes.periodTo !== undefined) {
-            const cell = worksheet.getCell(`F${employeeRow}`);
-            cell.value = changes.periodTo;
-          }
-
-          // Monthly Rate - Column G
-          if (changes.monthlyRate !== undefined) {
-            const cellG = worksheet.getCell(`G${employeeRow}`);
-            cellG.value = parseFloat(changes.monthlyRate) || 0;
-            
-            // Amount Accrued - Column H (auto-calculated)
-            const cellH = worksheet.getCell(`H${employeeRow}`);
-            const accruedAmount = (parseFloat(changes.monthlyRate) / 2).toFixed(2);
-            cellH.value = parseFloat(accruedAmount) || 0;
-          }
-
-          // GSIS EDUC Loan - Column I
-          if (changes.gsisEduLoan !== undefined) {
-            const cell = worksheet.getCell(`I${employeeRow}`);
-            cell.value = parseFloat(changes.gsisEduLoan) || 0;
-          }
-          
-          // GSIS MPL Loan - Column J
-          if (changes.gsisMplLoan !== undefined) {
-            const cell = worksheet.getCell(`J${employeeRow}`);
-            cell.value = parseFloat(changes.gsisMplLoan) || 0;
-          }
-
-          // Get monthly rate for calculations
-          const monthlyRate = changes.monthlyRate !== undefined ? changes.monthlyRate : employeeData[employeeName].monthlyRate;
-          const rate = monthlyRate ? parseFloat(monthlyRate) : 0;
-          
-          // PhilHealth - Columns K & L (auto-calculated)
-          const philhealthShare = (rate * 0.025).toFixed(2);
-          
-          const cellK = worksheet.getCell(`K${employeeRow}`);
-          const cellL = worksheet.getCell(`L${employeeRow}`);
-          cellK.value = parseFloat(philhealthShare) || 0;
-          cellL.value = parseFloat(philhealthShare) || 0;
-
-          // GSIS Premiums - Columns M & N
-          const cellM = worksheet.getCell(`M${employeeRow}`);
-          const cellN = worksheet.getCell(`N${employeeRow}`);
-          
-          if (employeeCitizenType === 'non-senior') {
-            cellM.value = parseFloat((rate * 0.09).toFixed(2)) || 0;
-            cellN.value = parseFloat((rate * 0.12).toFixed(2)) || 0;
-          } else {
-            cellM.value = 0;
-            cellN.value = 0;
-          }
-
-          // Pag-IBIG - Columns O & P
-          const cellO = worksheet.getCell(`O${employeeRow}`);
-          const cellP = worksheet.getCell(`P${employeeRow}`);
-          
-          if (employeeCitizenType === 'non-senior') {
-            cellO.value = parseFloat((rate * 0.02).toFixed(2)) || 0;
-            cellP.value = 200.00;
-          } else {
-            cellO.value = 0;
-            cellP.value = 0;
-          }
-
-          // LBP Loan - Column Q
-          if (changes.lbpLoan !== undefined) {
-            const cell = worksheet.getCell(`Q${employeeRow}`);
-            cell.value = parseFloat(changes.lbpLoan) || 0;
-          }
-          
-          // GFAL Loan - Column R
-          if (changes.gfalLoan !== undefined) {
-            const cell = worksheet.getCell(`R${employeeRow}`);
-            cell.value = parseFloat(changes.gfalLoan) || 0;
-          }
-          
-          // GSIS Lite Loan - Column S
-          if (changes.gsisLiteLoan !== undefined) {
-            const cell = worksheet.getCell(`S${employeeRow}`);
-            cell.value = parseFloat(changes.gsisLiteLoan) || 0;
-          }
-          
-          // Pag-IBIG MPL - Column T
-          if (changes.pagibigMpl !== undefined) {
-            const cell = worksheet.getCell(`T${employeeRow}`);
-            cell.value = parseFloat(changes.pagibigMpl) || 0;
-          }
-          
-          // E.C. - Column U
-          if (changes.ec !== undefined) {
-            const cell = worksheet.getCell(`U${employeeRow}`);
-            cell.value = parseFloat(changes.ec) || 0;
-          }
-        } catch (error) {
-          console.error(`Error updating Excel for ${employeeName}:`, error);
+    Object.keys(allEmployeeChanges).forEach(employeeName => {
+      try {
+        const changes = allEmployeeChanges[employeeName];
+        const employeeRow = employeeData[employeeName]?.row;
+        
+        console.log(`   📍 Processing employee: ${employeeName}, Row: ${employeeRow}`);
+        
+        if (!employeeRow) {
+          console.warn(`   ⚠️ No row found for employee: ${employeeName}`);
+          return;
         }
-      });
 
-      return workbook;
-    } catch (error) {
-      console.error('Error updating Excel:', error);
-      alert('Error updating Excel file.');
-      return null;
+        // Update all changed fields
+        Object.entries(changes).forEach(([field, value]) => {
+          let cellAddress;
+          switch(field) {
+            case 'periodFrom': cellAddress = `E${employeeRow}`; break;
+            case 'periodTo': cellAddress = `F${employeeRow}`; break;
+            case 'monthlyRate': cellAddress = `G${employeeRow}`; break;
+            case 'amountAccrued': cellAddress = `H${employeeRow}`; break;
+            case 'gsisEduLoan': cellAddress = `I${employeeRow}`; break;
+            case 'gsisMplLoan': cellAddress = `J${employeeRow}`; break;
+            case 'philhealthPersonal': cellAddress = `K${employeeRow}`; break;
+            case 'philhealthGovernment': cellAddress = `L${employeeRow}`; break;
+            case 'gsisPersonal': cellAddress = `M${employeeRow}`; break;
+            case 'gsisGovernment': cellAddress = `N${employeeRow}`; break;
+            case 'pagibigPersonal': cellAddress = `O${employeeRow}`; break;
+            case 'pagibigGovernment': cellAddress = `P${employeeRow}`; break;
+            case 'lbpLoan': cellAddress = `Q${employeeRow}`; break;
+            case 'gfalLoan': cellAddress = `R${employeeRow}`; break;
+            case 'gsisLiteLoan': cellAddress = `S${employeeRow}`; break;
+            case 'pagibigMpl': cellAddress = `T${employeeRow}`; break;
+            case 'ec': cellAddress = `U${employeeRow}`; break;
+            case 'paidInCash': cellAddress = `W${employeeRow}`; break;
+            default: return;
+          }
+          
+          const cell = worksheet.getCell(cellAddress);
+          const numericValue = parseFloat(value) || 0;
+          
+          console.log(`      ✏️ Updating ${cellAddress} (${field}): ${numericValue} (from: ${value})`);
+          
+          cell.value = numericValue;
+          updatedCellsCount++;
+        });
+      } catch (error) {
+        console.error(`   ❌ Error updating Excel for ${employeeName}:`, error);
+      }
+    });
+    
+    // After updating cells, recalculate the formula cells for MAYOR/ACCT/MBO/MASSO
+    console.log('🔄 Recalculating formula cells for MAYOR/ACCT/MBO/MASSO...');
+    
+    // Get the current values from the updated rows
+    // MAYOR employees: rows 15-18
+    let mayorSum = 0;
+    for (let row = 15; row <= 18; row++) {
+      const amountCell = worksheet.getCell(`H${row}`);
+      let amount = 0;
+      if (amountCell.value && typeof amountCell.value === 'object' && amountCell.value.result !== undefined) {
+        amount = parseFloat(amountCell.value.result) || 0;
+      } else if (typeof amountCell.value === 'number') {
+        amount = amountCell.value;
+      } else if (typeof amountCell.value === 'string') {
+        amount = parseFloat(amountCell.value) || 0;
+      }
+      mayorSum += amount;
     }
-  };
-
-  // Handle Check button click
-  // Handle Check button click
+    console.log(`   📊 MAYOR Sum (H15:H18): ₱${mayorSum.toLocaleString()}`);
+    
+    // ACCT employees: rows 22-24
+    let acctSum = 0;
+    for (let row = 22; row <= 24; row++) {
+      const amountCell = worksheet.getCell(`H${row}`);
+      let amount = 0;
+      if (amountCell.value && typeof amountCell.value === 'object' && amountCell.value.result !== undefined) {
+        amount = parseFloat(amountCell.value.result) || 0;
+      } else if (typeof amountCell.value === 'number') {
+        amount = amountCell.value;
+      } else if (typeof amountCell.value === 'string') {
+        amount = parseFloat(amountCell.value) || 0;
+      }
+      acctSum += amount;
+    }
+    console.log(`   📊 ACCT Sum (H22:H24): ₱${acctSum.toLocaleString()}`);
+    
+    // MBO employees: rows 28-29
+    let mboSum = 0;
+    for (let row = 28; row <= 29; row++) {
+      const amountCell = worksheet.getCell(`H${row}`);
+      let amount = 0;
+      if (amountCell.value && typeof amountCell.value === 'object' && amountCell.value.result !== undefined) {
+        amount = parseFloat(amountCell.value.result) || 0;
+      } else if (typeof amountCell.value === 'number') {
+        amount = amountCell.value;
+      } else if (typeof amountCell.value === 'string') {
+        amount = parseFloat(amountCell.value) || 0;
+      }
+      mboSum += amount;
+    }
+    console.log(`   📊 MBO Sum (H28:H29): ₱${mboSum.toLocaleString()}`);
+    
+    // MASSO employees: row 33
+    let massoSum = 0;
+    const massoAmountCell = worksheet.getCell('H33');
+    if (massoAmountCell.value && typeof massoAmountCell.value === 'object' && massoAmountCell.value.result !== undefined) {
+      massoSum = parseFloat(massoAmountCell.value.result) || 0;
+    } else if (typeof massoAmountCell.value === 'number') {
+      massoSum = massoAmountCell.value;
+    } else if (typeof massoAmountCell.value === 'string') {
+      massoSum = parseFloat(massoAmountCell.value) || 0;
+    }
+    console.log(`   📊 MASSO Sum (H33): ₱${massoSum.toLocaleString()}`);
+    
+    // Update the formula cells with new values
+    const mayorFormulaCell = worksheet.getCell('C2');
+    const acctFormulaCell = worksheet.getCell('C3');
+    const mboFormulaCell = worksheet.getCell('D2');
+    const massoFormulaCell = worksheet.getCell('D3');
+    
+    // Set the values directly (ExcelJS will handle the formula)
+    if (mayorFormulaCell.value && typeof mayorFormulaCell.value === 'object' && mayorFormulaCell.value.formula) {
+      console.log(`   📐 Cell C2 formula: ${mayorFormulaCell.value.formula}`);
+      mayorFormulaCell.value = { formula: mayorFormulaCell.value.formula, result: mayorSum };
+    }
+    
+    if (acctFormulaCell.value && typeof acctFormulaCell.value === 'object' && acctFormulaCell.value.formula) {
+      console.log(`   📐 Cell C3 formula: ${acctFormulaCell.value.formula}`);
+      acctFormulaCell.value = { formula: acctFormulaCell.value.formula, result: acctSum };
+    }
+    
+    if (mboFormulaCell.value && typeof mboFormulaCell.value === 'object' && mboFormulaCell.value.formula) {
+      console.log(`   📐 Cell D2 formula: ${mboFormulaCell.value.formula}`);
+      mboFormulaCell.value = { formula: mboFormulaCell.value.formula, result: mboSum };
+    }
+    
+    if (massoFormulaCell.value && typeof massoFormulaCell.value === 'object' && massoFormulaCell.value.formula) {
+      console.log(`   📐 Cell D3 formula: ${massoFormulaCell.value.formula}`);
+      massoFormulaCell.value = { formula: massoFormulaCell.value.formula, result: massoSum };
+    }
+    
+    console.log(`✅ Excel update completed! Updated ${updatedCellsCount} cells.`);
+    
+    // Get the updated gross totals (now with formula results)
+    const grossTotals = getUpdatedGrossTotals(workbook, file.officeCategory);
+    
+    return { workbook, grossTotals };
+    
+  } catch (error) {
+    console.error('❌ Error updating Excel:', error);
+    alert('Error updating Excel file.');
+    return null;
+  }
+};
+// Update the handleCheckFile function - DIRECT TO CHECKED2
 const handleCheckFile = async () => {
+  console.log('🔵 ========== CHECK FILE STARTED ==========');
+  console.log('   Editing enabled:', editingEnabled);
+  console.log('   Has changes:', Object.keys(allEmployeeChanges).length > 0);
+  console.log('   Current file status:', file?.status);
+  
   if (!editingEnabled) {
+    console.warn('⚠️ Editing not enabled!');
     alert('⚠️ Please mark this file as received first before checking.');
     return;
   }
 
   if (!excelData) {
+    console.warn('⚠️ No Excel data!');
     alert('Please upload an Excel file first.');
     return;
   }
@@ -820,47 +979,120 @@ const handleCheckFile = async () => {
 
   try {
     let updatedWorkbook = null;
+    let updatedBase64 = null;
+    let grossTotals = null;
     
     if (Object.keys(allEmployeeChanges).length > 0) {
-      updatedWorkbook = await updateExcelWithInputs();
-      if (!updatedWorkbook) {
+      console.log('🟡 Updating Excel with changes...');
+      const result = await updateExcelWithInputs();
+      if (!result) {
+        console.error('❌ Failed to update Excel workbook');
         alert('Error updating Excel file.');
         setIsSending(false);
         return;
       }
+      
+      updatedWorkbook = result.workbook;
+      grossTotals = result.grossTotals;
+      
+      console.log('🟡 Converting workbook to base64...');
+      const buffer = await updatedWorkbook.xlsx.writeBuffer();
+      updatedBase64 = arrayBufferToBase64(buffer);
+      console.log(`   Base64 length: ${updatedBase64.length}`);
     }
+
+    // ========== DIRECT TO CHECKED2 - NO PROGRESSION LOGIC ==========
+    // Always set status to 'checked2' regardless of current status
+    const nextStatus = 'checked2';
+    console.log('📌 Setting status to: CHECKED2 (direct)');
 
     const updateData = {
       timestamp: serverTimestamp(),
-      status: 'checked', // Always "checked" regardless of updates
+      status: nextStatus,
       lastCheckedAt: new Date().toISOString(),
     };
+    
+    // Add checker information
+    const currentUser = getCurrentUser();
+    if (currentUser) {
+      // Set as second check always (since we're using checked2)
+      updateData.secondCheckedBy = {
+        id: currentUser.id,
+        name: currentUser.name,
+        email: currentUser.email,
+        office: currentUser.office,
+        role: currentUser.role
+      };
+      updateData.secondCheckedAt = serverTimestamp();
+      
+      // Also set as checked by for compatibility
+      updateData.checkedBy = {
+        id: currentUser.id,
+        name: currentUser.name,
+        email: currentUser.email,
+        office: currentUser.office,
+        role: currentUser.role
+      };
+      updateData.checkedAt = serverTimestamp();
+    }
+    
+    console.log('📦 Update data prepared:', {
+      status: updateData.status,
+      lastCheckedAt: updateData.lastCheckedAt,
+      hasFileData: !!updatedBase64,
+      fileDataLength: updatedBase64?.length,
+    });
 
     if (Object.keys(allEmployeeChanges).length > 0) {
-      const buffer = await updatedWorkbook.xlsx.writeBuffer();
-      const base64String = arrayBufferToBase64(buffer);
-      
       const updatedEmployees = Object.keys(allEmployeeChanges);
       const seniorEmployees = updatedEmployees.filter(name => 
         allEmployeeChanges[name]?.citizenType === 'senior'
       );
 
       Object.assign(updateData, {
-        fileData: base64String,
+        fileData: updatedBase64,
         updatedEmployees: updatedEmployees,
         seniorEmployees: seniorEmployees,
-        // REMOVED: status: 'updated', so status remains "checked"
-        originalFileName: file.originalFileName || file.fileName
+        originalFileName: file.originalFileName || file.fileName,
+        officeGrossTotals: grossTotals
       });
+      
+      console.log('📝 Updated employees:', updatedEmployees);
+      console.log('👴 Senior employees:', seniorEmployees);
+      
+      if (grossTotals && grossTotals.length > 0) {
+        console.log('\n💰 ========== UPDATED GROSS TOTALS ==========');
+        grossTotals.forEach(total => {
+          console.log(`   ${total.office}: ₱${total.totalGross.toLocaleString()} (from ${total.source})`);
+        });
+        const totalGross = grossTotals.reduce((sum, t) => sum + (t.totalGross || 0), 0);
+        console.log(`   TOTAL: ₱${totalGross.toLocaleString()}`);
+        console.log('==========================================\n');
+      }
+    } else {
+      console.log('📝 No changes detected, updating status only');
     }
 
+    console.log('🟢 Updating Firestore document:', file.id);
     await updateDoc(doc(db, 'sentFiles', file.id), updateData);
+    console.log('✅ Firestore update successful!');
 
     let successMessage = `✅ File "${file.fileName}" checked successfully!\n\n`;
+    successMessage += `📌 Status updated to: CHECKED2\n`;
     
     if (Object.keys(allEmployeeChanges).length > 0) {
       const updatedEmployees = Object.keys(allEmployeeChanges).join(', ');
-      successMessage += `Updated employees: ${updatedEmployees}\n`;
+      successMessage += `\nUpdated employees: ${updatedEmployees}\n`;
+      console.log(`   Updated employees: ${updatedEmployees}`);
+      
+      if (grossTotals && grossTotals.length > 0) {
+        successMessage += `\n📊 Updated Gross Totals:\n`;
+        grossTotals.forEach(total => {
+          if (total.totalGross > 0) {
+            successMessage += `   ${total.office}: ₱${total.totalGross.toLocaleString()}\n`;
+          }
+        });
+      }
       
       const seniorEmployees = Object.keys(allEmployeeChanges).filter(name => 
         allEmployeeChanges[name]?.citizenType === 'senior'
@@ -868,27 +1100,43 @@ const handleCheckFile = async () => {
       
       if (seniorEmployees.length > 0) {
         successMessage += `\nSenior Citizens (No GSIS/Pag-IBIG): ${seniorEmployees.join(', ')}`;
+        console.log(`   Senior citizens: ${seniorEmployees.join(', ')}`);
       }
     } else {
       successMessage += `No changes detected. File remains as is.`;
     }
 
     alert(successMessage);
+    console.log('🔵 ========== CHECK FILE COMPLETED ==========');
     
-    // 🔥 I-RESET ANG MGA CHANGES UG I-CLOSE ANG MODAL
     setAllEmployeeChanges({});
     
-    // ✅ GAMITAG setTimeout PARA SIGURADONG MAKITA ANG ALERT BEFORE CLOSE
     setTimeout(() => {
+      console.log('🟡 Closing modal...');
       onClose();
     }, 100);
     
   } catch (error) {
-    console.error('Error checking/updating file in Firestore:', error);
+    console.error('❌ ========== ERROR IN CHECK FILE ==========');
+    console.error('   Error details:', error);
+    console.error('   Error stack:', error.stack);
     alert(`❌ Error ${Object.keys(allEmployeeChanges).length > 0 ? 'updating' : 'checking'} file in Firestore. Please try again.`);
     setIsSending(false);
   } finally {
     setIsSending(false);
+  }
+};
+// Add this function at the top of each modal component
+const getCurrentUser = () => {
+  try {
+    const userData = localStorage.getItem('auth_user_v1');
+    if (userData) {
+      return JSON.parse(userData);
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting current user:', error);
+    return null;
   }
 };
 
@@ -914,33 +1162,58 @@ const handleCheckFile = async () => {
 
   // Handle save excel with custom filename
   const handleSaveExcel = async () => {
-    if (!customFileName.trim()) {
-      alert('Please enter a filename.');
-      return;
-    }
+  console.log('💾 ========== SAVE EXCEL STARTED ==========');
+  console.log('   Custom filename:', customFileName);
+  console.log('   Changes to save:', allEmployeeChanges);
+  
+  if (!customFileName.trim()) {
+    alert('Please enter a filename.');
+    return;
+  }
 
-    const updatedWorkbook = await updateExcelWithInputs();
-    if (!updatedWorkbook) {
-      alert('Error updating Excel file.');
-      return;
-    }
+  console.log('🟡 Updating Excel with changes for save...');
+  const result = await updateExcelWithInputs();
+  if (!result) {
+    console.error('❌ Failed to update Excel workbook');
+    alert('Error updating Excel file.');
+    return;
+  }
+  
+  const updatedWorkbook = result.workbook;
+  const grossTotals = result.grossTotals;
 
-    try {
-      const buffer = await updatedWorkbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      
-      const finalFileName = customFileName.endsWith('.xlsx') ? customFileName : `${customFileName}.xlsx`;
-      saveAs(blob, finalFileName);
-      
-      const updatedEmployees = Object.keys(allEmployeeChanges).join(', ');
-      alert(`✅ Excel file "${finalFileName}" downloaded successfully!\n\nUpdated employees: ${updatedEmployees}`);
-      
-      setShowFileNameModal(false);
-    } catch (error) {
-      console.error('Error saving file:', error);
-      alert('Error saving Excel file.');
+  try {
+    console.log('🟡 Writing Excel buffer...');
+    const buffer = await updatedWorkbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    
+    const finalFileName = customFileName.endsWith('.xlsx') ? customFileName : `${customFileName}.xlsx`;
+    console.log(`💾 Saving file as: ${finalFileName}`);
+    saveAs(blob, finalFileName);
+    
+    const updatedEmployees = Object.keys(allEmployeeChanges).join(', ');
+    console.log(`✅ Excel file saved! Updated employees: ${updatedEmployees}`);
+    
+    // Display gross totals summary
+    if (grossTotals && grossTotals.length > 0) {
+      console.log('\n💰 ========== GROSS TOTALS IN SAVED FILE ==========');
+      grossTotals.forEach(total => {
+        console.log(`   ${total.office}: ₱${total.totalGross.toLocaleString()} (from ${total.source})`);
+      });
+      const totalGross = grossTotals.reduce((sum, t) => sum + (t.totalGross || 0), 0);
+      console.log(`   TOTAL: ₱${totalGross.toLocaleString()}`);
+      console.log('==========================================\n');
     }
-  };
+    
+    alert(`✅ Excel file "${finalFileName}" downloaded successfully!\n\nUpdated employees: ${updatedEmployees}`);
+    
+    setShowFileNameModal(false);
+    console.log('💾 ========== SAVE EXCEL COMPLETED ==========');
+  } catch (error) {
+    console.error('❌ Error saving file:', error);
+    alert('Error saving Excel file.');
+  }
+};
 
   const arrayBufferToBase64 = (buffer) => {
     let binary = '';
@@ -952,7 +1225,7 @@ const handleCheckFile = async () => {
     return btoa(binary);
   };
 
-  // Filename Modal Component - UPDATED COLORS
+  // Filename Modal Component
   const FilenameModal = () => {
     if (!showFileNameModal) return null;
 
@@ -967,7 +1240,6 @@ const handleCheckFile = async () => {
             boxShadow: '30px 30px 60px -15px #050505, -30px -30px 60px -15px #1f1f2a',
           }}
         >
-          {/* Abstract sphere overlay */}
           <div className="absolute -right-20 -top-20 w-60 h-60 rounded-full bg-gradient-to-br from-orange-500/10 to-pink-500/10 blur-3xl pointer-events-none" />
           
           <div className="relative z-10">
@@ -1070,7 +1342,6 @@ const handleCheckFile = async () => {
   // Calculate totals for each section
   const calculateSectionTotals = (sectionEmployees) => {
     return sectionEmployees.reduce((totals, emp) => {
-      // Get current values (either changed or original)
       const getValue = (field) => {
         const changed = allEmployeeChanges[emp.name]?.[field];
         return changed !== undefined ? parseFloat(changed) || 0 : parseFloat(emp[field]) || 0;
@@ -1138,8 +1409,7 @@ const handleCheckFile = async () => {
     ec: mayorTotals.ec + accountingTotals.ec + budgetTotals.ec + massoTotals.ec,
     paidInCash: mayorTotals.paidInCash + accountingTotals.paidInCash + budgetTotals.paidInCash + massoTotals.paidInCash
   };
-
-  return (
+    return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-auto">
       <FilenameModal />
       
@@ -1152,7 +1422,7 @@ const handleCheckFile = async () => {
         <div className="absolute -right-20 -top-20 w-60 h-60 rounded-full bg-gradient-to-br from-orange-500/10 to-pink-500/10 blur-3xl pointer-events-none" />
         <div className="absolute -left-20 -bottom-20 w-60 h-60 rounded-full bg-gradient-to-tr from-purple-500/10 to-indigo-500/10 blur-3xl pointer-events-none" />
         
-        {/* Modal Header - UPDATED COLORS */}
+        {/* Modal Header */}
         <div className="relative z-10 px-6 py-3 flex justify-between items-center border-b border-white/5"
           style={{
             background: 'linear-gradient(145deg, #1a1a2a, #0f0f1a)',
@@ -1164,7 +1434,7 @@ const handleCheckFile = async () => {
               MAYOR/ACCT/MBO/MASSO - {file.fileName}
             </h2>
             <div className="flex items-center gap-2 mt-1">
-              <p className="text-sm text-gray-400">Edit payroll data - NUMBER column is non-editable</p>
+              <p className="text-sm text-gray-400">Edit payroll data - All columns are now editable</p>
               <span className={`px-2 py-0.5 rounded-full text-xs ${
                 editingEnabled 
                   ? 'bg-green-500/10 text-green-400 border border-green-500/20' 
@@ -1186,7 +1456,7 @@ const handleCheckFile = async () => {
           </button>
         </div>
 
-        {/* Paper Size and Orientation Controls - UPDATED COLORS */}
+        {/* Paper Size and Orientation Controls */}
         <div className="relative z-10 px-6 py-2 border-b border-white/5 flex gap-4 items-center bg-[#0f0f1a]">
           <div className="flex items-center gap-2">
             <label className="text-sm font-medium text-gray-400">Paper Size:</label>
@@ -1238,7 +1508,7 @@ const handleCheckFile = async () => {
           </span>
         </div>
 
-        {/* Mark as Received Banner - SHOWN ONLY WHEN NOT MARKED - UPDATED COLORS */}
+        {/* Mark as Received Banner */}
         {!editingEnabled && (
           <div className="relative z-10 border-b border-orange-500/20 px-6 py-3"
             style={{
@@ -1275,12 +1545,9 @@ const handleCheckFile = async () => {
           </div>
         )}
 
-        {/* Action Buttons - UPDATED COLORS */}
+        {/* Action Buttons */}
         <div className="relative z-10 px-6 py-2 border-b border-white/5 flex justify-between items-center bg-[#0f0f1a]">
           <div>
-            <span className="text-sm text-gray-400">
-              Employees: <span className="font-bold text-orange-400">{employeesList.length}</span></span>
-            <div></div>
             <span className="text-sm text-gray-400">
               Changes: <span className="font-bold text-orange-400">{Object.keys(allEmployeeChanges).length}</span> employee(s)
             </span>
@@ -1419,7 +1686,7 @@ const handleCheckFile = async () => {
               </div>
             </div>
 
-            {/* MAIN TABLE - Updated to match payslip.jsx header structure and include Signature of Payee */}
+            {/* MAIN TABLE */}
             <table 
               className="w-full border-collapse border border-black" 
               style={{ fontSize: `${fontSizes.small}px`, tableLayout: 'auto' }}
@@ -1484,7 +1751,6 @@ const handleCheckFile = async () => {
               <tbody>
                 {/* MAYOR'S OFFICE SECTION */}
                 {mayorEmployees.map((emp, index) => {
-                  // Get current values (either changed or original)
                   const currentValues = {
                     periodFrom: getEmployeeValue(emp.name, 'periodFrom'),
                     periodTo: getEmployeeValue(emp.name, 'periodTo'),
@@ -1550,9 +1816,14 @@ const handleCheckFile = async () => {
                           disabled={!editingEnabled}
                         />
                       </td>
-                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <FormulaCell value={currentValues.amountAccrued} />
-                      </td>
+                      {/* Amount Accrued for the Period - ALWAYS DISPLAY-ONLY */}
+<td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
+  <FormulaCell 
+    value={currentValues.amountAccrued}
+    field="amountAccrued"
+    disabled={true}
+  />
+</td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
                           value={currentValues.gsisEduLoan}
@@ -1577,23 +1848,65 @@ const handleCheckFile = async () => {
                           disabled={!editingEnabled}
                         />
                       </td>
-                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <FormulaCell value={currentValues.philhealthPersonal} />
+                      {/* PHILHEALTH Personal - Now Editable */}
+                      <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                        <FormulaCell 
+                          value={currentValues.philhealthPersonal}
+                          onChange={(e) => handleInputChange(emp.name, 'philhealthPersonal', e.target.value)}
+                          employeeName={emp.name}
+                          field="philhealthPersonal"
+                          disabled={!editingEnabled}
+                        />
                       </td>
-                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <FormulaCell value={currentValues.philhealthGovernment} />
+                      {/* PHILHEALTH Government - Now Editable */}
+                      <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                        <FormulaCell 
+                          value={currentValues.philhealthGovernment}
+                          onChange={(e) => handleInputChange(emp.name, 'philhealthGovernment', e.target.value)}
+                          employeeName={emp.name}
+                          field="philhealthGovernment"
+                          disabled={!editingEnabled}
+                        />
                       </td>
-                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <FormulaCell value={currentValues.gsisPersonal} />
+                      {/* GSIS Personal - Now Editable */}
+                      <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                        <FormulaCell 
+                          value={currentValues.gsisPersonal}
+                          onChange={(e) => handleInputChange(emp.name, 'gsisPersonal', e.target.value)}
+                          employeeName={emp.name}
+                          field="gsisPersonal"
+                          disabled={!editingEnabled}
+                        />
                       </td>
-                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <FormulaCell value={currentValues.gsisGovernment} />
+                      {/* GSIS Government - Now Editable */}
+                      <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                        <FormulaCell 
+                          value={currentValues.gsisGovernment}
+                          onChange={(e) => handleInputChange(emp.name, 'gsisGovernment', e.target.value)}
+                          employeeName={emp.name}
+                          field="gsisGovernment"
+                          disabled={!editingEnabled}
+                        />
                       </td>
-                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <FormulaCell value={currentValues.pagibigPersonal} />
+                      {/* Pag-IBIG Personal - Now Editable */}
+                      <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                        <FormulaCell 
+                          value={currentValues.pagibigPersonal}
+                          onChange={(e) => handleInputChange(emp.name, 'pagibigPersonal', e.target.value)}
+                          employeeName={emp.name}
+                          field="pagibigPersonal"
+                          disabled={!editingEnabled}
+                        />
                       </td>
-                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <FormulaCell value={currentValues.pagibigGovernment} />
+                      {/* Pag-IBIG Government - Now Editable */}
+                      <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                        <FormulaCell 
+                          value={currentValues.pagibigGovernment}
+                          onChange={(e) => handleInputChange(emp.name, 'pagibigGovernment', e.target.value)}
+                          employeeName={emp.name}
+                          field="pagibigGovernment"
+                          disabled={!editingEnabled}
+                        />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
@@ -1655,9 +1968,14 @@ const handleCheckFile = async () => {
                           disabled={!editingEnabled}
                         />
                       </td>
-                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <FormulaCell value={currentValues.paidInCash} />
-                      </td>
+                      {/* Amount Paid in Cash - ALWAYS DISPLAY-ONLY */}
+<td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
+  <FormulaCell 
+    value={currentValues.paidInCash}
+    field="paidInCash"
+    disabled={true}
+  />
+</td>
                       <td className="border border-black text-center p-0 align-middle bg-gray-100" style={{ fontSize: `${fontSizes.number}px` }}>
                         {emp.number}
                       </td>
@@ -1767,9 +2085,14 @@ const handleCheckFile = async () => {
                           disabled={!editingEnabled}
                         />
                       </td>
-                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <FormulaCell value={currentValues.amountAccrued} />
-                      </td>
+                      {/* Amount Paid in Cash - ALWAYS DISPLAY-ONLY */}
+<td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
+  <FormulaCell 
+    value={currentValues.paidInCash}
+    field="paidInCash"
+    disabled={true}
+  />
+</td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
                           value={currentValues.gsisEduLoan}
@@ -1794,23 +2117,65 @@ const handleCheckFile = async () => {
                           disabled={!editingEnabled}
                         />
                       </td>
-                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <FormulaCell value={currentValues.philhealthPersonal} />
+                      {/* PHILHEALTH Personal - Editable */}
+                      <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                        <FormulaCell 
+                          value={currentValues.philhealthPersonal}
+                          onChange={(e) => handleInputChange(emp.name, 'philhealthPersonal', e.target.value)}
+                          employeeName={emp.name}
+                          field="philhealthPersonal"
+                          disabled={!editingEnabled}
+                        />
                       </td>
-                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <FormulaCell value={currentValues.philhealthGovernment} />
+                      {/* PHILHEALTH Government - Editable */}
+                      <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                        <FormulaCell 
+                          value={currentValues.philhealthGovernment}
+                          onChange={(e) => handleInputChange(emp.name, 'philhealthGovernment', e.target.value)}
+                          employeeName={emp.name}
+                          field="philhealthGovernment"
+                          disabled={!editingEnabled}
+                        />
                       </td>
-                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <FormulaCell value={currentValues.gsisPersonal} />
+                      {/* GSIS Personal - Editable */}
+                      <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                        <FormulaCell 
+                          value={currentValues.gsisPersonal}
+                          onChange={(e) => handleInputChange(emp.name, 'gsisPersonal', e.target.value)}
+                          employeeName={emp.name}
+                          field="gsisPersonal"
+                          disabled={!editingEnabled}
+                        />
                       </td>
-                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <FormulaCell value={currentValues.gsisGovernment} />
+                      {/* GSIS Government - Editable */}
+                      <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                        <FormulaCell 
+                          value={currentValues.gsisGovernment}
+                          onChange={(e) => handleInputChange(emp.name, 'gsisGovernment', e.target.value)}
+                          employeeName={emp.name}
+                          field="gsisGovernment"
+                          disabled={!editingEnabled}
+                        />
                       </td>
-                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <FormulaCell value={currentValues.pagibigPersonal} />
+                      {/* Pag-IBIG Personal - Editable */}
+                      <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                        <FormulaCell 
+                          value={currentValues.pagibigPersonal}
+                          onChange={(e) => handleInputChange(emp.name, 'pagibigPersonal', e.target.value)}
+                          employeeName={emp.name}
+                          field="pagibigPersonal"
+                          disabled={!editingEnabled}
+                        />
                       </td>
-                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <FormulaCell value={currentValues.pagibigGovernment} />
+                      {/* Pag-IBIG Government - Editable */}
+                      <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                        <FormulaCell 
+                          value={currentValues.pagibigGovernment}
+                          onChange={(e) => handleInputChange(emp.name, 'pagibigGovernment', e.target.value)}
+                          employeeName={emp.name}
+                          field="pagibigGovernment"
+                          disabled={!editingEnabled}
+                        />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
@@ -1872,9 +2237,14 @@ const handleCheckFile = async () => {
                           disabled={!editingEnabled}
                         />
                       </td>
-                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <FormulaCell value={currentValues.paidInCash} />
-                      </td>
+                      {/* Amount Paid in Cash - ALWAYS DISPLAY-ONLY */}
+<td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
+  <FormulaCell 
+    value={currentValues.paidInCash}
+    field="paidInCash"
+    disabled={true}
+  />
+</td>
                       <td className="border border-black text-center p-0 align-middle bg-gray-100" style={{ fontSize: `${fontSizes.number}px` }}>
                         {emp.number}
                       </td>
@@ -1917,7 +2287,7 @@ const handleCheckFile = async () => {
                   </tr>
                 )}
                 
-                {/* BUDGET OFFICE ROWS */}
+                {/* BUDGET OFFICE ROWS - Similar structure to accounting */}
                 {budgetEmployees.map((emp, index) => {
                   const currentValues = {
                     periodFrom: getEmployeeValue(emp.name, 'periodFrom'),
@@ -1984,9 +2354,14 @@ const handleCheckFile = async () => {
                           disabled={!editingEnabled}
                         />
                       </td>
-                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <FormulaCell value={currentValues.amountAccrued} />
-                      </td>
+                      {/* Amount Accrued for the Period - ALWAYS DISPLAY-ONLY */}
+<td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
+  <FormulaCell 
+    value={currentValues.amountAccrued}
+    field="amountAccrued"
+    disabled={true}
+  />
+</td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
                           value={currentValues.gsisEduLoan}
@@ -2011,23 +2386,59 @@ const handleCheckFile = async () => {
                           disabled={!editingEnabled}
                         />
                       </td>
-                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <FormulaCell value={currentValues.philhealthPersonal} />
+                      <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                        <FormulaCell 
+                          value={currentValues.philhealthPersonal}
+                          onChange={(e) => handleInputChange(emp.name, 'philhealthPersonal', e.target.value)}
+                          employeeName={emp.name}
+                          field="philhealthPersonal"
+                          disabled={!editingEnabled}
+                        />
                       </td>
-                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <FormulaCell value={currentValues.philhealthGovernment} />
+                      <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                        <FormulaCell 
+                          value={currentValues.philhealthGovernment}
+                          onChange={(e) => handleInputChange(emp.name, 'philhealthGovernment', e.target.value)}
+                          employeeName={emp.name}
+                          field="philhealthGovernment"
+                          disabled={!editingEnabled}
+                        />
                       </td>
-                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <FormulaCell value={currentValues.gsisPersonal} />
+                      <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                        <FormulaCell 
+                          value={currentValues.gsisPersonal}
+                          onChange={(e) => handleInputChange(emp.name, 'gsisPersonal', e.target.value)}
+                          employeeName={emp.name}
+                          field="gsisPersonal"
+                          disabled={!editingEnabled}
+                        />
                       </td>
-                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <FormulaCell value={currentValues.gsisGovernment} />
+                      <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                        <FormulaCell 
+                          value={currentValues.gsisGovernment}
+                          onChange={(e) => handleInputChange(emp.name, 'gsisGovernment', e.target.value)}
+                          employeeName={emp.name}
+                          field="gsisGovernment"
+                          disabled={!editingEnabled}
+                        />
                       </td>
-                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <FormulaCell value={currentValues.pagibigPersonal} />
+                      <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                        <FormulaCell 
+                          value={currentValues.pagibigPersonal}
+                          onChange={(e) => handleInputChange(emp.name, 'pagibigPersonal', e.target.value)}
+                          employeeName={emp.name}
+                          field="pagibigPersonal"
+                          disabled={!editingEnabled}
+                        />
                       </td>
-                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <FormulaCell value={currentValues.pagibigGovernment} />
+                      <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                        <FormulaCell 
+                          value={currentValues.pagibigGovernment}
+                          onChange={(e) => handleInputChange(emp.name, 'pagibigGovernment', e.target.value)}
+                          employeeName={emp.name}
+                          field="pagibigGovernment"
+                          disabled={!editingEnabled}
+                        />
                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
@@ -2089,9 +2500,14 @@ const handleCheckFile = async () => {
                           disabled={!editingEnabled}
                         />
                       </td>
-                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <FormulaCell value={currentValues.paidInCash} />
-                      </td>
+                      {/* Amount Paid in Cash - ALWAYS DISPLAY-ONLY */}
+<td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
+  <FormulaCell 
+    value={currentValues.paidInCash}
+    field="paidInCash"
+    disabled={true}
+  />
+</td>
                       <td className="border border-black text-center p-0 align-middle bg-gray-100" style={{ fontSize: `${fontSizes.number}px` }}>
                         {emp.number}
                       </td>
@@ -2201,9 +2617,14 @@ const handleCheckFile = async () => {
                           disabled={!editingEnabled}
                         />
                       </td>
-                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <FormulaCell value={currentValues.amountAccrued} />
-                      </td>
+                      {/* Amount Accrued for the Period - ALWAYS DISPLAY-ONLY */}
+<td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
+  <FormulaCell 
+    value={currentValues.amountAccrued}
+    field="amountAccrued"
+    disabled={true}
+  />
+</td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
                           value={currentValues.gsisEduLoan}
@@ -2228,24 +2649,60 @@ const handleCheckFile = async () => {
                           disabled={!editingEnabled}
                         />
                       </td>
-                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <FormulaCell value={currentValues.philhealthPersonal} />
+                      <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                        <FormulaCell 
+                          value={currentValues.philhealthPersonal}
+                          onChange={(e) => handleInputChange(emp.name, 'philhealthPersonal', e.target.value)}
+                          employeeName={emp.name}
+                          field="philhealthPersonal"
+                          disabled={!editingEnabled}
+                        />
                       </td>
-                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <FormulaCell value={currentValues.philhealthGovernment} />
+                      <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                        <FormulaCell 
+                          value={currentValues.philhealthGovernment}
+                          onChange={(e) => handleInputChange(emp.name, 'philhealthGovernment', e.target.value)}
+                          employeeName={emp.name}
+                          field="philhealthGovernment"
+                          disabled={!editingEnabled}
+                        />
                       </td>
-                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <FormulaCell value={currentValues.gsisPersonal} />
+                      <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                        <FormulaCell 
+                          value={currentValues.gsisPersonal}
+                          onChange={(e) => handleInputChange(emp.name, 'gsisPersonal', e.target.value)}
+                          employeeName={emp.name}
+                          field="gsisPersonal"
+                          disabled={!editingEnabled}
+                        />
                       </td>
-                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <FormulaCell value={currentValues.gsisGovernment} />
+                      <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                        <FormulaCell 
+                          value={currentValues.gsisGovernment}
+                          onChange={(e) => handleInputChange(emp.name, 'gsisGovernment', e.target.value)}
+                          employeeName={emp.name}
+                          field="gsisGovernment"
+                          disabled={!editingEnabled}
+                        />
                       </td>
-                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <FormulaCell value={currentValues.pagibigPersonal} />
+                      <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                        <FormulaCell 
+                          value={currentValues.pagibigPersonal}
+                          onChange={(e) => handleInputChange(emp.name, 'pagibigPersonal', e.target.value)}
+                          employeeName={emp.name}
+                          field="pagibigPersonal"
+                          disabled={!editingEnabled}
+                        />
                       </td>
-                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <FormulaCell value={currentValues.pagibigGovernment} />
-                      </td>
+                                            <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
+                        <FormulaCell 
+                          value={currentValues.pagibigGovernment}
+                          onChange={(e) => handleInputChange(emp.name, 'pagibigGovernment', e.target.value)}
+                          employeeName={emp.name}
+                          field="pagibigGovernment"
+                          disabled={!editingEnabled}
+                        />
+                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
                           value={currentValues.gsisLiteLoan}
@@ -2257,7 +2714,7 @@ const handleCheckFile = async () => {
                           field="gsisLiteLoan"
                           disabled={!editingEnabled}
                         />
-                      </td>
+                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
                           value={currentValues.lbpLoan}
@@ -2269,7 +2726,7 @@ const handleCheckFile = async () => {
                           field="lbpLoan"
                           disabled={!editingEnabled}
                         />
-                      </td>
+                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
                           value={currentValues.gfalLoan}
@@ -2281,7 +2738,7 @@ const handleCheckFile = async () => {
                           field="gfalLoan"
                           disabled={!editingEnabled}
                         />
-                      </td>
+                       </td>
                       <td className="border border-black p-0 text-right pr-1 align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
                           value={currentValues.pagibigMpl}
@@ -2293,7 +2750,7 @@ const handleCheckFile = async () => {
                           field="pagibigMpl"
                           disabled={!editingEnabled}
                         />
-                      </td>
+                       </td>
                       <td className="border border-black p-0 text-center align-middle" style={{ fontSize: `${fontSizes.number}px` }}>
                         <EditableCell
                           value={currentValues.ec}
@@ -2305,13 +2762,18 @@ const handleCheckFile = async () => {
                           field="ec"
                           disabled={!editingEnabled}
                         />
-                      </td>
-                      <td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
-                        <FormulaCell value={currentValues.paidInCash} />
-                      </td>
+                       </td>
+                      {/* Amount Paid in Cash - ALWAYS DISPLAY-ONLY */}
+<td className="border border-black p-0 text-right pr-1 align-middle bg-gray-50" style={{ fontSize: `${fontSizes.number}px` }}>
+  <FormulaCell 
+    value={currentValues.paidInCash}
+    field="paidInCash"
+    disabled={true}
+  />
+</td>
                       <td className="border border-black text-center p-0 align-middle bg-gray-100" style={{ fontSize: `${fontSizes.number}px` }}>
                         {emp.number}
-                      </td>
+                       </td>
                       <td className="border border-black p-0 align-middle"></td>
                     </tr>
                   );
@@ -2369,7 +2831,7 @@ const handleCheckFile = async () => {
               </tbody>
             </table>
 
-            {/* FOOTER AND SIGNATURES SECTION - UPDATED TO MATCH PAYROLL4.xlsx */}
+            {/* FOOTER AND SIGNATURES SECTION */}
             <div className="mt-8 space-y-1" style={{ fontSize: `${fontSizes.small}px` }}>
               {/* First Row of Signatures */}
               <div className={`grid ${paperSize === "A3" ? "grid-cols-3 gap-3" : orientation === "landscape" ? "grid-cols-3 gap-2" : "grid-cols-3 gap-1"}`}>
@@ -2466,17 +2928,18 @@ const handleCheckFile = async () => {
           </div>
         </div>
 
-        {/* Instructions - UPDATED COLORS */}
+        {/* Instructions */}
         <div className="relative z-10 border-t border-white/5 px-6 py-3 bg-[#0f0f1a]">
           <div className="text-sm text-gray-400">
             <ul className="list-disc list-inside space-y-1">
               <li><span className="text-orange-400">Click "Mark as Received" button</span> to enable editing</li>
               <li><span className="text-orange-400">Edit white input boxes</span> to change values (when enabled)</li>
-              <li><strong className="text-gray-300">Gray boxes are auto-calculated</strong> - Amount Accrued, PHILHEALTH, GSIS Premiums, Pag-IBIG Government, and Paid in Cash</li>
+              <li><strong className="text-green-400">All columns are now editable!</strong> Including PHILHEALTH, GSIS Premiums, and Pag-IBIG (Personal and Government shares)</li>
               <li><span className="text-orange-400">Editable loans:</span> GSIS EDUC LOAN, GSIS MPL LOAN, LBP LOAN, GFAL LOAN, GSIS MPL Lite, Pag-IBIG LOAN, E.C.</li>
               <li><span className="text-green-400">💾 Save Excel:</span> Download edited file to computer</li>
               <li><span className="text-orange-400">✓ Check File:</span> Validate file and update in Firestore</li>
-              <li><strong className="text-gray-300">Formulas:</strong> Monthly Rate / 2 = Amount Accrued | Monthly Rate × 2.5% = PHILHEALTH | Monthly Rate × 9% = GSIS Personal | Monthly Rate × 12% = GSIS Government | Monthly Rate × 2% = Pag-IBIG Personal | Pag-IBIG Government = ₱200 | Paid in Cash = Amount Accrued - All Deductions</li>
+              <li><strong className="text-gray-300">Formulas:</strong> Monthly Rate / 2 = Amount Accrued | Monthly Rate × 2.5% = PHILHEALTH (auto) | Monthly Rate × 9% = GSIS Personal (auto) | Monthly Rate × 12% = GSIS Government (auto) | Monthly Rate × 2% = Pag-IBIG Personal (auto) | Pag-IBIG Government = ₱200 (auto) | Paid in Cash = Amount Accrued - All Deductions</li>
+              <li><span className="text-blue-400">✏️ Manual override:</span> You can manually edit PHILHEALTH, GSIS Premiums, and Pag-IBIG fields. When Monthly Rate changes, these fields will auto-update unless you've manually edited them.</li>
             </ul>
           </div>
           {!editingEnabled && (

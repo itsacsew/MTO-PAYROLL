@@ -98,28 +98,98 @@ const ReceiveFile = () => {
     }
   }, [receivedFiles, statusFilter]);
 
-  // Load received files from Firestore
-  useEffect(() => {
-    const loadReceivedFiles = async () => {
-      try {
-        setLoading(true);
-        setError('');
+// Load received files from Firestore - ALL VISIBLE STATUSES (including received)
+useEffect(() => {
+  const loadReceivedFiles = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      console.log('Loading files from Firestore (Accounting view)...');
+      
+      const q = query(
+        collection(db, 'sentFiles'), 
+        orderBy('timestamp', 'desc')
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const files = [];
+      
+      const visibleStatuses = ['received', 'checked', 'checked2'];
+      
+      querySnapshot.forEach((doc) => {
+        const fileData = doc.data();
         
-        console.log('Loading files from Firestore...');
+        // ✅ ONLY SHOW files with status in visibleStatuses
+        if (!visibleStatuses.includes(fileData.status)) {
+          return; // Skip if not visible (e.g., 'sent', 'observation')
+        }
         
-        const q = query(
-          collection(db, 'sentFiles'), 
-          orderBy('timestamp', 'desc')
-        );
+        const senderInfo = fileData.sender || {};
         
-        const querySnapshot = await getDocs(q);
+        files.push({
+          id: doc.id,
+          fileName: fileData.fileName || 'Unknown File',
+          fileData: fileData.fileData,
+          timestamp: fileData.timestamp?.toDate?.() || new Date(fileData.createdAt || Date.now()),
+          updatedEmployees: fileData.updatedEmployees || [],
+          status: fileData.status || 'sent',
+          originalFileName: fileData.originalFileName || '',
+          fileSize: fileData.fileSize || 0,
+          officeCategory: fileData.officeCategory || fileData.office || 'N/A',
+          office: fileData.office || fileData.officeCategory || 'N/A',
+          officeDisplay: fileData.officeDisplay || fileData.officeCategory || 'N/A',
+          senderName: senderInfo.name || fileData.senderName || 'Unknown Sender',
+          senderEmail: senderInfo.email || fileData.senderEmail || '',
+          senderOffice: senderInfo.office || fileData.senderOffice || '',
+          senderId: senderInfo.id || fileData.senderId || '',
+          receivedBy: fileData.receivedBy || null,
+          receivedAt: fileData.receivedAt?.toDate?.() || (fileData.receivedAt instanceof Date ? fileData.receivedAt : null),
+          checkedBy: fileData.checkedBy || null,
+          checkedAt: fileData.checkedAt?.toDate?.() || (fileData.checkedAt instanceof Date ? fileData.checkedAt : null),
+          secondCheckedBy: fileData.secondCheckedBy || null,
+          secondCheckedAt: fileData.secondCheckedAt?.toDate?.() || null,
+          processedBy: fileData.processedBy || null,
+          processedAt: fileData.processedAt?.toDate?.() || (fileData.processedAt instanceof Date ? fileData.processedAt : null),
+          markedAsReceived: fileData.markedAsReceived || false,
+          checked: fileData.checked || false,
+          secondChecked: fileData.secondChecked || false,
+          processed: fileData.processed || false
+        });
+      });
+
+      console.log('Total visible files loaded:', files.length);
+      setReceivedFiles(files);
+      
+    } catch (error) {
+      console.error('Error loading files:', error);
+      setError('Error loading files from Firestore.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  loadReceivedFiles();
+
+  // ✅ REAL-TIME LISTENER - AUTOMATIC UPDATE
+  try {
+    const q = query(collection(db, 'sentFiles'), orderBy('timestamp', 'desc'));
+    
+    // ✅ Same visible statuses for real-time listener
+    const visibleStatuses = ['received', 'checked', 'checked2'];
+    
+    const unsubscribe = onSnapshot(q, 
+      (snapshot) => {
+        console.log('🔥 Real-time update received! 🔥');
         const files = [];
-        
-        querySnapshot.forEach((doc) => {
+        snapshot.forEach((doc) => {
           const fileData = doc.data();
-          console.log('Found document:', doc.id, fileData);
           
-          // Extract sender information from the file data
+          // ✅ Same filter applied here - apil na ang received/mark as received
+          if (!visibleStatuses.includes(fileData.status)) {
+            return;
+          }
+          
           const senderInfo = fileData.sender || {};
           
           files.push({
@@ -131,111 +201,41 @@ const ReceiveFile = () => {
             status: fileData.status || 'sent',
             originalFileName: fileData.originalFileName || '',
             fileSize: fileData.fileSize || 0,
-            
-            // OFFICE INFORMATION
             officeCategory: fileData.officeCategory || fileData.office || 'N/A',
             office: fileData.office || fileData.officeCategory || 'N/A',
             officeDisplay: fileData.officeDisplay || fileData.officeCategory || 'N/A',
-            
-            // SENDER INFORMATION
             senderName: senderInfo.name || fileData.senderName || 'Unknown Sender',
             senderEmail: senderInfo.email || fileData.senderEmail || '',
             senderOffice: senderInfo.office || fileData.senderOffice || '',
             senderId: senderInfo.id || fileData.senderId || '',
-            
-            // Receiver information (who marked as received)
             receivedBy: fileData.receivedBy || null,
             receivedAt: fileData.receivedAt?.toDate?.() || (fileData.receivedAt instanceof Date ? fileData.receivedAt : null),
-            
-            // Checker information
             checkedBy: fileData.checkedBy || null,
             checkedAt: fileData.checkedAt?.toDate?.() || (fileData.checkedAt instanceof Date ? fileData.checkedAt : null),
-            
+            secondCheckedBy: fileData.secondCheckedBy || null,
+            secondCheckedAt: fileData.secondCheckedAt?.toDate?.() || null,
+            processedBy: fileData.processedBy || null,
+            processedAt: fileData.processedAt?.toDate?.() || (fileData.processedAt instanceof Date ? fileData.processedAt : null),
             markedAsReceived: fileData.markedAsReceived || false,
-            checked: fileData.checked || false
+            checked: fileData.checked || false,
+            secondChecked: fileData.secondChecked || false,
+            processed: fileData.processed || false
           });
         });
-
-        console.log('Total files loaded:', files.length);
-        setReceivedFiles(files);
         
-      } catch (error) {
-        console.error('Error loading files from Firestore:', error);
-        setError('Error loading files from Firestore. Please check your connection.');
-        alert('Error loading files from Firestore. Please check your Firebase configuration.');
-      } finally {
+        setReceivedFiles(files);
         setLoading(false);
+      },
+      (error) => {
+        console.error('Real-time listener error:', error);
       }
-    };
+    );
 
-    loadReceivedFiles();
-
-    // Real-time listener for new files
-    try {
-      const q = query(
-        collection(db, 'sentFiles'), 
-        orderBy('timestamp', 'desc')
-      );
-      
-      const unsubscribe = onSnapshot(q, 
-        (snapshot) => {
-          console.log('Real-time update received from Firestore');
-          const files = [];
-          snapshot.forEach((doc) => {
-            const fileData = doc.data();
-            
-            // Extract sender information from the file data
-            const senderInfo = fileData.sender || {};
-            
-            files.push({
-              id: doc.id,
-              fileName: fileData.fileName || 'Unknown File',
-              fileData: fileData.fileData,
-              timestamp: fileData.timestamp?.toDate?.() || new Date(fileData.createdAt || Date.now()),
-              updatedEmployees: fileData.updatedEmployees || [],
-              status: fileData.status || 'sent',
-              originalFileName: fileData.originalFileName || '',
-              fileSize: fileData.fileSize || 0,
-              
-              // OFFICE INFORMATION
-              officeCategory: fileData.officeCategory || fileData.office || 'N/A',
-              office: fileData.office || fileData.officeCategory || 'N/A',
-              officeDisplay: fileData.officeDisplay || fileData.officeCategory || 'N/A',
-              
-              // SENDER INFORMATION
-              senderName: senderInfo.name || fileData.senderName || 'Unknown Sender',
-              senderEmail: senderInfo.email || fileData.senderEmail || '',
-              senderOffice: senderInfo.office || fileData.senderOffice || '',
-              senderId: senderInfo.id || fileData.senderId || '',
-              
-              // Receiver information (who marked as received)
-              receivedBy: fileData.receivedBy || null,
-              receivedAt: fileData.receivedAt?.toDate?.() || (fileData.receivedAt instanceof Date ? fileData.receivedAt : null),
-              
-              // Checker information
-              checkedBy: fileData.checkedBy || null,
-              checkedAt: fileData.checkedAt?.toDate?.() || (fileData.checkedAt instanceof Date ? fileData.checkedAt : null),
-              
-              markedAsReceived: fileData.markedAsReceived || false,
-              checked: fileData.checked || false
-            });
-          });
-          
-          setReceivedFiles(files);
-          setLoading(false);
-        },
-        (error) => {
-          console.error('Real-time listener error:', error);
-          setError('Real-time updates disabled due to error.');
-        }
-      );
-
-      return () => unsubscribe();
-    } catch (listenerError) {
-      console.error('Error setting up real-time listener:', listenerError);
-    }
-  }, []);
-
+    return () => unsubscribe();
+  } catch (listenerError) {
+    console.error('Error setting up real-time listener:', listenerError);
+  }
+}, []);
   // Toggle dropdown for a specific file
   const toggleDropdown = (fileId, e) => {
     if (e) e.stopPropagation();
@@ -333,33 +333,35 @@ const ReceiveFile = () => {
     setSelectedFile(null);
   };
 
-  // Update file status to "checked" with checker information
-  const handleUpdateStatus = async (fileId, newStatus) => {
-    try {
-      console.log('Updating file status:', fileId, newStatus);
-      
-      const updateData = {
-        status: newStatus
-      };
-      
-      // Add additional fields based on status
-      if (newStatus === 'received' || newStatus === 'mark as received') {
-        const currentUser = getCurrentUser();
-        if (currentUser) {
-          updateData.receivedBy = {
-            id: currentUser.id,
-            name: currentUser.name,
-            email: currentUser.email,
-            office: currentUser.office,
-            role: currentUser.role
-          };
-        }
-        updateData.markedAsReceived = true;
-        // Use serverTimestamp para accurate ang time sa Firebase
-        updateData.receivedAt = serverTimestamp();
-      } else if (newStatus === 'checked') {
-        const currentUser = getCurrentUser();
-        if (currentUser) {
+// Update file status with progression logic - AUTOMATIC UPDATE, DILI MAWALA ANG FILE
+const handleUpdateStatus = async (fileId, newStatus, currentStatus) => {
+  try {
+    console.log('Updating file status:', fileId, 'from', currentStatus, 'to', newStatus);
+    
+    const updateData = {
+      status: newStatus
+    };
+    
+    // Add appropriate fields based on the new status
+    if (newStatus === 'received' || newStatus === 'mark as received') {
+      const currentUser = getCurrentUser();
+      if (currentUser) {
+        updateData.receivedBy = {
+          id: currentUser.id,
+          name: currentUser.name,
+          email: currentUser.email,
+          office: currentUser.office,
+          role: currentUser.role
+        };
+      }
+      updateData.markedAsReceived = true;
+      updateData.receivedAt = serverTimestamp();
+      updateData.lastReceivedAt = serverTimestamp();
+    } 
+    else if (newStatus === 'checked') {
+      const currentUser = getCurrentUser();
+      if (currentUser) {
+        if (currentStatus === 'sent' || currentStatus === 'pending') {
           updateData.checkedBy = {
             id: currentUser.id,
             name: currentUser.name,
@@ -367,69 +369,79 @@ const ReceiveFile = () => {
             office: currentUser.office,
             role: currentUser.role
           };
+          updateData.checked = true;
+          updateData.checkedAt = serverTimestamp();
+          updateData.lastCheckedAt = serverTimestamp();
+          updateData.firstCheckedAt = serverTimestamp();
+          updateData.firstCheckedBy = {
+            id: currentUser.id,
+            name: currentUser.name,
+            email: currentUser.email,
+            office: currentUser.office,
+            role: currentUser.role
+          };
+          console.log('✅ First check completed');
+        } 
+        else if (currentStatus === 'received' || currentStatus === 'mark as received') {
+          updateData.secondCheckedBy = {
+            id: currentUser.id,
+            name: currentUser.name,
+            email: currentUser.email,
+            office: currentUser.office,
+            role: currentUser.role
+          };
+          updateData.secondChecked = true;
+          updateData.secondCheckedAt = serverTimestamp();
+          updateData.lastCheckedAt = serverTimestamp();
+          console.log('✅ Second check completed');
         }
-        updateData.checked = true;
-        // Use serverTimestamp para accurate ang time sa Firebase
-        updateData.checkedAt = serverTimestamp();
-        updateData.lastCheckedAt = serverTimestamp();
       }
-      
-      await updateDoc(doc(db, 'sentFiles', fileId), updateData);
-
-      setReceivedFiles(prevFiles => 
-        prevFiles.map(file => {
-          if (file.id === fileId) {
-            const updatedFile = {
-              ...file,
-              status: newStatus,
-              markedAsReceived: newStatus === 'received' || newStatus === 'mark as received' ? true : file.markedAsReceived,
-              checked: newStatus === 'checked' ? true : file.checked
-            };
-            
-            if (newStatus === 'received' || newStatus === 'mark as received') {
-              const currentUser = getCurrentUser();
-              if (currentUser) {
-                updatedFile.receivedBy = {
-                  id: currentUser.id,
-                  name: currentUser.name,
-                  email: currentUser.email,
-                  office: currentUser.office,
-                  role: currentUser.role
-                };
-                // Ang actual date kay i-set sa realtime listener
-                updatedFile.receivedAt = new Date(); // temporary local date
-              }
-            }
-            
-            if (newStatus === 'checked') {
-              const currentUser = getCurrentUser();
-              if (currentUser) {
-                updatedFile.checkedBy = {
-                  id: currentUser.id,
-                  name: currentUser.name,
-                  email: currentUser.email,
-                  office: currentUser.office,
-                  role: currentUser.role
-                };
-                // Ang actual date kay i-set sa realtime listener
-                updatedFile.checkedAt = new Date(); // temporary local date
-                updatedFile.lastCheckedAt = new Date(); // temporary local date
-              }
-            }
-            
-            return updatedFile;
-          }
-          return file;
-        })
-      );
-
-      alert(`✅ File status updated to "${newStatus}"!`);
-      setDropdownOpen(null);
-    } catch (error) {
-      console.error('Error updating file status:', error);
-      alert('❌ Error updating file status.');
     }
-  };
+    else if (newStatus === 'checked2') {  // ✅ ADD THIS - For Accounting second check
+      const currentUser = getCurrentUser();
+      if (currentUser) {
+        updateData.secondCheckedBy = {
+          id: currentUser.id,
+          name: currentUser.name,
+          email: currentUser.email,
+          office: currentUser.office,
+          role: currentUser.role
+        };
+        updateData.secondChecked = true;
+        updateData.secondCheckedAt = serverTimestamp();
+        updateData.status = 'checked2';
+        console.log('✅ Accounting check completed (checked2)');
+      }
+    }
+    else if (newStatus === 'processed') {
+      const currentUser = getCurrentUser();
+      if (currentUser) {
+        updateData.processedBy = {
+          id: currentUser.id,
+          name: currentUser.name,
+          email: currentUser.email,
+          office: currentUser.office,
+          role: currentUser.role
+        };
+        updateData.processedAt = serverTimestamp();
+        updateData.lastProcessedAt = serverTimestamp();
+        console.log('✅ File processed');
+      }
+    }
+    
+    await updateDoc(doc(db, 'sentFiles', fileId), updateData);
+
+    // ✅ AUTOMATIC UPDATE - DILI MAAYO ANG LOCAL STATE, MAG-RELY SA REAL-TIME LISTENER
+    // Para automatic mo-reflect ang changes without losing the file
+    
+    alert(`✅ File status updated to "${newStatus}"!`);
+    setDropdownOpen(null);
+    
+  } catch (error) {
+    console.error('Error updating file status:', error);
+    alert('❌ Error updating file status.');
+  }
+};
 
   // Delete file function
   const handleDeleteFile = async (fileId) => {
@@ -479,64 +491,69 @@ const ReceiveFile = () => {
       setLoading(false);
     }
   };
-
-  // Refresh files
-  const handleRefreshFiles = async () => {
-    try {
-      setLoading(true);
-      setError('');
+// Refresh files - SHOW ALL VISIBLE STATUSES (including received)
+const handleRefreshFiles = async () => {
+  try {
+    setLoading(true);
+    setError('');
+    
+    const q = query(collection(db, 'sentFiles'), orderBy('timestamp', 'desc'));
+    const querySnapshot = await getDocs(q);
+    const files = [];
+    
+    // ✅ Same visible statuses
+    const visibleStatuses = ['received', 'checked', 'checked2'];
+    
+    querySnapshot.forEach((doc) => {
+      const fileData = doc.data();
       
-      const q = query(collection(db, 'sentFiles'), orderBy('timestamp', 'desc'));
-      const querySnapshot = await getDocs(q);
-      const files = [];
+      // ✅ ONLY SHOW files with status in visibleStatuses
+      if (!visibleStatuses.includes(fileData.status)) {
+        return;
+      }
       
-      querySnapshot.forEach((doc) => {
-        const fileData = doc.data();
-        
-        const senderInfo = fileData.sender || {};
-        
-        files.push({
-          id: doc.id,
-          fileName: fileData.fileName || 'Unknown File',
-          fileData: fileData.fileData,
-          timestamp: fileData.timestamp?.toDate?.() || new Date(fileData.createdAt || Date.now()),
-          updatedEmployees: fileData.updatedEmployees || [],
-          status: fileData.status || 'sent',
-          originalFileName: fileData.originalFileName || '',
-          fileSize: fileData.fileSize || 0,
-          
-          // OFFICE INFORMATION
-          officeCategory: fileData.officeCategory || fileData.office || 'N/A',
-          office: fileData.office || fileData.officeCategory || 'N/A',
-          officeDisplay: fileData.officeDisplay || fileData.officeCategory || 'N/A',
-          
-          // SENDER INFORMATION
-          senderName: senderInfo.name || fileData.senderName || 'Unknown Sender',
-          senderEmail: senderInfo.email || fileData.senderEmail || '',
-          senderOffice: senderInfo.office || fileData.senderOffice || '',
-          senderId: senderInfo.id || fileData.senderId || '',
-          
-          receivedBy: fileData.receivedBy || null,
-          receivedAt: fileData.receivedAt?.toDate?.() || (fileData.receivedAt instanceof Date ? fileData.receivedAt : null),
-          
-          checkedBy: fileData.checkedBy || null,
-          checkedAt: fileData.checkedAt?.toDate?.() || (fileData.checkedAt instanceof Date ? fileData.checkedAt : null),
-          
-          markedAsReceived: fileData.markedAsReceived || false,
-          checked: fileData.checked || false
-        });
+      const senderInfo = fileData.sender || {};
+      
+      files.push({
+        id: doc.id,
+        fileName: fileData.fileName || 'Unknown File',
+        fileData: fileData.fileData,
+        timestamp: fileData.timestamp?.toDate?.() || new Date(fileData.createdAt || Date.now()),
+        updatedEmployees: fileData.updatedEmployees || [],
+        status: fileData.status || 'sent',
+        originalFileName: fileData.originalFileName || '',
+        fileSize: fileData.fileSize || 0,
+        officeCategory: fileData.officeCategory || fileData.office || 'N/A',
+        office: fileData.office || fileData.officeCategory || 'N/A',
+        officeDisplay: fileData.officeDisplay || fileData.officeCategory || 'N/A',
+        senderName: senderInfo.name || fileData.senderName || 'Unknown Sender',
+        senderEmail: senderInfo.email || fileData.senderEmail || '',
+        senderOffice: senderInfo.office || fileData.senderOffice || '',
+        senderId: senderInfo.id || fileData.senderId || '',
+        receivedBy: fileData.receivedBy || null,
+        receivedAt: fileData.receivedAt?.toDate?.() || (fileData.receivedAt instanceof Date ? fileData.receivedAt : null),
+        checkedBy: fileData.checkedBy || null,
+        checkedAt: fileData.checkedAt?.toDate?.() || (fileData.checkedAt instanceof Date ? fileData.checkedAt : null),
+        secondCheckedBy: fileData.secondCheckedBy || null,
+        secondCheckedAt: fileData.secondCheckedAt?.toDate?.() || null,
+        processedBy: fileData.processedBy || null,
+        processedAt: fileData.processedAt?.toDate?.() || (fileData.processedAt instanceof Date ? fileData.processedAt : null),
+        markedAsReceived: fileData.markedAsReceived || false,
+        checked: fileData.checked || false,
+        secondChecked: fileData.secondChecked || false,
+        processed: fileData.processed || false
       });
+    });
 
-      setReceivedFiles(files);
-      
-      
-    } catch (error) {
-      console.error('Error refreshing files:', error);
-      setError('Error refreshing files from Firestore.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    setReceivedFiles(files);
+    
+  } catch (error) {
+    console.error('Error refreshing files:', error);
+    setError('Error refreshing files from Firestore.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const formatDate = (timestamp) => {
     if (!timestamp) return 'N/A';
@@ -558,51 +575,65 @@ const ReceiveFile = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // Get status badge class based on status - UPDATED COLORS
-  const getStatusBadgeClass = (status) => {
-    switch (status) {
-      case 'sent':
-        return 'bg-orange-100 text-orange-800 border border-orange-200';
-      case 'received':
-      case 'mark as received':
-        return 'bg-green-100 text-green-800 border border-green-200';
-      case 'checked':
-        return 'bg-purple-100 text-purple-800 border border-purple-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border border-gray-200';
-    }
-  };
+// Get status badge class - updated for checked2
+// Get status badge class - updated with all statuses
+const getStatusBadgeClass = (status) => {
+  switch (status) {
+    case 'sent':
+      return 'bg-orange-100 text-orange-800 border border-orange-200';
+    case 'received':
+    case 'mark as received':
+      return 'bg-green-100 text-green-800 border border-green-200';
+    case 'checked':
+      return 'bg-purple-100 text-purple-800 border border-purple-200';
+    case 'checked2':
+      return 'bg-indigo-100 text-indigo-800 border border-indigo-200';
+    case 'processed':
+      return 'bg-blue-100 text-blue-800 border border-blue-200';
+    default:
+      return 'bg-gray-100 text-gray-800 border border-gray-200';
+  }
+};
 
-  // Get status display text
-  const getStatusDisplayText = (status) => {
-    switch (status) {
-      case 'sent':
-        return 'SENT';
-      case 'received':
-      case 'mark as received':
-        return 'RECEIVED';
-      case 'checked':
-        return 'CHECKED';
-      default:
-        return status.toUpperCase();
-    }
-  };
+// Get status display text - updated
+const getStatusDisplayText = (status) => {
+  switch (status) {
+    case 'sent':
+      return 'SENT';
+    case 'received':
+      return 'RECEIVED';
+    case 'mark as received':
+      return 'RECEIVED';
+    case 'checked':
+      return 'CHECKED';
+    case 'checked2':
+      return 'CHECKED 2';
+    case 'processed':
+      return 'PROCESSED';
+    default:
+      return status.toUpperCase();
+  }
+};
 
-  // Get filter display text
-  const getFilterDisplayText = (filter) => {
-    switch (filter) {
-      case 'all':
-        return 'ALL STATUS';
-      case 'sent':
-        return 'SENT';
-      case 'received':
-        return 'RECEIVED';
-      case 'checked':
-        return 'CHECKED';
-      default:
-        return 'ALL STATUS';
-    }
-  };
+// Get filter display text
+const getFilterDisplayText = (filter) => {
+  switch (filter) {
+    case 'all':
+      return 'ALL STATUS';
+    case 'sent':
+      return 'SENT';
+    case 'received':
+      return 'RECEIVED';
+    case 'checked':
+      return 'CHECKED';
+    case 'checked2':
+      return 'CHECKED 2';
+    case 'processed':
+      return 'PROCESSED';
+    default:
+      return 'ALL STATUS';
+  }
+};
 
   // Get office badge color based on office category - UPDATED COLORS
   const getOfficeBadgeClass = (officeCategory) => {
@@ -620,55 +651,73 @@ const ReceiveFile = () => {
     }
   };
 
-  // Function to render the appropriate modal based on office category
-  const renderModal = () => {
-    if (!showModalSend || !selectedFile) return null;
+  // In ReceiveFile.jsx, update the renderModal function (around line 374-424)
 
-    switch (modalComponent) {
-      case 'MDRRMO':
-        return (
-          <ModalSend_MDRRMO 
-            file={selectedFile} 
-            onClose={handleCloseModalSend}
-            markedAsReceived={selectedFile.markedAsReceived}
-            onMarkAsReceived={() => handleUpdateStatus(selectedFile.id, 'received')}
-          />
-        );
-      
-      case 'MAYOR':
-        return (
-          <ModalSend_MAYOR 
-            file={selectedFile} 
-            onClose={handleCloseModalSend}
-            markedAsReceived={selectedFile.markedAsReceived}
-            onMarkAsReceived={() => handleUpdateStatus(selectedFile.id, 'received')}
-          />
-        );
-      
-      case 'RHU': // Added case for RHU
-        return (
-          <ModalSend_RHU 
-            file={selectedFile} 
-            onClose={handleCloseModalSend}
-            markedAsReceived={selectedFile.markedAsReceived}
-            onMarkAsReceived={() => handleUpdateStatus(selectedFile.id, 'received')}
-          />
-        );
-      
-      case 'SB':
-      case 'DEFAULT':
-      default:
-        return (
-          <ModalSend 
-            file={selectedFile} 
-            onClose={handleCloseModalSend}
-            markedAsReceived={selectedFile.markedAsReceived}
-            onMarkAsReceived={() => handleUpdateStatus(selectedFile.id, 'received')}
-          />
-        );
-    }
+// In ReceiveFile.jsx, update the renderModal function (around line 374-424)
+const renderModal = () => {
+  if (!showModalSend || !selectedFile) return null;
+
+  // Create wrapper functions with current status
+  const handleMarkAsReceivedWrapper = () => {
+    handleUpdateStatus(selectedFile.id, 'received', selectedFile.status);
   };
 
+  const handleCheckFileWrapper = () => {
+    // Determine if this is first check or second check
+    let newStatus = 'checked';
+    // If current status is 'received' or 'mark as received', this is second check
+    // But we'll let the modal handle the actual update since it has its own logic
+    // The modal will call handleUpdateStatus with the appropriate status
+  };
+
+  switch (modalComponent) {
+    case 'MDRRMO':
+      return (
+        <ModalSend_MDRRMO 
+          file={selectedFile} 
+          onClose={handleCloseModalSend}
+          markedAsReceived={selectedFile.markedAsReceived}
+          onMarkAsReceived={handleMarkAsReceivedWrapper}
+          onCheckFile={(status) => handleUpdateStatus(selectedFile.id, status, selectedFile.status)}
+        />
+      );
+    
+    case 'MAYOR':
+      return (
+        <ModalSend_MAYOR 
+          file={selectedFile} 
+          onClose={handleCloseModalSend}
+          markedAsReceived={selectedFile.markedAsReceived}
+          onMarkAsReceived={handleMarkAsReceivedWrapper}
+          onCheckFile={(status) => handleUpdateStatus(selectedFile.id, status, selectedFile.status)}
+        />
+      );
+    
+    case 'RHU':
+      return (
+        <ModalSend_RHU 
+          file={selectedFile} 
+          onClose={handleCloseModalSend}
+          markedAsReceived={selectedFile.markedAsReceived}
+          onMarkAsReceived={handleMarkAsReceivedWrapper}
+          onCheckFile={(status) => handleUpdateStatus(selectedFile.id, status, selectedFile.status)}
+        />
+      );
+    
+    case 'SB':
+    case 'DEFAULT':
+    default:
+      return (
+        <ModalSend 
+          file={selectedFile} 
+          onClose={handleCloseModalSend}
+          markedAsReceived={selectedFile.markedAsReceived}
+          onMarkAsReceived={handleMarkAsReceivedWrapper}
+          onCheckFile={(status) => handleUpdateStatus(selectedFile.id, status, selectedFile.status)}
+        />
+      );
+  }
+};
   // NEW: Render modal using React Portal para sure nga naa sa ibabaw
   const renderModalWithPortal = () => {
     if (!showModalSend || !selectedFile) return null;
@@ -1042,16 +1091,7 @@ const ReceiveFile = () => {
                             Download
                           </button>
 
-                          {/* Update Status Options in Dropdown */}
-                          {file.status !== 'checked' && (
-                            <button
-                              onClick={() => handleUpdateStatus(file.id, 'checked')}
-                              className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-orange-500/10 hover:text-orange-400 flex items-center gap-2 mt-2 border-t border-white/5"
-                            >
-                              <MdCheckCircle className="h-4 w-4" />
-                              Mark as Checked
-                            </button>
-                          )}
+                          
                         </div>
                       </div>
                     )}

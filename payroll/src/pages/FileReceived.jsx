@@ -85,7 +85,7 @@ const FileReceived = () => {
     return null;
   };
 
-  // Load only checked files from Firestore
+  // Load checked and checked2 files from Firestore
   useEffect(() => {
     const loadCheckedFiles = async () => {
       try {
@@ -103,7 +103,8 @@ const FileReceived = () => {
         querySnapshot.forEach((doc) => {
           const fileData = doc.data();
           
-          if (fileData.status === 'checked') {
+          // ✅ Show both 'checked' AND 'checked2' AND 'final_checked' files
+          if (fileData.status === 'checked' || fileData.status === 'checked2' || fileData.status === 'final_checked') {
             const senderInfo = fileData.sender || {};
             const receiverInfo = fileData.receivedBy || {};
             const checkerInfo = fileData.checkedBy || {};
@@ -136,6 +137,10 @@ const FileReceived = () => {
               
               checkedBy: receiverInfo.id ? receiverInfo : checkerInfo,
               checkedAt: convertTimestampToDate(fileData.checkedAt),
+              
+              // For second check
+              secondCheckedBy: fileData.secondCheckedBy || null,
+              secondCheckedAt: convertTimestampToDate(fileData.secondCheckedAt),
               
               // ✅ USE lastCheckedAt from Firebase (set via serverTimestamp)
               lastCheckedAt: checkedDate,
@@ -171,7 +176,8 @@ const FileReceived = () => {
           snapshot.forEach((doc) => {
             const fileData = doc.data();
             
-            if (fileData.status === 'checked') {
+            // ✅ Show both 'checked' AND 'checked2' AND 'final_checked' files
+            if (fileData.status === 'checked' || fileData.status === 'checked2' || fileData.status === 'final_checked') {
               const senderInfo = fileData.sender || {};
               const receiverInfo = fileData.receivedBy || {};
               const checkerInfo = fileData.checkedBy || {};
@@ -204,6 +210,10 @@ const FileReceived = () => {
                 
                 checkedBy: receiverInfo.id ? receiverInfo : checkerInfo,
                 checkedAt: convertTimestampToDate(fileData.checkedAt),
+                
+                // For second check
+                secondCheckedBy: fileData.secondCheckedBy || null,
+                secondCheckedAt: convertTimestampToDate(fileData.secondCheckedAt),
                 
                 // ✅ USE lastCheckedAt from Firebase (set via serverTimestamp)
                 lastCheckedAt: checkedDate,
@@ -299,7 +309,7 @@ const FileReceived = () => {
           <h1>${selectedFile?.fileName || 'Excel File'}</h1>
           <div class="file-info">
             <p><strong>Sender:</strong> ${selectedFile?.senderName || 'N/A'}</p>
-            <p><strong>Checked By:</strong> ${selectedFile?.checkedBy?.name || selectedFile?.receivedBy?.name || 'N/A'}</p>
+            <p><strong>Checked By:</strong> ${selectedFile?.checkedBy?.name || selectedFile?.receivedBy?.name || selectedFile?.secondCheckedBy?.name || 'N/A'}</p>
             <p><strong>Date Checked:</strong> ${formattedCheckedDate}</p>
             <p><strong>Sheet:</strong> ${excelSheets[activeSheet] || 'Sheet1'}</p>
             <p><strong>Rows:</strong> ${rows.length} | <strong>Columns:</strong> ${headers.length}</p>
@@ -308,20 +318,20 @@ const FileReceived = () => {
       
       if (headers.length > 0) {
         html += `
-           <table>
+            <table>
             <thead>
-               <tr>
+                <tr>
                 ${headers.map(header => `<th>${header || ''}</th>`).join('')}
-               </tr>
+                </tr>
             </thead>
             <tbody>
               ${rows.map(row => `
-                 <tr>
+                  <tr>
                   ${headers.map((_, index) => `<td>${row[index] !== undefined ? row[index] : ''}</td>`).join('')}
-                 </tr>
+                  </tr>
               `).join('')}
             </tbody>
-           </table>
+            </table>
         `;
       } else {
         html += '<p>No data available in this sheet.</p>';
@@ -613,7 +623,8 @@ const FileReceived = () => {
       querySnapshot.forEach((doc) => {
         const fileData = doc.data();
         
-        if (fileData.status === 'checked') {
+        // ✅ Show both 'checked' AND 'checked2' AND 'final_checked' files
+        if (fileData.status === 'checked' || fileData.status === 'checked2' || fileData.status === 'final_checked') {
           const senderInfo = fileData.sender || {};
           const receiverInfo = fileData.receivedBy || {};
           const checkerInfo = fileData.checkedBy || {};
@@ -646,6 +657,10 @@ const FileReceived = () => {
             
             checkedBy: receiverInfo.id ? receiverInfo : checkerInfo,
             checkedAt: convertTimestampToDate(fileData.checkedAt),
+            
+            // For second check
+            secondCheckedBy: fileData.secondCheckedBy || null,
+            secondCheckedAt: convertTimestampToDate(fileData.secondCheckedAt),
             
             // ✅ USE lastCheckedAt from Firebase (set via serverTimestamp)
             lastCheckedAt: checkedDate,
@@ -693,22 +708,33 @@ const FileReceived = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // Get status badge class based on status
+  // Get status badge class based on status - UPDATED for checked and checked2
   const getStatusInfo = (status) => {
     switch (status) {
       case 'checked':
         return {
+          bg: 'bg-amber-500/10',
+          text: 'text-amber-400',
+          border: 'border-amber-500/20',
+          icon: <MdCheckCircle size={14} />,
+          label: 'CHECKED (1st)'
+        };
+      case 'checked2':
+      case 'final_checked':
+        return {
           bg: 'bg-purple-500/10',
           text: 'text-purple-400',
           border: 'border-purple-500/20',
-          icon: <MdCheckCircle size={14} />
+          icon: <MdCheckCircle size={14} />,
+          label: 'CHECKED (2nd)'
         };
       default:
         return {
           bg: 'bg-gray-500/10',
           text: 'text-gray-400',
           border: 'border-gray-500/20',
-          icon: <MdInsertDriveFile size={14} />
+          icon: <MdInsertDriveFile size={14} />,
+          label: status?.toUpperCase() || 'UNKNOWN'
         };
     }
   };
@@ -877,7 +903,7 @@ const FileReceived = () => {
             </div>
           )}
 
-          {/* Table Header - Like ReceiveFile.jsx */}
+          {/* Table Header */}
           {!loading && receivedFiles.length > 0 && (
             <div 
               className="relative z-10 grid grid-cols-12 gap-4 px-6 py-4 text-sm font-medium border-b border-white/5"
@@ -935,6 +961,11 @@ const FileReceived = () => {
                     const statusInfo = getStatusInfo(file.status);
                     // Get the checked date - using lastCheckedAt from Firebase
                     const checkedDate = file.lastCheckedAt || file.checkedAt || file.receivedAt || file.timestamp;
+                    // Determine who checked the file (first or second check)
+                    const checkerName = file.status === 'checked2' 
+                      ? (file.secondCheckedBy?.name || file.checkedBy?.name || file.receivedBy?.name || 'N/A')
+                      : (file.checkedBy?.name || file.receivedBy?.name || 'N/A');
+                    
                     return (
                       <div
                         key={file.id}
@@ -945,7 +976,7 @@ const FileReceived = () => {
                           <span className="text-gray-400 font-mono text-sm">{(index + 1).toString().padStart(2, '0')}</span>
                         </div>
 
-                        {/* FILE NAME - Like ReceiveFile.jsx */}
+                        {/* FILE NAME */}
                         <div className="col-span-3 flex items-center gap-3">
                           <div 
                             className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -962,11 +993,15 @@ const FileReceived = () => {
                               {file.fileSize > 0 && (
                                 <span className="text-xs text-gray-500">{formatFileSize(file.fileSize)}</span>
                               )}
+                              {/* Status Badge */}
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full ${statusInfo.bg} ${statusInfo.text} border ${statusInfo.border}`}>
+                                {statusInfo.label}
+                              </span>
                             </div>
                           </div>
                         </div>
 
-                        {/* NAME OF SENDER - Like ReceiveFile.jsx */}
+                        {/* NAME OF SENDER */}
                         <div className="col-span-2 flex items-center">
                           <div className="flex-1 min-w-0">
                             <p className="text-white font-medium truncate">{file.senderName}</p>
@@ -976,7 +1011,7 @@ const FileReceived = () => {
                           </div>
                         </div>
 
-                        {/* OFFICE - Like ReceiveFile.jsx */}
+                        {/* OFFICE */}
                         <div className="col-span-2 flex items-center">
                           <span className={`px-3 py-1.5 rounded-full text-xs font-medium inline-block ${getOfficeBadgeClass(file.officeCategory)}`}>
                             {file.officeCategory}
@@ -993,32 +1028,19 @@ const FileReceived = () => {
                           </div>
                         </div>
 
-                        {/* CHECKED BY - Like ReceiveFile.jsx */}
+                        {/* CHECKED BY */}
                         <div className="col-span-1 flex items-center">
-                          {file.checkedBy ? (
-                            <div className="flex items-center gap-1">
-                              <div className="w-6 h-6 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
-                                <MdPerson className="w-3 h-3 text-purple-400" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-white text-xs truncate">{file.checkedBy.name?.split(' ')[0] || 'Checker'}</p>
-                              </div>
+                          <div className="flex items-center gap-1">
+                            <div className={`w-6 h-6 rounded-lg ${file.status === 'checked2' ? 'bg-purple-500/10 border border-purple-500/20' : 'bg-amber-500/10 border border-amber-500/20'} flex items-center justify-center`}>
+                              <MdPerson className={`w-3 h-3 ${file.status === 'checked2' ? 'text-purple-400' : 'text-amber-400'}`} />
                             </div>
-                          ) : file.receivedBy ? (
-                            <div className="flex items-center gap-1">
-                              <div className="w-6 h-6 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center">
-                                <MdPerson className="w-3 h-3 text-green-400" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-white text-xs truncate">{file.receivedBy.name?.split(' ')[0] || 'Receiver'}</p>
-                              </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-white text-xs truncate">{checkerName.split(' ')[0] || 'Checker'}</p>
                             </div>
-                          ) : (
-                            <span className="text-gray-500 italic text-xs">N/A</span>
-                          )}
+                          </div>
                         </div>
 
-                        {/* ACTION - 3 DOTS BUTTON - Like ReceiveFile.jsx */}
+                        {/* ACTION - 3 DOTS BUTTON */}
                         <div className="col-span-1 flex items-center justify-center relative">
                           <button
                             ref={el => dropdownRefs.current[file.id] = el}
@@ -1036,7 +1058,7 @@ const FileReceived = () => {
                             <MdMoreVert className={`w-4 h-4 ${dropdownOpen === file.id ? 'text-white' : 'text-gray-400'}`} />
                           </button>
 
-                          {/* Dropdown Menu - Like ReceiveFile.jsx */}
+                          {/* Dropdown Menu */}
                           {dropdownOpen === file.id && (
                             <div 
                               className="absolute z-50 mt-1 w-48 rounded-xl overflow-hidden"
@@ -1050,8 +1072,6 @@ const FileReceived = () => {
                               onClick={(e) => e.stopPropagation()}
                             >
                               <div className="py-1">
-                               
-                                
                                 <button
                                   onClick={() => {
                                     handleViewPayslip(file);
@@ -1221,7 +1241,11 @@ const FileReceived = () => {
                       </div>
                       <div>
                         <p className="text-xs text-gray-400">Checked By</p>
-                        <p className="text-sm text-white font-medium">{selectedFile.checkedBy?.name || selectedFile.receivedBy?.name || 'N/A'}</p>
+                        <p className="text-sm text-white font-medium">
+                          {selectedFile.status === 'checked2' 
+                            ? (selectedFile.secondCheckedBy?.name || selectedFile.checkedBy?.name || selectedFile.receivedBy?.name || 'N/A')
+                            : (selectedFile.checkedBy?.name || selectedFile.receivedBy?.name || 'N/A')}
+                        </p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-400">Date Checked</p>
@@ -1361,8 +1385,8 @@ const FileReceived = () => {
                         </div>
                         <div>
                           <label className="text-sm font-medium text-gray-400">Status:</label>
-                          <span className={`mt-1 inline-block px-3 py-1 rounded-full text-sm bg-purple-500/10 text-purple-400 border border-purple-500/20`}>
-                            CHECKED
+                          <span className={`mt-1 inline-block px-3 py-1 rounded-full text-sm ${selectedFile.status === 'checked2' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
+                            {selectedFile.status === 'checked2' ? 'CHECKED (2nd)' : 'CHECKED (1st)'}
                           </span>
                         </div>
                       </div>
@@ -1395,22 +1419,25 @@ const FileReceived = () => {
                     {/* Checked Information */}
                     <div>
                       <h4 className="text-lg font-medium text-white mb-4">Checked Information</h4>
-                      {selectedFile.checkedBy ? (
-                        <div className="space-y-3 p-4 rounded-xl" style={{
-                          background: 'linear-gradient(145deg, rgba(168, 85, 247, 0.1), #1a1a2a)',
-                          border: '1px solid rgba(168, 85, 247, 0.2)'
+                      
+                      {/* First Check Info */}
+                      {(selectedFile.checkedBy || selectedFile.receivedBy) && (
+                        <div className="space-y-3 p-4 rounded-xl mb-4" style={{
+                          background: 'linear-gradient(145deg, rgba(245, 158, 11, 0.1), #1a1a2a)',
+                          border: '1px solid rgba(245, 158, 11, 0.2)'
                         }}>
+                          <h5 className="font-medium text-amber-400 mb-2">First Check</h5>
                           <div>
                             <label className="text-sm font-medium text-gray-400">Checked By:</label>
-                            <p className="mt-1 text-white">{selectedFile.checkedBy.name}</p>
+                            <p className="mt-1 text-white">{selectedFile.checkedBy?.name || selectedFile.receivedBy?.name || 'N/A'}</p>
                           </div>
-                          {selectedFile.checkedBy.email && (
+                          {selectedFile.checkedBy?.email && (
                             <div>
                               <label className="text-sm font-medium text-gray-400">Checker Email:</label>
                               <p className="mt-1 text-white">{selectedFile.checkedBy.email}</p>
                             </div>
                           )}
-                          {selectedFile.checkedBy.office && (
+                          {selectedFile.checkedBy?.office && (
                             <div>
                               <label className="text-sm font-medium text-gray-400">Checker Office:</label>
                               <p className="mt-1 text-white">{selectedFile.checkedBy.office}</p>
@@ -1418,39 +1445,42 @@ const FileReceived = () => {
                           )}
                           <div>
                             <label className="text-sm font-medium text-gray-400">Date Checked:</label>
-                            <p className="mt-1 text-white">{formatDate(selectedFile.lastCheckedAt || selectedFile.checkedAt)}</p>
+                            <p className="mt-1 text-white">{formatDate(selectedFile.checkedAt || selectedFile.lastCheckedAt)}</p>
                           </div>
                         </div>
-                      ) : selectedFile.receivedBy ? (
-                        <div className="space-y-3 p-4 rounded-xl" style={{
-                          background: 'linear-gradient(145deg, rgba(16, 185, 129, 0.1), #1a1a2a)',
-                          border: '1px solid rgba(16, 185, 129, 0.2)'
-                        }}>
-                          <div>
-                            <label className="text-sm font-medium text-gray-400">Received By:</label>
-                            <p className="mt-1 text-white">{selectedFile.receivedBy.name}</p>
-                          </div>
-                          {selectedFile.receivedBy.email && (
-                            <div>
-                              <label className="text-sm font-medium text-gray-400">Receiver Email:</label>
-                              <p className="mt-1 text-white">{selectedFile.receivedBy.email}</p>
-                            </div>
-                          )}
-                          {selectedFile.receivedBy.office && (
-                            <div>
-                              <label className="text-sm font-medium text-gray-400">Receiver Office:</label>
-                              <p className="mt-1 text-white">{selectedFile.receivedBy.office}</p>
-                            </div>
-                          )}
-                          <div>
-                            <label className="text-sm font-medium text-gray-400">Received Date:</label>
-                            <p className="mt-1 text-white">{formatDate(selectedFile.receivedAt)}</p>
-                          </div>
-                        </div>
-                      ) : (
-                        <p className="text-gray-400">No checker information available</p>
                       )}
                       
+                      {/* Second Check Info - Only for checked2 files */}
+                      {selectedFile.status === 'checked2' && selectedFile.secondCheckedBy && (
+                        <div className="space-y-3 p-4 rounded-xl" style={{
+                          background: 'linear-gradient(145deg, rgba(168, 85, 247, 0.1), #1a1a2a)',
+                          border: '1px solid rgba(168, 85, 247, 0.2)'
+                        }}>
+                          <h5 className="font-medium text-purple-400 mb-2">Second Check</h5>
+                          <div>
+                            <label className="text-sm font-medium text-gray-400">Checked By:</label>
+                            <p className="mt-1 text-white">{selectedFile.secondCheckedBy.name}</p>
+                          </div>
+                          {selectedFile.secondCheckedBy.email && (
+                            <div>
+                              <label className="text-sm font-medium text-gray-400">Checker Email:</label>
+                              <p className="mt-1 text-white">{selectedFile.secondCheckedBy.email}</p>
+                            </div>
+                          )}
+                          {selectedFile.secondCheckedBy.office && (
+                            <div>
+                              <label className="text-sm font-medium text-gray-400">Checker Office:</label>
+                              <p className="mt-1 text-white">{selectedFile.secondCheckedBy.office}</p>
+                            </div>
+                          )}
+                          <div>
+                            <label className="text-sm font-medium text-gray-400">Date Checked:</label>
+                            <p className="mt-1 text-white">{formatDate(selectedFile.secondCheckedAt)}</p>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Updated Employees */}
                       {selectedFile.updatedEmployees && selectedFile.updatedEmployees.length > 0 && (
                         <div className="mt-6 p-4 rounded-xl" style={{
                           background: 'linear-gradient(145deg, rgba(16, 185, 129, 0.1), #1a1a2a)',

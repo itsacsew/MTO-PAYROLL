@@ -1,7 +1,8 @@
 // Login.jsx - Redesigned with Professional 3D Glassmorphism - Full Screen Version
-// UPDATED with Navbar color scheme - NO CLOCK - NO SHINE - WITH ORANGE GLOW
+// UPDATED with Wrong Password Full Screen Image + Music Feature
+// ADDED BUDGET OFFICE OPTION
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { setUser } from "../redux/slices/authSlice";
@@ -11,7 +12,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { db } from "../config/firebase";
 import { collection, addDoc, getDocs, query, where } from "firebase/firestore";
 
-import back12 from "../assets/pic.png";
+import back12 from "../assets/waaa.jpg";
 import { 
   MdEmail, 
   MdLock, 
@@ -22,13 +23,37 @@ import {
   MdArrowForward,
   MdCheckCircle,
   MdError,
-  MdDashboard
+  MdDashboard,
+  MdMusicNote,
+  MdVolumeUp,
+  MdVolumeOff
 } from "react-icons/md";
+
+// Import your error sound file (place this in your assets folder)
+import errorSound from "../assets/prank.mp3"; // Change this to your actual sound file path
 
 /* ------------------ Main component ------------------ */
 export default function AuthWithSheet() {
   const dispatch = useDispatch();
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [showFullScreenImage, setShowFullScreenImage] = useState(false);
+  const [fullScreenImageSrc, setFullScreenImageSrc] = useState(back12);
+  const [isMusicPlaying, setIsMusicPlaying] = useState(false);
+  const audioRef = useRef(null);
+
+  // Initialize audio element
+  useEffect(() => {
+    audioRef.current = new Audio(errorSound);
+    audioRef.current.preload = "auto";
+    
+    // Cleanup on unmount
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
 
   // Track mouse position for parallax effects
   useEffect(() => {
@@ -47,120 +72,244 @@ export default function AuthWithSheet() {
     dispatch(setUser(userData));
   };
 
+  // Function to stop error music
+  const stopErrorMusic = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setIsMusicPlaying(false);
+    }
+  };
+
+  // Function to trigger wrong password full screen image with music
+  const triggerWrongPassword = (imageSrc = back12) => {
+    setFullScreenImageSrc(imageSrc);
+    setShowFullScreenImage(true);
+    
+    // Play error sound/music
+    if (audioRef.current) {
+      // Stop any existing playback
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      // Play the sound
+      audioRef.current.play().catch(error => {
+        console.log("Audio playback failed:", error);
+        // Auto-play might be blocked by browser, but user interaction will enable it
+      });
+      setIsMusicPlaying(true);
+    }
+    
+    // Auto close after 3 seconds and stop music
+    setTimeout(() => {
+      setShowFullScreenImage(false);
+      stopErrorMusic();
+    }, 6000);
+  };
+
+  // Function to manually close the overlay (with stop music)
+  const handleCloseOverlay = () => {
+    setShowFullScreenImage(false);
+    stopErrorMusic();
+  };
+
   return (
-    <div className="w-full min-h-screen flex flex-col items-center justify-start relative overflow-hidden pt-14 md:pt-10"
-      style={{
-        background: 'linear-gradient(145deg, #0a0a0f 0%, #1a1a2a 50%, #0a0a0f 100%)',
-      }}
-    >
-      {/* Abstract sphere background effects */}
-      <div className="absolute inset-0 overflow-hidden">
-        {/* Floating spheres with mouse parallax */}
-        <motion.div
-          animate={{
-            x: mousePosition.x,
-            y: mousePosition.y,
-          }}
-          transition={{ type: "spring", stiffness: 50, damping: 30 }}
-          className="absolute -top-20 -right-20 w-96 h-96 rounded-full"
-          style={{
-            background: 'radial-gradient(circle at 30% 30%, rgba(249, 115, 22, 0.15), transparent 70%)',
-            filter: 'blur(60px)',
-            pointerEvents: 'none'
-          }}
-        />
-        
-        <motion.div
-          animate={{
-            x: -mousePosition.x * 0.5,
-            y: -mousePosition.y * 0.5,
-          }}
-          transition={{ type: "spring", stiffness: 50, damping: 30 }}
-          className="absolute -bottom-20 -left-20 w-[500px] h-[500px] rounded-full"
-          style={{
-            background: 'radial-gradient(circle at 70% 70%, rgba(168, 85, 247, 0.15), transparent 70%)',
-            filter: 'blur(60px)',
-            pointerEvents: 'none'
-          }}
-        />
-        
-        <motion.div
-          animate={{
-            x: mousePosition.x * 0.3,
-            y: mousePosition.y * 0.3,
-          }}
-          transition={{ type: "spring", stiffness: 50, damping: 30 }}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full"
-          style={{
-            background: 'radial-gradient(circle, rgba(244, 63, 94, 0.1), transparent 70%)',
-            filter: 'blur(80px)',
-            pointerEvents: 'none'
-          }}
-        />
+    <>
+      {/* Full Screen Image Overlay for Wrong Password */}
+      <AnimatePresence>
+        {showFullScreenImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-md"
+            onClick={handleCloseOverlay}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ duration: 0.4, type: "spring" }}
+              className="relative w-full h-full flex items-center justify-center"
+            >
+              <img 
+                src={fullScreenImageSrc} 
+                alt="Full Screen" 
+                className="w-full h-full object-contain max-w-screen max-h-screen"
+                style={{ objectFit: 'contain' }}
+              />
+              
+              {/* Music Playing Indicator */}
+              <motion.div 
+                className="absolute top-8 right-8 flex items-center gap-2 px-3 py-2 rounded-full bg-black/50 backdrop-blur-sm border border-orange-500/30"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                <motion.div
+                  animate={{ 
+                    scale: [1, 1.2, 1],
+                  }}
+                  transition={{ 
+                    duration: 0.5,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                >
+                  <MdMusicNote className="text-orange-400" size={20} />
+                </motion.div>
+                <span className="text-white/80 text-sm">Error Sound Playing</span>
+                <motion.div
+                  animate={{ 
+                    opacity: [0.3, 1, 0.3],
+                  }}
+                  transition={{ 
+                    duration: 0.8,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                  className="w-2 h-2 rounded-full bg-orange-500"
+                />
+              </motion.div>
+              
+              {/* Auto close indicator */}
+              <motion.div 
+                className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex gap-2"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                <div className="w-2 h-2 rounded-full bg-white/50 animate-pulse" />
+                <div className="w-2 h-2 rounded-full bg-white/30" />
+                <div className="w-2 h-2 rounded-full bg-white/30" />
+              </motion.div>
+              
+              {/* Click to close hint */}
+              <div className="absolute bottom-8 right-8 text-white/40 text-xs bg-black/50 px-2 py-1 rounded-full backdrop-blur-sm">
+                Click anywhere to close
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="w-full min-h-screen flex flex-col items-center justify-start relative overflow-hidden pt-14 md:pt-10"
+        style={{
+          background: 'linear-gradient(145deg, #0a0a0f 0%, #1a1a2a 50%, #0a0a0f 100%)',
+        }}
+      >
+        {/* Abstract sphere background effects */}
+        <div className="absolute inset-0 overflow-hidden">
+          {/* Floating spheres with mouse parallax */}
+          <motion.div
+            animate={{
+              x: mousePosition.x,
+              y: mousePosition.y,
+            }}
+            transition={{ type: "spring", stiffness: 50, damping: 30 }}
+            className="absolute -top-20 -right-20 w-96 h-96 rounded-full"
+            style={{
+              background: 'radial-gradient(circle at 30% 30%, rgba(249, 115, 22, 0.15), transparent 70%)',
+              filter: 'blur(60px)',
+              pointerEvents: 'none'
+            }}
+          />
+          
+          <motion.div
+            animate={{
+              x: -mousePosition.x * 0.5,
+              y: -mousePosition.y * 0.5,
+            }}
+            transition={{ type: "spring", stiffness: 50, damping: 30 }}
+            className="absolute -bottom-20 -left-20 w-[500px] h-[500px] rounded-full"
+            style={{
+              background: 'radial-gradient(circle at 70% 70%, rgba(168, 85, 247, 0.15), transparent 70%)',
+              filter: 'blur(60px)',
+              pointerEvents: 'none'
+            }}
+          />
+          
+          <motion.div
+            animate={{
+              x: mousePosition.x * 0.3,
+              y: mousePosition.y * 0.3,
+            }}
+            transition={{ type: "spring", stiffness: 50, damping: 30 }}
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full"
+            style={{
+              background: 'radial-gradient(circle, rgba(244, 63, 94, 0.1), transparent 70%)',
+              filter: 'blur(80px)',
+              pointerEvents: 'none'
+            }}
+          />
+        </div>
+
+        <div className="w-full max-w-md px-4 relative z-10">
+          {/* ORANGE GLOW BEHIND THE FORM BOX */}
+          <motion.div
+            animate={{
+              scale: [1, 1.05, 1],
+              opacity: [0.5, 0.8, 0.5],
+            }}
+            transition={{
+              duration: 4,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+            className="absolute -inset-4 bg-gradient-to-r from-orange-500/30 via-rose-500/20 to-purple-500/30 rounded-3xl blur-2xl"
+            style={{
+              filter: 'blur(30px)',
+              zIndex: -1
+            }}
+          />
+          
+          {/* SECOND GLOW LAYER FOR MORE INTENSITY */}
+          <motion.div
+            animate={{
+              scale: [1, 1.1, 1],
+              opacity: [0.3, 0.6, 0.3],
+            }}
+            transition={{
+              duration: 5,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 0.5
+            }}
+            className="absolute -inset-10 bg-orange-500/20 rounded-full blur-3xl"
+            style={{
+              zIndex: -2
+            }}
+          />
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="rounded-3xl overflow-hidden relative"
+            style={{
+              background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+              boxShadow: '30px 30px 60px -15px #000000, -30px -30px 60px -15px #1f1f2a, inset 0 1px 2px rgba(255,255,255,0.05), 0 0 30px rgba(249, 115, 22, 0.3)',
+              border: '1px solid rgba(255,255,255,0.03)'
+            }}
+          >
+            <div className="p-8">
+              <AuthForms 
+                onLogin={handleLogin} 
+                onWrongPassword={triggerWrongPassword}
+              />
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Footer */}
+        <Footer />
       </div>
-
-      <div className="w-full max-w-md px-4 relative z-10">
-        {/* ORANGE GLOW BEHIND THE FORM BOX */}
-        <motion.div
-          animate={{
-            scale: [1, 1.05, 1],
-            opacity: [0.5, 0.8, 0.5],
-          }}
-          transition={{
-            duration: 4,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-          className="absolute -inset-4 bg-gradient-to-r from-orange-500/30 via-rose-500/20 to-purple-500/30 rounded-3xl blur-2xl"
-          style={{
-            filter: 'blur(30px)',
-            zIndex: -1
-          }}
-        />
-        
-        {/* SECOND GLOW LAYER FOR MORE INTENSITY */}
-        <motion.div
-          animate={{
-            scale: [1, 1.1, 1],
-            opacity: [0.3, 0.6, 0.3],
-          }}
-          transition={{
-            duration: 5,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 0.5
-          }}
-          className="absolute -inset-10 bg-orange-500/20 rounded-full blur-3xl"
-          style={{
-            zIndex: -2
-          }}
-        />
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="rounded-3xl overflow-hidden relative"
-          style={{
-            background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
-            boxShadow: '30px 30px 60px -15px #000000, -30px -30px 60px -15px #1f1f2a, inset 0 1px 2px rgba(255,255,255,0.05), 0 0 30px rgba(249, 115, 22, 0.3)',
-            border: '1px solid rgba(255,255,255,0.03)'
-          }}
-        >
-          <div className="p-8">
-            <AuthForms onLogin={handleLogin} />
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Footer */}
-      <Footer />
-    </div>
+    </>
   );
 }
 
 /* ------------------ AuthForms / Login / Signup ------------------ */
-function AuthForms({ onLogin }) {
+function AuthForms({ onLogin, onWrongPassword }) {
   const [mode, setMode] = useState("login");
   
   return (
@@ -215,11 +364,15 @@ function AuthForms({ onLogin }) {
           transition={{ duration: 0.2 }}
         >
           {mode === "login" ? (
-            <LoginForm onLogin={onLogin} />
+            <LoginForm 
+              onLogin={onLogin} 
+              onWrongPassword={onWrongPassword}
+            />
           ) : (
             <SignupForm
               onSignupSuccess={() => setMode("login")}
               onLogin={onLogin}
+              onWrongPassword={onWrongPassword}
             />
           )}
         </motion.div>
@@ -407,7 +560,7 @@ function SelectField({ icon: Icon, label, value, onChange, options, error }) {
 }
 
 /* ------------------ Signup Form ------------------ */
-function SignupForm({ onSignupSuccess, onLogin }) {
+function SignupForm({ onSignupSuccess, onLogin, onWrongPassword }) {
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -418,44 +571,40 @@ function SignupForm({ onSignupSuccess, onLogin }) {
   const [err, setErr] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
 
-  async function handleSubmit(e) {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setErr(null);
-    setSuccessMsg(null);
-    
-    if (!name.trim() || !email.trim() || !password || !office) {
-      return setErr("Please fill out all fields.");
+    if (!name.trim() || !email.trim() || !password || !confirm || !office) {
+      setErr("Please fill out all fields.");
+      return;
     }
-    if (password.length < 6) return setErr("Password must be at least 6 characters.");
-    if (password !== confirm) return setErr("Passwords do not match.");
-    if (!["MTO", "Accounting", "MDRRMO", "RHU", "MAYOR"].includes(office)) {
-      return setErr("Please select a valid office.");
+    if (password !== confirm) {
+      setErr("Passwords do not match.");
+      return;
+    }
+    if (password.length < 6) {
+      setErr("Password must be at least 6 characters.");
+      return;
     }
 
     try {
       setLoading(true);
-      const res = await signupWithFirebase({ 
-        name: name.trim(), 
-        email: email.trim(), 
-        password: password,
-        office: office
-      });
+      const res = await signupWithFirebase({ name, email, password, office });
       
-      if (res && res.status === "success") {
-        setSuccessMsg("🎉 Successfully Registered! Redirecting to login...");
+      if (res.status === "success") {
+        setSuccessMsg("Account created successfully! Please login.");
         setTimeout(() => {
-          setSuccessMsg(null);
-          if (typeof onSignupSuccess === "function") onSignupSuccess();
-        }, 1200);
+          onSignupSuccess();
+        }, 1500);
       } else {
-        throw new Error(res.message || "Signup failed");
+        setErr(res.message);
       }
     } catch (error) {
-      setErr(error.message || "Signup error");
+      setErr("Registration failed. Please try again.");
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -524,7 +673,8 @@ function SignupForm({ onSignupSuccess, onLogin }) {
           { value: "Accounting", label: "Accounting" },
           { value: "MDRRMO", label: "MDRRMO" },
           { value: "RHU", label: "RHU" },
-          { value: "MAYOR", label: "MAYOR" }
+          { value: "MAYOR", label: "MAYOR" },
+          { value: "Budget", label: "Budget" }  // ADDED BUDGET OPTION
         ]}
         error={err && !office}
       />
@@ -579,7 +729,7 @@ function SignupForm({ onSignupSuccess, onLogin }) {
 }
 
 /* ------------------ Login Form ------------------ */
-function LoginForm({ onLogin }) {
+function LoginForm({ onLogin, onWrongPassword }) {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -588,7 +738,7 @@ function LoginForm({ onLogin }) {
   const [err, setErr] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e) {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setErr(null);
     if (!email.trim() || !password || !office) return setErr("Please fill out all fields.");
@@ -604,23 +754,40 @@ function LoginForm({ onLogin }) {
       if (res && res.status === "success") {
         const userData = res.user;
         
+        // Clear any previous session data
+        sessionStorage.clear();
+        
+        // Store user data
+        localStorage.setItem("auth_user_v1", JSON.stringify(userData));
+        
         if (typeof onLogin === "function") {
           onLogin(userData);
         }
         
-        // Redirect to dashboard with animation
-        setTimeout(() => {
-          window.location.href = "/dashboard";
-        }, 500);
+        // Check if user office is Budget, redirect to Budget page
+        if (userData.office === "Budgets") {
+          window.location.replace("/Budgets");
+        } else {
+          // Replace the current entry in history to prevent back navigation to login
+          window.location.replace("/dashboard");
+        }
       } else {
-        throw new Error(res.message || "Login failed");
+        // Check if error is due to wrong password
+        if (res.message && (res.message.includes("Invalid password") || res.message.includes("password"))) {
+          if (typeof onWrongPassword === "function") {
+            onWrongPassword();
+          }
+          throw new Error(res.message || "Invalid password");
+        } else {
+          throw new Error(res.message || "Login failed");
+        }
       }
     } catch (error) {
       setErr(error.message || "Login error");
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -663,7 +830,8 @@ function LoginForm({ onLogin }) {
           { value: "Accounting", label: "Accounting" },
           { value: "MDRRMO", label: "MDRRMO" },
           { value: "RHU", label: "RHU" },
-          { value: "MAYOR", label: "MAYOR" }
+          { value: "MAYOR", label: "MAYOR" },
+          { value: "Budget", label: "Budget" }  // ADDED BUDGET OPTION
         ]}
         error={err && !office}
       />

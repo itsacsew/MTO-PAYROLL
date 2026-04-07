@@ -89,7 +89,26 @@ const mdrrmoLinks = [
     description: "Receive MDRRMO files"
   }
 ];
-
+const budgetLinks = [
+  {
+    label: "Budget",
+    link: "budget",
+    icon: <MdDashboard size={25} />,
+    description: "Budget management overview"
+  },
+  {
+    label: "Receive File",
+    link: "receive-file",
+    icon: <MdDownload size={20} />,
+    description: "Incoming files"
+  },
+  {
+    label: "Database",
+    link: "database",
+    icon: <MdStorage size={25} />,
+    description: "View all data records"
+  }
+];
 // RHU Specific Link
 const rhuLinks = [
   {
@@ -737,15 +756,45 @@ useEffect(() => {
     if (userOffice === 'MDRRMO') return mdrrmoLinks;
     if (userOffice === 'RHU') return rhuLinks;
     if (userOffice === 'MAYOR') return mayorLinks;
+    if (userOffice === 'Budget') return budgetLinks;
     return mtoLinks; // Default to MTO links
   };
 
   const sidebarLinks = getOfficeLinks();
-
-  const handleLogout = () => {
-    dispatch(logout());
-    navigate('/log-in');
+// Add this useEffect inside the Navbar component (after other useEffects)
+useEffect(() => {
+  // Function to dispatch activity event
+  const dispatchActivity = () => {
+    window.dispatchEvent(new Event('user-activity'));
   };
+  
+  // Track user activity
+  const events = ['click', 'mousemove', 'keydown', 'scroll', 'touchstart'];
+  events.forEach(event => {
+    window.addEventListener(event, dispatchActivity);
+  });
+  
+  return () => {
+    events.forEach(event => {
+      window.removeEventListener(event, dispatchActivity);
+    });
+  };
+}, []);
+  // Update the handleLogout function in Navbar.jsx
+const handleLogout = () => {
+  // Clear all stored data
+  localStorage.removeItem("auth_user_v1");
+  sessionStorage.clear(); // Clear session storage to prevent back navigation
+  
+  // Dispatch logout to clear Redux state
+  dispatch(logout());
+  
+  // Use replace to prevent back navigation to protected pages
+  navigate('/log-in', { replace: true });
+  
+  // Optional: Clear browser history state
+  window.history.pushState(null, '', '/log-in');
+};
   const refreshUnreadCount = async () => {
   if (!userOffice) return;
   

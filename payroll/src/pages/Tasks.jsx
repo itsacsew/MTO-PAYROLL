@@ -1,3 +1,6 @@
+// Tasks.jsx - Updated with 5-step flow: SENT → CHECKED → RECEIVED → CHECKED → PROCESSED
+// This page shows the file processing status (view-only)
+
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../config/firebase'
@@ -57,20 +60,23 @@ const Tasks = () => {
           files.push({
             id: doc.id,
             fileName: fileData.fileName || 'Unknown File',
-            status: fileData.status || 'pending',
+            status: fileData.status || 'sent',
             timestamp: fileData.timestamp?.toDate?.() || new Date(fileData.createdAt || Date.now()),
             updatedEmployees: fileData.updatedEmployees || [],
             seniorEmployees: fileData.seniorEmployees || [],
             lastCheckedAt: fileData.lastCheckedAt || null,
-            lastUpdatedAt: fileData.lastUpdatedAt || null
+            lastUpdatedAt: fileData.lastUpdatedAt || null,
+            lastReceivedAt: fileData.receivedAt?.toDate?.() || fileData.lastReceivedAt || null,
+            secondCheckedAt: fileData.secondCheckedAt || null
           })
         })
         
+        // Count files that are sent but not yet checked
         const pendingCount = files.filter(file => 
-          file.status === 'pending' || !file.status
+          file.status === 'sent' || file.status === 'pending'
         ).length
         
-        console.log('Pending files found:', pendingCount)
+        console.log('Pending files (sent):', pendingCount)
         
         setPendingFilesCount(pendingCount)
         setAllFiles(files)
@@ -102,17 +108,19 @@ const Tasks = () => {
             files.push({
               id: doc.id,
               fileName: fileData.fileName || 'Unknown File',
-              status: fileData.status || 'pending',
+              status: fileData.status || 'sent',
               timestamp: fileData.timestamp?.toDate?.() || new Date(fileData.createdAt || Date.now()),
               updatedEmployees: fileData.updatedEmployees || [],
               seniorEmployees: fileData.seniorEmployees || [],
               lastCheckedAt: fileData.lastCheckedAt || null,
-              lastUpdatedAt: fileData.lastUpdatedAt || null
+              lastUpdatedAt: fileData.lastUpdatedAt || null,
+              lastReceivedAt: fileData.receivedAt?.toDate?.() || fileData.lastReceivedAt || null,
+              secondCheckedAt: fileData.secondCheckedAt || null
             })
           })
           
           const pendingCount = files.filter(file => 
-            file.status === 'pending' || !file.status
+            file.status === 'sent' || file.status === 'pending'
           ).length
           
           setPendingFilesCount(pendingCount)
@@ -140,29 +148,31 @@ const Tasks = () => {
     navigate('/receive-file')
   }
 
-  // Determine which steps are completed based on file status
-  const getStepStatus = (fileStatus) => {
-    if (!fileStatus) {
-      return [false, false, false, false]
-    }
-
-    switch (fileStatus) {
-      case 'sent':
-      case 'pending':
-        return [true, false, false, false]
-      case 'received':
-        return [true, true, false, false]
-      case 'checked':
-      case 'updated':
-        return [true, true, true, false]
-      case 'processed':
-        return [true, true, true, true]
-      default:
-        return [true, false, false, false]
-    }
+const getStepStatus = (fileStatus) => {
+  if (!fileStatus) {
+    return [false, false, false, false, false]
   }
 
-  const [fileSent, received, checked, processed] = latestFile ? getStepStatus(latestFile.status) : [false, false, false, false]
+  switch (fileStatus) {
+    case 'sent':
+    case 'pending':
+      return [true, false, false, false, false]  // Step 1 only
+    case 'checked':  // First check (can be checked multiple times)
+      return [true, true, false, false, false]   // SENT + CHECKED
+    case 'received':  // Received after first check
+    case 'mark as received':
+      return [true, true, true, false, false]    // SENT + CHECKED + RECEIVED
+    case 'checked2':  // Second check (can be checked multiple times)
+    case 'final_checked':
+      return [true, true, true, true, false]     // SENT + CHECKED + RECEIVED + CHECKED2
+    case 'processed':  // Final processed
+      return [true, true, true, true, true]      // All 5 steps completed
+    default:
+      return [true, false, false, false, false]
+  }
+};
+
+  const [fileSent, firstChecked, received, secondChecked, processed] = latestFile ? getStepStatus(latestFile.status) : [false, false, false, false, false]
 
   // Format date for display
   const formatDate = (timestamp) => {
@@ -175,78 +185,88 @@ const Tasks = () => {
     })
   }
 
-  // Get status description text
-  const getStatusDescription = (file) => {
-    if (!file) return 'No files have been sent yet.'
-    
-    switch (file.status) {
-      case 'sent':
-      case 'pending':
-        return 'File has been sent to Firestore and is pending receipt.'
-      case 'received':
-        return 'File has been received and marked as received.'
-      case 'checked':
-        return 'File has been checked and validated. Ready for processing.'
-      case 'updated':
-        return 'File has been checked and updated in Firestore.'
-      case 'processed':
-        return 'File processing is complete!'
-      default:
-        return `File status: ${file.status || 'unknown'}`
-    }
+const getStatusDescription = (file) => {
+  if (!file) return 'No files have been sent yet. Go to Send File to start.'
+  
+  switch (file.status) {
+    case 'sent':
+    case 'pending':
+      return 'File has been sent to Firestore. Waiting to be checked by Gross1/Budget Office.'
+    case 'checked':
+      return 'File has been checked by Gross1/Budget Office. Ready to be received by Accounting. (You can check again if needed, status will remain CHECKED)'
+    case 'received':
+    case 'mark as received':
+      return 'File has been received by Accounting. Waiting for final check. (You can still edit the file)'
+    case 'checked2':
+    case 'final_checked':
+      return 'File has been checked by Accounting. Ready for processing by MTO. (You can check again if needed, status will remain CHECKED2)'
+    case 'processed':
+      return 'File processing is complete! All steps done by MTO.'
+    default:
+      return `File status: ${file.status || 'unknown'}`
   }
+};
 
-  // Get status icon and color based on status - UPDATED COLORS
-  const getStatusInfo = (status) => {
-    switch (status) {
-      case 'sent':
-      case 'pending':
-        return { 
-          icon: <MdSchedule size={18} />, 
-          color: 'text-orange-400', 
-          bgColor: 'bg-orange-500/10',
-          borderColor: 'border-orange-500/20',
-          gradient: 'from-orange-500 to-pink-500'
-        }
-      case 'received':
-        return { 
-          icon: <MdDownload size={18} />, 
-          color: 'text-amber-400', 
-          bgColor: 'bg-amber-500/10',
-          borderColor: 'border-amber-500/20',
-          gradient: 'from-amber-500 to-orange-500'
-        }
-      case 'checked':
-      case 'updated':
-        return { 
-          icon: <MdCheckCircle size={18} />, 
-          color: 'text-purple-400', 
-          bgColor: 'bg-purple-500/10',
-          borderColor: 'border-purple-500/20',
-          gradient: 'from-purple-500 to-pink-500'
-        }
-      case 'processed':
-        return { 
-          icon: <MdCheckCircle size={18} />, 
-          color: 'text-green-400', 
-          bgColor: 'bg-green-500/10',
-          borderColor: 'border-green-500/20',
-          gradient: 'from-green-500 to-emerald-500'
-        }
-      default:
-        return { 
-          icon: <MdInsertDriveFile size={18} />, 
-          color: 'text-gray-400', 
-          bgColor: 'bg-gray-500/10',
-          borderColor: 'border-gray-500/20',
-          gradient: 'from-gray-500 to-slate-500'
-        }
-    }
+ // Update getStatusInfo function
+const getStatusInfo = (status) => {
+  switch (status) {
+    case 'sent':
+    case 'pending':
+      return { 
+        icon: <MdSchedule size={18} />, 
+        color: 'text-orange-400', 
+        bgColor: 'bg-orange-500/10',
+        borderColor: 'border-orange-500/20',
+        gradient: 'from-orange-500 to-pink-500'
+      }
+    case 'checked':
+      return { 
+        icon: <MdCheckCircle size={18} />, 
+        color: 'text-amber-400', 
+        bgColor: 'bg-amber-500/10',
+        borderColor: 'border-amber-500/20',
+        gradient: 'from-amber-500 to-orange-500'
+      }
+    case 'received':
+    case 'mark as received':
+      return { 
+        icon: <MdDownload size={18} />, 
+        color: 'text-green-400', 
+        bgColor: 'bg-green-500/10',
+        borderColor: 'border-green-500/20',
+        gradient: 'from-green-500 to-emerald-500'
+      }
+    case 'checked2':
+    case 'final_checked':
+      return { 
+        icon: <MdCheckCircle size={18} />, 
+        color: 'text-purple-400', 
+        bgColor: 'bg-purple-500/10',
+        borderColor: 'border-purple-500/20',
+        gradient: 'from-purple-500 to-indigo-500'
+      }
+    case 'processed':
+      return { 
+        icon: <MdCheckCircle size={18} />, 
+        color: 'text-cyan-400', 
+        bgColor: 'bg-cyan-500/10',
+        borderColor: 'border-cyan-500/20',
+        gradient: 'from-cyan-500 to-blue-500'
+      }
+    default:
+      return { 
+        icon: <MdInsertDriveFile size={18} />, 
+        color: 'text-gray-400', 
+        bgColor: 'bg-gray-500/10',
+        borderColor: 'border-gray-500/20',
+        gradient: 'from-gray-500 to-slate-500'
+      }
   }
+};
 
-  // Status bar component for reuse
+  // Status bar component for reuse - 5 steps: SENT → CHECKED → RECEIVED → CHECKED → PROCESSED
   const StatusBar = ({ file, showFileName = false }) => {
-    const [sent, received, checked, processed] = getStepStatus(file?.status)
+    const [sent, firstChecked, received, secondChecked, processed] = getStepStatus(file?.status)
     const statusInfo = getStatusInfo(file?.status)
     
     return (
@@ -280,7 +300,7 @@ const Tasks = () => {
                     <p className="text-sm font-semibold text-white flex items-center gap-2">
                       {file.fileName}
                       <span className={`text-[10px] px-2 py-0.5 rounded-full ${statusInfo.bgColor} ${statusInfo.color} border ${statusInfo.borderColor} backdrop-blur-sm`}>
-                        {file.status?.toUpperCase() || 'PENDING'}
+                        {file.status?.toUpperCase() || 'SENT'}
                       </span>
                     </p>
                     <div className="flex items-center gap-3 mt-1">
@@ -289,9 +309,21 @@ const Tasks = () => {
                         Sent: {formatDate(file.timestamp)}
                       </p>
                       {file.lastCheckedAt && (
+                        <p className="text-xs text-amber-400 flex items-center gap-1">
+                          <MdCheckCircle size={12} />
+                          Checked 1: {formatDate(file.lastCheckedAt)}
+                        </p>
+                      )}
+                      {file.lastReceivedAt && (
+                        <p className="text-xs text-green-400 flex items-center gap-1">
+                          <MdDownload size={12} />
+                          Received: {formatDate(file.lastReceivedAt)}
+                        </p>
+                      )}
+                      {file.secondCheckedAt && (
                         <p className="text-xs text-purple-400 flex items-center gap-1">
                           <MdCheckCircle size={12} />
-                          Checked: {formatDate(file.lastCheckedAt)}
+                          Checked 2: {formatDate(file.secondCheckedAt)}
                         </p>
                       )}
                     </div>
@@ -302,16 +334,18 @@ const Tasks = () => {
           </div>
         )}
         
-        {/* Status Steps - UPDATED COLORS */}
+        {/* Status Steps - 5 steps: SENT → CHECKED → RECEIVED → CHECKED → PROCESSED */}
         <div className="relative px-2 py-4">
-          <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-gray-700/50 -translate-y-1/2" 
+          {/* Background track with gradient */}
+          <div className="absolute top-1/2 left-0 right-0 h-0.5 -translate-y-1/2"
             style={{
-              boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.3)'
+              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent)',
+              boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.5)'
             }}
           />
           
           <div className="relative flex justify-between items-center">
-            {/* Step 1 */}
+            {/* Step 1: SENT */}
             <motion.div 
               whileHover={{ scale: 1.1 }}
               className="flex flex-col items-center"
@@ -319,30 +353,77 @@ const Tasks = () => {
               <motion.div 
                 animate={{
                   scale: sent ? [1, 1.1, 1] : 1,
+                  boxShadow: sent 
+                    ? ['0 0 20px rgba(249, 115, 22, 0.3)', '0 0 30px rgba(249, 115, 22, 0.5)', '0 0 20px rgba(249, 115, 22, 0.3)']
+                    : '5px 5px 10px #0a0a0a, -5px -5px 10px #2a2a2a'
                 }}
-                transition={{ duration: 0.3 }}
-                className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2`}
+                transition={{ 
+                  duration: 2,
+                  repeat: sent ? Infinity : 0,
+                  ease: "easeInOut"
+                }}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 relative overflow-hidden`}
                 style={{
                   background: sent 
                     ? 'linear-gradient(135deg, #f97316, #ec4899)'
                     : 'linear-gradient(135deg, #2a2a3a, #1a1a2a)',
                   boxShadow: sent 
-                    ? '0 10px 20px -5px rgba(249, 115, 22, 0.3), inset 0 1px 2px rgba(255,255,255,0.2)'
+                    ? '0 10px 20px -5px rgba(249, 115, 22, 0.5), inset 0 1px 2px rgba(255,255,255,0.2)'
                     : '5px 5px 10px #0a0a0a, -5px -5px 10px #2a2a2a, inset 0 1px 2px rgba(255,255,255,0.05)',
                 }}
               >
+                <div className={`absolute inset-0 bg-gradient-to-br from-orange-500 to-pink-500 opacity-20 blur-sm`} />
                 {sent ? (
-                  <MdCheckCircle className="w-5 h-5 text-white" />
+                  <MdCheckCircle className="w-5 h-5 text-white relative z-10" />
                 ) : (
-                  <span className="text-white font-bold text-sm">1</span>
+                  <span className="text-white font-bold text-sm relative z-10">1</span>
                 )}
               </motion.div>
               <span className={`text-xs font-medium ${sent ? 'text-orange-400' : 'text-gray-500'}`}>
-                Sent
+                SENT
               </span>
             </motion.div>
 
-            {/* Step 2 */}
+            {/* Step 2: CHECKED (First Check - Budget) */}
+            <motion.div 
+              whileHover={{ scale: 1.1 }}
+              className="flex flex-col items-center"
+            >
+              <motion.div 
+                animate={{
+                  scale: firstChecked ? [1, 1.1, 1] : 1,
+                  boxShadow: firstChecked 
+                    ? ['0 0 20px rgba(245, 158, 11, 0.3)', '0 0 30px rgba(245, 158, 11, 0.5)', '0 0 20px rgba(245, 158, 11, 0.3)']
+                    : '5px 5px 10px #0a0a0a, -5px -5px 10px #2a2a2a'
+                }}
+                transition={{ 
+                  duration: 2,
+                  repeat: firstChecked ? Infinity : 0,
+                  ease: "easeInOut"
+                }}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 relative overflow-hidden`}
+                style={{
+                  background: firstChecked 
+                    ? 'linear-gradient(135deg, #f59e0b, #f97316)'
+                    : 'linear-gradient(135deg, #2a2a3a, #1a1a2a)',
+                  boxShadow: firstChecked 
+                    ? '0 10px 20px -5px rgba(245, 158, 11, 0.5), inset 0 1px 2px rgba(255,255,255,0.2)'
+                    : '5px 5px 10px #0a0a0a, -5px -5px 10px #2a2a2a, inset 0 1px 2px rgba(255,255,255,0.05)',
+                }}
+              >
+                <div className={`absolute inset-0 bg-gradient-to-br from-amber-500 to-orange-500 opacity-20 blur-sm`} />
+                {firstChecked ? (
+                  <MdCheckCircle className="w-5 h-5 text-white relative z-10" />
+                ) : (
+                  <span className="text-white font-bold text-sm relative z-10">2</span>
+                )}
+              </motion.div>
+              <span className={`text-xs font-medium ${firstChecked ? 'text-amber-400' : 'text-gray-500'}`}>
+                CHECKED
+              </span>
+            </motion.div>
+
+            {/* Step 3: RECEIVED (Accounting - Mark as Received) */}
             <motion.div 
               whileHover={{ scale: 1.1 }}
               className="flex flex-col items-center"
@@ -350,61 +431,77 @@ const Tasks = () => {
               <motion.div 
                 animate={{
                   scale: received ? [1, 1.1, 1] : 1,
+                  boxShadow: received 
+                    ? ['0 0 20px rgba(16, 185, 129, 0.3)', '0 0 30px rgba(16, 185, 129, 0.5)', '0 0 20px rgba(16, 185, 129, 0.3)']
+                    : '5px 5px 10px #0a0a0a, -5px -5px 10px #2a2a2a'
                 }}
-                transition={{ duration: 0.3 }}
-                className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2`}
+                transition={{ 
+                  duration: 2,
+                  repeat: received ? Infinity : 0,
+                  ease: "easeInOut"
+                }}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 relative overflow-hidden`}
                 style={{
                   background: received 
-                    ? 'linear-gradient(135deg, #f59e0b, #f97316)'
+                    ? 'linear-gradient(135deg, #10b981, #059669)'
                     : 'linear-gradient(135deg, #2a2a3a, #1a1a2a)',
                   boxShadow: received 
-                    ? '0 10px 20px -5px rgba(245, 158, 11, 0.3), inset 0 1px 2px rgba(255,255,255,0.2)'
+                    ? '0 10px 20px -5px rgba(16, 185, 129, 0.5), inset 0 1px 2px rgba(255,255,255,0.2)'
                     : '5px 5px 10px #0a0a0a, -5px -5px 10px #2a2a2a, inset 0 1px 2px rgba(255,255,255,0.05)',
                 }}
               >
+                <div className={`absolute inset-0 bg-gradient-to-br from-green-500 to-emerald-500 opacity-20 blur-sm`} />
                 {received ? (
-                  <MdCheckCircle className="w-5 h-5 text-white" />
+                  <MdCheckCircle className="w-5 h-5 text-white relative z-10" />
                 ) : (
-                  <span className="text-white font-bold text-sm">2</span>
+                  <span className="text-white font-bold text-sm relative z-10">3</span>
                 )}
               </motion.div>
-              <span className={`text-xs font-medium ${received ? 'text-amber-400' : 'text-gray-500'}`}>
-                Received
+              <span className={`text-xs font-medium ${received ? 'text-green-400' : 'text-gray-500'}`}>
+                RECEIVED
               </span>
             </motion.div>
 
-            {/* Step 3 */}
+            {/* Step 4: CHECKED (Second Check - Accounting) */}
             <motion.div 
               whileHover={{ scale: 1.1 }}
               className="flex flex-col items-center"
             >
               <motion.div 
                 animate={{
-                  scale: checked ? [1, 1.1, 1] : 1,
+                  scale: secondChecked ? [1, 1.1, 1] : 1,
+                  boxShadow: secondChecked 
+                    ? ['0 0 20px rgba(168, 85, 247, 0.3)', '0 0 30px rgba(168, 85, 247, 0.5)', '0 0 20px rgba(168, 85, 247, 0.3)']
+                    : '5px 5px 10px #0a0a0a, -5px -5px 10px #2a2a2a'
                 }}
-                transition={{ duration: 0.3 }}
-                className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2`}
+                transition={{ 
+                  duration: 2,
+                  repeat: secondChecked ? Infinity : 0,
+                  ease: "easeInOut"
+                }}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 relative overflow-hidden`}
                 style={{
-                  background: checked 
-                    ? 'linear-gradient(135deg, #a855f7, #ec4899)'
+                  background: secondChecked 
+                    ? 'linear-gradient(135deg, #a855f7, #8b5cf6)'
                     : 'linear-gradient(135deg, #2a2a3a, #1a1a2a)',
-                  boxShadow: checked 
-                    ? '0 10px 20px -5px rgba(168, 85, 247, 0.3), inset 0 1px 2px rgba(255,255,255,0.2)'
+                  boxShadow: secondChecked 
+                    ? '0 10px 20px -5px rgba(168, 85, 247, 0.5), inset 0 1px 2px rgba(255,255,255,0.2)'
                     : '5px 5px 10px #0a0a0a, -5px -5px 10px #2a2a2a, inset 0 1px 2px rgba(255,255,255,0.05)',
                 }}
               >
-                {checked ? (
-                  <MdCheckCircle className="w-5 h-5 text-white" />
+                <div className={`absolute inset-0 bg-gradient-to-br from-purple-500 to-indigo-500 opacity-20 blur-sm`} />
+                {secondChecked ? (
+                  <MdCheckCircle className="w-5 h-5 text-white relative z-10" />
                 ) : (
-                  <span className="text-white font-bold text-sm">3</span>
+                  <span className="text-white font-bold text-sm relative z-10">4</span>
                 )}
               </motion.div>
-              <span className={`text-xs font-medium ${checked ? 'text-purple-400' : 'text-gray-500'}`}>
-                Checked
+              <span className={`text-xs font-medium ${secondChecked ? 'text-purple-400' : 'text-gray-500'}`}>
+                CHECKED
               </span>
             </motion.div>
 
-            {/* Step 4 */}
+            {/* Step 5: PROCESSED (MTO) */}
             <motion.div 
               whileHover={{ scale: 1.1 }}
               className="flex flex-col items-center"
@@ -412,26 +509,34 @@ const Tasks = () => {
               <motion.div 
                 animate={{
                   scale: processed ? [1, 1.1, 1] : 1,
+                  boxShadow: processed 
+                    ? ['0 0 20px rgba(6, 182, 212, 0.3)', '0 0 30px rgba(6, 182, 212, 0.5)', '0 0 20px rgba(6, 182, 212, 0.3)']
+                    : '5px 5px 10px #0a0a0a, -5px -5px 10px #2a2a2a'
                 }}
-                transition={{ duration: 0.3 }}
-                className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2`}
+                transition={{ 
+                  duration: 2,
+                  repeat: processed ? Infinity : 0,
+                  ease: "easeInOut"
+                }}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 relative overflow-hidden`}
                 style={{
                   background: processed 
-                    ? 'linear-gradient(135deg, #10b981, #059669)'
+                    ? 'linear-gradient(135deg, #06b6d4, #0284c7)'
                     : 'linear-gradient(135deg, #2a2a3a, #1a1a2a)',
                   boxShadow: processed 
-                    ? '0 10px 20px -5px rgba(16, 185, 129, 0.3), inset 0 1px 2px rgba(255,255,255,0.2)'
+                    ? '0 10px 20px -5px rgba(6, 182, 212, 0.5), inset 0 1px 2px rgba(255,255,255,0.2)'
                     : '5px 5px 10px #0a0a0a, -5px -5px 10px #2a2a2a, inset 0 1px 2px rgba(255,255,255,0.05)',
                 }}
               >
+                <div className={`absolute inset-0 bg-gradient-to-br from-cyan-500 to-blue-500 opacity-20 blur-sm`} />
                 {processed ? (
-                  <MdCheckCircle className="w-5 h-5 text-white" />
+                  <MdCheckCircle className="w-5 h-5 text-white relative z-10" />
                 ) : (
-                  <span className="text-white font-bold text-sm">4</span>
+                  <span className="text-white font-bold text-sm relative z-10">5</span>
                 )}
               </motion.div>
-              <span className={`text-xs font-medium ${processed ? 'text-green-400' : 'text-gray-500'}`}>
-                Processed
+              <span className={`text-xs font-medium ${processed ? 'text-cyan-400' : 'text-gray-500'}`}>
+                PROCESSED
               </span>
             </motion.div>
           </div>
@@ -441,10 +546,9 @@ const Tasks = () => {
   }
 
   return (
-    <div className=" p-6 ">
+    <div className="p-6">
       {/* Animated abstract sphere background */}
       <div className="fixed inset-0 overflow-hidden">
-        {/* Main gradient spheres */}
         <motion.div
           animate={{
             x: mousePosition.x,
@@ -509,7 +613,7 @@ const Tasks = () => {
             </p>
           </div>
           
-          {/* Stats Card - UPDATED COLORS */}
+          {/* Stats Card */}
           <motion.div 
             whileHover={{ scale: 1.02 }}
             className="px-6 py-3 rounded-2xl relative overflow-hidden"
@@ -519,7 +623,6 @@ const Tasks = () => {
               border: '1px solid rgba(255,255,255,0.03)'
             }}
           >
-            {/* Abstract sphere overlay */}
             <div className="absolute -right-5 -top-5 w-20 h-20 rounded-full bg-gradient-to-br from-orange-500/20 to-purple-500/20 blur-xl" />
             
             <div className="relative z-10 flex items-center gap-4">
@@ -529,7 +632,7 @@ const Tasks = () => {
               </div>
               <div className="w-px h-8 bg-gradient-to-b from-transparent via-gray-700 to-transparent" />
               <div className="text-right">
-                <p className="text-xs text-gray-400">Pending</p>
+                <p className="text-xs text-gray-400">Pending (Sent)</p>
                 <p className="text-2xl font-bold text-orange-400">{pendingFilesCount}</p>
               </div>
             </div>
@@ -546,7 +649,6 @@ const Tasks = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
-          {/* File Operations Card */}
           <div
             className="rounded-2xl p-6 relative overflow-hidden"
             style={{
@@ -555,7 +657,6 @@ const Tasks = () => {
               border: '1px solid rgba(255,255,255,0.03)'
             }}
           >
-            {/* Abstract sphere overlays */}
             <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-gradient-to-br from-orange-500/10 to-pink-500/10 blur-2xl" />
             <div className="absolute -left-10 -bottom-10 w-40 h-40 rounded-full bg-gradient-to-tr from-purple-500/10 to-indigo-500/10 blur-2xl" />
             
@@ -564,7 +665,7 @@ const Tasks = () => {
               File Operations
             </h2>
 
-            {/* Receive File Button - UPDATED COLORS */}
+            {/* Receive File Button */}
             <motion.button
               whileHover={{ scale: 1.02, y: -2 }}
               whileTap={{ scale: 0.98 }}
@@ -582,7 +683,7 @@ const Tasks = () => {
                 border: '1px solid rgba(255,255,255,0.03)'
               }}
             >
-              {/* Notification Badge - UPDATED COLORS */}
+              {/* Notification Badge */}
               <AnimatePresence>
                 {pendingFilesCount > 0 && (
                   <motion.div
@@ -652,7 +753,7 @@ const Tasks = () => {
           </div>
         </motion.div>
 
-        {/* Right Column - File Processing Status */}
+        {/* Right Column - File Processing Status (Latest File Status Only) */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -666,7 +767,6 @@ const Tasks = () => {
               border: '1px solid rgba(255,255,255,0.03)'
             }}
           >
-            {/* Abstract sphere overlays */}
             <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-gradient-to-br from-orange-500/10 to-pink-500/10 blur-2xl" />
             <div className="absolute -left-10 -bottom-10 w-40 h-40 rounded-full bg-gradient-to-tr from-purple-500/10 to-indigo-500/10 blur-2xl" />
             
@@ -693,7 +793,7 @@ const Tasks = () => {
                 )}
               </div>
               
-              {/* Latest File Status */}
+              {/* Latest File Status with 5 steps */}
               {latestFile ? (
                 <div className="space-y-4">
                   <StatusBar file={latestFile} />
@@ -736,7 +836,7 @@ const Tasks = () => {
         </motion.div>
       </div>
 
-      {/* All Files Modal - UPDATED COLORS */}
+      {/* All Files Modal */}
       <AnimatePresence>
         {showAllFilesModal && (
           <>
@@ -763,7 +863,6 @@ const Tasks = () => {
                   border: '1px solid rgba(255,255,255,0.03)'
                 }}
               >
-                {/* Abstract sphere overlays */}
                 <div className="absolute -right-20 -top-20 w-60 h-60 rounded-full bg-gradient-to-br from-orange-500/10 to-pink-500/10 blur-3xl" />
                 <div className="absolute -left-20 -bottom-20 w-60 h-60 rounded-full bg-gradient-to-tr from-purple-500/10 to-indigo-500/10 blur-3xl" />
                 

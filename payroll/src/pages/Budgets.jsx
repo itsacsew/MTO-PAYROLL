@@ -1,31 +1,27 @@
-// Dashboard.jsx (Redesigned - Professional 3D Glassmorphism with Abstract Gradient Theme)
-// Updated with 5-step flow: SENT → CHECKED → RECEIVED → CHECKED → PROCESSED
+// Budgets.jsx - Updated with 5-step flow: SENT → CHECKED → RECEIVED → CHECKED → PROCESSED
+// This page only SHOWS the latest file status, no checking functionality
+
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../config/firebase'
 import { collection, getDocs, query, orderBy, onSnapshot } from 'firebase/firestore'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
-  MdSend, 
   MdDownload, 
-  MdPrint, 
   MdInsertDriveFile,
   MdCheckCircle,
-  MdPending,
   MdSchedule,
   MdArrowForward,
   MdClose,
   MdVisibility,
+  MdPending,
   MdAnalytics,
-  MdFingerprint,
   MdWaves,
-  MdGrain,
-  MdBlurCircular,
-  MdLensBlur,
-  MdStorage
+  MdBusiness,
+  MdAttachMoney
 } from 'react-icons/md'
 
-const Dashboard = () => {
+const Budget = () => {
   const navigate = useNavigate()
   const [pendingFilesCount, setPendingFilesCount] = useState(0)
   const [latestFile, setLatestFile] = useState(null)
@@ -38,8 +34,8 @@ const Dashboard = () => {
   useEffect(() => {
     const handleMouseMove = (e) => {
       setMousePosition({
-        x: (e.clientX / window.innerWidth - 0.5) * 20,
-        y: (e.clientY / window.innerHeight - 0.5) * 20
+        x: (e.clientX / window.innerWidth - 0.5) * 10,
+        y: (e.clientY / window.innerHeight - 0.5) * 10
       })
     }
     window.addEventListener('mousemove', handleMouseMove)
@@ -148,20 +144,16 @@ const Dashboard = () => {
     }
   }, [])
 
-  const handleSendFile = () => {
-    console.log('Send File clicked');
-    navigate('/send-file');
-  };
-
   const handleReceiveFile = () => {
-    console.log('Receive File clicked');
-    navigate('/file');
-  };
+    console.log('Receive File clicked')
+    navigate('/receive-file')
+  }
 
-  const handleDatabase = () => {
-    console.log('Database clicked');
-    navigate('/database');
-  };
+  // Navigate to Gross1.jsx (the checker page with CHECKED button)
+  const handleTotalGross = () => {
+    console.log('Total Gross clicked - Navigating to Gross1.jsx (Checker page)')
+    navigate('/gross')  // This should route to Gross1.jsx where checking happens
+  }
 
   const getStepStatus = (fileStatus) => {
   if (!fileStatus) {
@@ -200,6 +192,7 @@ const Dashboard = () => {
     })
   }
 
+  // Get status description text
   const getStatusDescription = (file) => {
   if (!file) return 'No files have been sent yet. Go to Send File to start.'
   
@@ -221,8 +214,7 @@ const Dashboard = () => {
       return `File status: ${file.status || 'unknown'}`
   }
 };
-
-// Update getStatusInfo function
+  // Update getStatusInfo function
 const getStatusInfo = (status) => {
   switch (status) {
     case 'sent':
@@ -279,8 +271,8 @@ const getStatusInfo = (status) => {
   }
 };
 
-  // Status bar component for reuse - Updated with 5 steps
-  const StatusBar = ({ file, showFileName = false, isModal = false }) => {
+  // Status bar component for reuse - 5 steps: SENT → CHECKED → RECEIVED → CHECKED → PROCESSED
+  const StatusBar = ({ file, showFileName = false }) => {
     const [sent, firstChecked, received, secondChecked, processed] = getStepStatus(file?.status)
     const statusInfo = getStatusInfo(file?.status)
     
@@ -290,7 +282,7 @@ const getStatusInfo = (status) => {
           <div 
             className={`p-4 rounded-xl ${statusInfo.bgColor} border ${statusInfo.borderColor} relative overflow-hidden`}
             style={{
-              background: 'linear-gradient(145deg, rgba(30, 30, 40, 0.8), rgba(20, 20, 30, 0.9))',
+              background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
               backdropFilter: 'blur(10px)',
               boxShadow: '0 20px 40px -15px rgba(0,0,0,0.5), inset 0 1px 2px rgba(255,255,255,0.08)'
             }}
@@ -342,13 +334,11 @@ const getStatusInfo = (status) => {
           </div>
         )}
         
-        {/* Status Steps with 5 steps: SENT → CHECKED → RECEIVED → CHECKED → PROCESSED */}
+        {/* Status Steps - 5 steps: SENT → CHECKED → RECEIVED → CHECKED → PROCESSED */}
         <div className="relative px-2 py-4">
-          {/* Background track with gradient */}
-          <div className="absolute top-1/2 left-0 right-0 h-0.5 -translate-y-1/2"
+          <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-gray-700/50 -translate-y-1/2" 
             style={{
-              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent)',
-              boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.5)'
+              boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.3)'
             }}
           />
           
@@ -361,30 +351,22 @@ const getStatusInfo = (status) => {
               <motion.div 
                 animate={{
                   scale: sent ? [1, 1.1, 1] : 1,
-                  boxShadow: sent 
-                    ? ['0 0 20px rgba(249, 115, 22, 0.3)', '0 0 30px rgba(249, 115, 22, 0.5)', '0 0 20px rgba(249, 115, 22, 0.3)']
-                    : '5px 5px 10px #0a0a0a, -5px -5px 10px #2a2a2a'
                 }}
-                transition={{ 
-                  duration: 2,
-                  repeat: sent ? Infinity : 0,
-                  ease: "easeInOut"
-                }}
-                className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 relative overflow-hidden`}
+                transition={{ duration: 0.3 }}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2`}
                 style={{
                   background: sent 
                     ? 'linear-gradient(135deg, #f97316, #ec4899)'
                     : 'linear-gradient(135deg, #2a2a3a, #1a1a2a)',
                   boxShadow: sent 
-                    ? '0 10px 20px -5px rgba(249, 115, 22, 0.5), inset 0 1px 2px rgba(255,255,255,0.2)'
+                    ? '0 10px 20px -5px rgba(249, 115, 22, 0.3), inset 0 1px 2px rgba(255,255,255,0.2)'
                     : '5px 5px 10px #0a0a0a, -5px -5px 10px #2a2a2a, inset 0 1px 2px rgba(255,255,255,0.05)',
                 }}
               >
-                <div className={`absolute inset-0 bg-gradient-to-br from-orange-500 to-pink-500 opacity-20 blur-sm`} />
                 {sent ? (
-                  <MdCheckCircle className="w-5 h-5 text-white relative z-10" />
+                  <MdCheckCircle className="w-5 h-5 text-white" />
                 ) : (
-                  <span className="text-white font-bold text-sm relative z-10">1</span>
+                  <span className="text-white font-bold text-sm">1</span>
                 )}
               </motion.div>
               <span className={`text-xs font-medium ${sent ? 'text-orange-400' : 'text-gray-500'}`}>
@@ -400,30 +382,22 @@ const getStatusInfo = (status) => {
               <motion.div 
                 animate={{
                   scale: firstChecked ? [1, 1.1, 1] : 1,
-                  boxShadow: firstChecked 
-                    ? ['0 0 20px rgba(245, 158, 11, 0.3)', '0 0 30px rgba(245, 158, 11, 0.5)', '0 0 20px rgba(245, 158, 11, 0.3)']
-                    : '5px 5px 10px #0a0a0a, -5px -5px 10px #2a2a2a'
                 }}
-                transition={{ 
-                  duration: 2,
-                  repeat: firstChecked ? Infinity : 0,
-                  ease: "easeInOut"
-                }}
-                className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 relative overflow-hidden`}
+                transition={{ duration: 0.3 }}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2`}
                 style={{
                   background: firstChecked 
                     ? 'linear-gradient(135deg, #f59e0b, #f97316)'
                     : 'linear-gradient(135deg, #2a2a3a, #1a1a2a)',
                   boxShadow: firstChecked 
-                    ? '0 10px 20px -5px rgba(245, 158, 11, 0.5), inset 0 1px 2px rgba(255,255,255,0.2)'
+                    ? '0 10px 20px -5px rgba(245, 158, 11, 0.3), inset 0 1px 2px rgba(255,255,255,0.2)'
                     : '5px 5px 10px #0a0a0a, -5px -5px 10px #2a2a2a, inset 0 1px 2px rgba(255,255,255,0.05)',
                 }}
               >
-                <div className={`absolute inset-0 bg-gradient-to-br from-amber-500 to-orange-500 opacity-20 blur-sm`} />
                 {firstChecked ? (
-                  <MdCheckCircle className="w-5 h-5 text-white relative z-10" />
+                  <MdCheckCircle className="w-5 h-5 text-white" />
                 ) : (
-                  <span className="text-white font-bold text-sm relative z-10">2</span>
+                  <span className="text-white font-bold text-sm">2</span>
                 )}
               </motion.div>
               <span className={`text-xs font-medium ${firstChecked ? 'text-amber-400' : 'text-gray-500'}`}>
@@ -439,30 +413,22 @@ const getStatusInfo = (status) => {
               <motion.div 
                 animate={{
                   scale: received ? [1, 1.1, 1] : 1,
-                  boxShadow: received 
-                    ? ['0 0 20px rgba(16, 185, 129, 0.3)', '0 0 30px rgba(16, 185, 129, 0.5)', '0 0 20px rgba(16, 185, 129, 0.3)']
-                    : '5px 5px 10px #0a0a0a, -5px -5px 10px #2a2a2a'
                 }}
-                transition={{ 
-                  duration: 2,
-                  repeat: received ? Infinity : 0,
-                  ease: "easeInOut"
-                }}
-                className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 relative overflow-hidden`}
+                transition={{ duration: 0.3 }}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2`}
                 style={{
                   background: received 
                     ? 'linear-gradient(135deg, #10b981, #059669)'
                     : 'linear-gradient(135deg, #2a2a3a, #1a1a2a)',
                   boxShadow: received 
-                    ? '0 10px 20px -5px rgba(16, 185, 129, 0.5), inset 0 1px 2px rgba(255,255,255,0.2)'
+                    ? '0 10px 20px -5px rgba(16, 185, 129, 0.3), inset 0 1px 2px rgba(255,255,255,0.2)'
                     : '5px 5px 10px #0a0a0a, -5px -5px 10px #2a2a2a, inset 0 1px 2px rgba(255,255,255,0.05)',
                 }}
               >
-                <div className={`absolute inset-0 bg-gradient-to-br from-green-500 to-emerald-500 opacity-20 blur-sm`} />
                 {received ? (
-                  <MdCheckCircle className="w-5 h-5 text-white relative z-10" />
+                  <MdCheckCircle className="w-5 h-5 text-white" />
                 ) : (
-                  <span className="text-white font-bold text-sm relative z-10">3</span>
+                  <span className="text-white font-bold text-sm">3</span>
                 )}
               </motion.div>
               <span className={`text-xs font-medium ${received ? 'text-green-400' : 'text-gray-500'}`}>
@@ -478,30 +444,22 @@ const getStatusInfo = (status) => {
               <motion.div 
                 animate={{
                   scale: secondChecked ? [1, 1.1, 1] : 1,
-                  boxShadow: secondChecked 
-                    ? ['0 0 20px rgba(168, 85, 247, 0.3)', '0 0 30px rgba(168, 85, 247, 0.5)', '0 0 20px rgba(168, 85, 247, 0.3)']
-                    : '5px 5px 10px #0a0a0a, -5px -5px 10px #2a2a2a'
                 }}
-                transition={{ 
-                  duration: 2,
-                  repeat: secondChecked ? Infinity : 0,
-                  ease: "easeInOut"
-                }}
-                className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 relative overflow-hidden`}
+                transition={{ duration: 0.3 }}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2`}
                 style={{
                   background: secondChecked 
                     ? 'linear-gradient(135deg, #a855f7, #8b5cf6)'
                     : 'linear-gradient(135deg, #2a2a3a, #1a1a2a)',
                   boxShadow: secondChecked 
-                    ? '0 10px 20px -5px rgba(168, 85, 247, 0.5), inset 0 1px 2px rgba(255,255,255,0.2)'
+                    ? '0 10px 20px -5px rgba(168, 85, 247, 0.3), inset 0 1px 2px rgba(255,255,255,0.2)'
                     : '5px 5px 10px #0a0a0a, -5px -5px 10px #2a2a2a, inset 0 1px 2px rgba(255,255,255,0.05)',
                 }}
               >
-                <div className={`absolute inset-0 bg-gradient-to-br from-purple-500 to-indigo-500 opacity-20 blur-sm`} />
                 {secondChecked ? (
-                  <MdCheckCircle className="w-5 h-5 text-white relative z-10" />
+                  <MdCheckCircle className="w-5 h-5 text-white" />
                 ) : (
-                  <span className="text-white font-bold text-sm relative z-10">4</span>
+                  <span className="text-white font-bold text-sm">4</span>
                 )}
               </motion.div>
               <span className={`text-xs font-medium ${secondChecked ? 'text-purple-400' : 'text-gray-500'}`}>
@@ -517,30 +475,22 @@ const getStatusInfo = (status) => {
               <motion.div 
                 animate={{
                   scale: processed ? [1, 1.1, 1] : 1,
-                  boxShadow: processed 
-                    ? ['0 0 20px rgba(6, 182, 212, 0.3)', '0 0 30px rgba(6, 182, 212, 0.5)', '0 0 20px rgba(6, 182, 212, 0.3)']
-                    : '5px 5px 10px #0a0a0a, -5px -5px 10px #2a2a2a'
                 }}
-                transition={{ 
-                  duration: 2,
-                  repeat: processed ? Infinity : 0,
-                  ease: "easeInOut"
-                }}
-                className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 relative overflow-hidden`}
+                transition={{ duration: 0.3 }}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2`}
                 style={{
                   background: processed 
                     ? 'linear-gradient(135deg, #06b6d4, #0284c7)'
                     : 'linear-gradient(135deg, #2a2a3a, #1a1a2a)',
                   boxShadow: processed 
-                    ? '0 10px 20px -5px rgba(6, 182, 212, 0.5), inset 0 1px 2px rgba(255,255,255,0.2)'
+                    ? '0 10px 20px -5px rgba(6, 182, 212, 0.3), inset 0 1px 2px rgba(255,255,255,0.2)'
                     : '5px 5px 10px #0a0a0a, -5px -5px 10px #2a2a2a, inset 0 1px 2px rgba(255,255,255,0.05)',
                 }}
               >
-                <div className={`absolute inset-0 bg-gradient-to-br from-cyan-500 to-blue-500 opacity-20 blur-sm`} />
                 {processed ? (
-                  <MdCheckCircle className="w-5 h-5 text-white relative z-10" />
+                  <MdCheckCircle className="w-5 h-5 text-white" />
                 ) : (
-                  <span className="text-white font-bold text-sm relative z-10">5</span>
+                  <span className="text-white font-bold text-sm">5</span>
                 )}
               </motion.div>
               <span className={`text-xs font-medium ${processed ? 'text-cyan-400' : 'text-gray-500'}`}>
@@ -566,7 +516,8 @@ const getStatusInfo = (status) => {
           className="absolute -top-20 -right-20 w-96 h-96 rounded-full"
           style={{
             background: 'radial-gradient(circle at 30% 30%, rgba(249, 115, 22, 0.15), transparent 70%)',
-            filter: 'blur(60px)'
+            filter: 'blur(60px)',
+            pointerEvents: 'none'
           }}
         />
         
@@ -579,7 +530,8 @@ const getStatusInfo = (status) => {
           className="absolute -bottom-20 -left-20 w-[500px] h-[500px] rounded-full"
           style={{
             background: 'radial-gradient(circle at 70% 70%, rgba(168, 85, 247, 0.15), transparent 70%)',
-            filter: 'blur(60px)'
+            filter: 'blur(60px)',
+            pointerEvents: 'none'
           }}
         />
         
@@ -592,40 +544,13 @@ const getStatusInfo = (status) => {
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full"
           style={{
             background: 'radial-gradient(circle, rgba(244, 63, 94, 0.1), transparent 70%)',
-            filter: 'blur(80px)'
+            filter: 'blur(80px)',
+            pointerEvents: 'none'
           }}
         />
-
-        {/* Floating particles effect */}
-        {[...Array(20)].map((_, i) => (
-          <motion.div
-            key={i}
-            animate={{
-              y: [0, -30, 0],
-              x: [0, Math.sin(i) * 20, 0],
-              opacity: [0.1, 0.3, 0.1],
-            }}
-            transition={{
-              duration: 5 + i,
-              repeat: Infinity,
-              delay: i * 0.2,
-              ease: "easeInOut"
-            }}
-            className="absolute rounded-full"
-            style={{
-              width: Math.random() * 100 + 50,
-              height: Math.random() * 100 + 50,
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              background: `radial-gradient(circle, rgba(${Math.random() * 255}, ${Math.random() * 100}, ${Math.random() * 255}, 0.05), transparent)`,
-              filter: 'blur(30px)',
-              pointerEvents: 'none'
-            }}
-          />
-        ))}
       </div>
 
-      {/* Header with 3D effect and abstract theme */}
+      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -633,26 +558,25 @@ const getStatusInfo = (status) => {
       >
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-orange-400 via-rose-400 to-purple-400 bg-clip-text text-transparent"
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-orange-400 via-rose-400 to-purple-400 bg-clip-text text-transparent"
               style={{
                 textShadow: '0 2px 10px rgba(249, 115, 22, 0.3)'
               }}
             >
-              MTO Dashboard
+              Budget Management
             </h1>
             <p className="text-gray-400 mt-2 flex items-center gap-2">
               <MdWaves className="text-orange-400" />
-              Financial management and Payroll tracking
+              Manage and track your file operations
             </p>
           </div>
           
-          {/* Stats Card with abstract sphere design */}
+          {/* Stats Card */}
           <motion.div 
             whileHover={{ scale: 1.02 }}
             className="px-6 py-3 rounded-2xl relative overflow-hidden"
             style={{
-              background: 'linear-gradient(145deg, rgba(30, 30, 40, 0.8), rgba(20, 20, 30, 0.9))',
-              backdropFilter: 'blur(10px)',
+              background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
               boxShadow: '15px 15px 30px #050505, -15px -15px 30px #1f1f2a, inset 0 1px 2px rgba(255,255,255,0.08)',
               border: '1px solid rgba(255,255,255,0.03)'
             }}
@@ -674,25 +598,24 @@ const getStatusInfo = (status) => {
         </div>
       </motion.div>
 
-      {/* Main Content Grid */}
-      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Main Content - Simple 2-Column Layout */}
+      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-6">
         
-        {/* Left Column - Services */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Services Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
+        {/* Left Column - File Operations */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <div
             className="rounded-2xl p-6 relative overflow-hidden"
             style={{
-              background: 'linear-gradient(145deg, rgba(30, 30, 40, 0.8), rgba(20, 20, 30, 0.9))',
-              backdropFilter: 'blur(10px)',
-              boxShadow: '25px 25px 50px -15px #050505, -25px -25px 50px -15px #1f1f2a, inset 0 1px 2px rgba(255,255,255,0.08)',
+              background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+              boxShadow: '30px 30px 60px -15px #050505, -30px -30px 60px -15px #1f1f2a, inset 0 1px 2px rgba(255,255,255,0.05)',
               border: '1px solid rgba(255,255,255,0.03)'
             }}
           >
-            <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-gradient-to-br from-orange-500/10 to-rose-500/10 blur-2xl" />
+            <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-gradient-to-br from-orange-500/10 to-pink-500/10 blur-2xl" />
             <div className="absolute -left-10 -bottom-10 w-40 h-40 rounded-full bg-gradient-to-tr from-purple-500/10 to-indigo-500/10 blur-2xl" />
             
             <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2 relative z-10">
@@ -700,89 +623,22 @@ const getStatusInfo = (status) => {
               File Operations
             </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
-              {/* Send File Card */}
-              <motion.button
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                onHoverStart={() => setHoveredCard('send')}
-                onHoverEnd={() => setHoveredCard(null)}
-                onClick={handleSendFile}
-                className="relative group overflow-hidden rounded-xl p-6 text-left"
-                style={{
-                  background: hoveredCard === 'send' 
-                    ? 'linear-gradient(145deg, rgba(249, 115, 22, 0.15), rgba(30, 30, 40, 0.9))'
-                    : 'linear-gradient(145deg, rgba(30, 30, 40, 0.8), rgba(20, 20, 30, 0.9))',
-                  boxShadow: hoveredCard === 'send'
-                    ? '15px 15px 30px #050505, -15px -15px 30px #1f1f2a, 0 0 30px rgba(249, 115, 22, 0.2)'
-                    : '15px 15px 30px #050505, -15px -15px 30px #1f1f2a',
-                  border: '1px solid rgba(255,255,255,0.03)'
-                }}
-              >
-                <motion.div
-                  animate={{
-                    x: hoveredCard === 'send' ? ['-100%', '200%'] : '0%',
-                  }}
-                  transition={{
-                    duration: 1.5,
-                    repeat: hoveredCard === 'send' ? Infinity : 0,
-                    ease: "linear"
-                  }}
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-12"
-                />
-
-                {hoveredCard === 'send' && (
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="absolute -right-5 -top-5 w-20 h-20 rounded-full bg-gradient-to-br from-orange-500/30 to-rose-500/30 blur-xl"
-                  />
-                )}
-
-                <div className="relative z-10">
-                  <div className="flex items-start gap-4">
-                    <motion.div 
-                      animate={{
-                        rotate: hoveredCard === 'send' ? [0, 5, -5, 0] : 0,
-                        scale: hoveredCard === 'send' ? [1, 1.1, 1] : 1,
-                      }}
-                      transition={{ duration: 0.5 }}
-                      className="w-12 h-12 rounded-xl flex items-center justify-center relative overflow-hidden"
-                      style={{
-                        background: 'linear-gradient(135deg, #2a2a3a, #1a1a2a)',
-                        boxShadow: 'inset 2px 2px 5px rgba(0,0,0,0.5), inset -2px -2px 5px rgba(255,255,255,0.05)'
-                      }}
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-br from-orange-500 to-rose-500 opacity-30" />
-                      <MdSend className="w-6 h-6 text-white relative z-10" />
-                    </motion.div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-white">Send File</h3>
-                      <p className="text-sm text-gray-400 mt-1">Securely transfer files to recipients</p>
-                      <div className="flex items-center gap-1 mt-3 text-orange-400 text-sm">
-                        <span>Start sending</span>
-                        <MdArrowForward className="w-4 h-4" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </motion.button>
-
-              {/* Receive File Card */}
+            <div className="space-y-4 relative z-10">
+              {/* Receive File Button */}
               <motion.button
                 whileHover={{ scale: 1.02, y: -2 }}
                 whileTap={{ scale: 0.98 }}
                 onHoverStart={() => setHoveredCard('receive')}
                 onHoverEnd={() => setHoveredCard(null)}
                 onClick={handleReceiveFile}
-                className="relative group overflow-hidden rounded-xl p-6 text-left"
+                className="relative w-full overflow-hidden rounded-xl p-8 text-left"
                 style={{
                   background: hoveredCard === 'receive' 
-                    ? 'linear-gradient(145deg, rgba(245, 158, 11, 0.15), rgba(30, 30, 40, 0.9))'
-                    : 'linear-gradient(145deg, rgba(30, 30, 40, 0.8), rgba(20, 20, 30, 0.9))',
+                    ? 'linear-gradient(145deg, rgba(249, 115, 22, 0.15), #1a1a2a)'
+                    : 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
                   boxShadow: hoveredCard === 'receive'
-                    ? '15px 15px 30px #050505, -15px -15px 30px #1f1f2a, 0 0 30px rgba(245, 158, 11, 0.2)'
-                    : '15px 15px 30px #050505, -15px -15px 30px #1f1f2a',
+                    ? '15px 15px 30px #050505, -15px -15px 30px #1f1f2a, 0 0 30px rgba(249, 115, 22, 0.2)'
+                    : '10px 10px 20px #050505, -10px -10px 20px #1f1f2a',
                   border: '1px solid rgba(255,255,255,0.03)'
                 }}
               >
@@ -795,7 +651,7 @@ const getStatusInfo = (status) => {
                       className="absolute -top-2 -right-2 z-20 w-8 h-8 rounded-full flex items-center justify-center"
                       style={{
                         background: 'linear-gradient(135deg, #f97316, #ec4899)',
-                        boxShadow: '0 5px 15px rgba(249, 115, 22, 0.5)',
+                        boxShadow: '0 5px 15px rgba(249, 115, 22, 0.3)',
                         border: '2px solid #0a0a0f'
                       }}
                     >
@@ -820,137 +676,126 @@ const getStatusInfo = (status) => {
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    className="absolute -right-5 -top-5 w-20 h-20 rounded-full bg-gradient-to-br from-amber-500/30 to-orange-500/30 blur-xl"
+                    className="absolute -right-5 -top-5 w-20 h-20 rounded-full bg-gradient-to-br from-orange-500/30 to-pink-500/30 blur-xl"
                   />
                 )}
 
                 <div className="relative z-10">
-                  <div className="flex items-start gap-4">
+                  <div className="flex items-center gap-6">
                     <motion.div 
                       animate={{
                         rotate: hoveredCard === 'receive' ? [0, 5, -5, 0] : 0,
-                        scale: hoveredCard === 'receive' ? [1, 1.1, 1] : 1,
                       }}
                       transition={{ duration: 0.5 }}
-                      className="w-12 h-12 rounded-xl flex items-center justify-center relative overflow-hidden"
+                      className="w-16 h-16 rounded-xl flex items-center justify-center"
                       style={{
-                        background: 'linear-gradient(135deg, #2a2a3a, #1a1a2a)',
-                        boxShadow: 'inset 2px 2px 5px rgba(0,0,0,0.5), inset -2px -2px 5px rgba(255,255,255,0.05)'
+                        background: 'linear-gradient(135deg, #f97316, #ec4899)',
+                        boxShadow: '0 10px 20px -5px rgba(249, 115, 22, 0.3)'
                       }}
                     >
-                      <div className="absolute inset-0 bg-gradient-to-br from-amber-500 to-orange-500 opacity-30" />
-                      <MdDownload className="w-6 h-6 text-white relative z-10" />
+                      <MdDownload className="w-8 h-8 text-white" />
                     </motion.div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-white">Receive File</h3>
-                      <p className="text-sm text-gray-400 mt-1">Get files sent to you safely</p>
-                      <div className="flex items-center gap-1 mt-3 text-amber-400 text-sm">
-                        <span>View incoming</span>
-                        <MdArrowForward className="w-4 h-4" />
+                    <div className="flex-1">
+                      <h3 className="text-2xl font-semibold text-white">Receive File</h3>
+                      <p className="text-gray-400 mt-2 text-lg">Get files after they've been checked</p>
+                      <div className="flex items-center gap-1 mt-4 text-orange-400 text-base">
+                        <span>View checked files</span>
+                        <MdArrowForward className="w-5 h-5" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.button>
+
+              {/* Total Gross Button - Navigates to Gross1.jsx (Checker with CHECKED button) */}
+              <motion.button
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                onHoverStart={() => setHoveredCard('gross')}
+                onHoverEnd={() => setHoveredCard(null)}
+                onClick={handleTotalGross}
+                className="relative w-full overflow-hidden rounded-xl p-8 text-left"
+                style={{
+                  background: hoveredCard === 'gross' 
+                    ? 'linear-gradient(145deg, rgba(16, 185, 129, 0.15), #1a1a2a)'
+                    : 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+                  boxShadow: hoveredCard === 'gross'
+                    ? '15px 15px 30px #050505, -15px -15px 30px #1f1f2a, 0 0 30px rgba(16, 185, 129, 0.2)'
+                    : '10px 10px 20px #050505, -10px -10px 20px #1f1f2a',
+                  border: '1px solid rgba(255,255,255,0.03)'
+                }}
+              >
+                <motion.div
+                  animate={{
+                    x: hoveredCard === 'gross' ? ['-100%', '200%'] : '0%',
+                  }}
+                  transition={{
+                    duration: 1.5,
+                    repeat: hoveredCard === 'gross' ? Infinity : 0,
+                    ease: "linear"
+                  }}
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-12"
+                />
+
+                {hoveredCard === 'gross' && (
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute -right-5 -top-5 w-20 h-20 rounded-full bg-gradient-to-br from-green-500/30 to-emerald-500/30 blur-xl"
+                  />
+                )}
+
+                <div className="relative z-10">
+                  <div className="flex items-center gap-6">
+                    <motion.div 
+                      animate={{
+                        rotate: hoveredCard === 'gross' ? [0, 5, -5, 0] : 0,
+                      }}
+                      transition={{ duration: 0.5 }}
+                      className="w-16 h-16 rounded-xl flex items-center justify-center"
+                      style={{
+                        background: 'linear-gradient(135deg, #10b981, #059669)',
+                        boxShadow: '0 10px 20px -5px rgba(16, 185, 129, 0.3)'
+                      }}
+                    >
+                      <MdAttachMoney className="w-8 h-8 text-white" />
+                    </motion.div>
+                    <div className="flex-1">
+                      <h3 className="text-2xl font-semibold text-white">Check File</h3>
+                      <p className="text-gray-400 mt-2 text-lg">Check and validate sent files</p>
+                      <div className="flex items-center gap-1 mt-4 text-green-400 text-base">
+                        <span>Go to checker page</span>
+                        <MdArrowForward className="w-5 h-5" />
                       </div>
                     </div>
                   </div>
                 </div>
               </motion.button>
             </div>
-          </motion.div>
+          </div>
+        </motion.div>
 
-          {/* Database Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <motion.button
-              whileHover={{ scale: 1.01, y: -2 }}
-              whileTap={{ scale: 0.99 }}
-              onHoverStart={() => setHoveredCard('database')}
-              onHoverEnd={() => setHoveredCard(null)}
-              onClick={handleDatabase}
-              className="relative w-full overflow-hidden rounded-xl p-6 text-left"
-              style={{
-                background: hoveredCard === 'database' 
-                  ? 'linear-gradient(145deg, rgba(168, 85, 247, 0.15), rgba(30, 30, 40, 0.9))'
-                  : 'linear-gradient(145deg, rgba(30, 30, 40, 0.8), rgba(20, 20, 30, 0.9))',
-                boxShadow: hoveredCard === 'database'
-                  ? '20px 20px 40px #050505, -20px -20px 40px #1f1f2a, 0 0 30px rgba(168, 85, 247, 0.2)'
-                  : '20px 20px 40px #050505, -20px -20px 40px #1f1f2a',
-                border: '1px solid rgba(255,255,255,0.03)'
-              }}
-            >
-              <motion.div
-                animate={{
-                  x: hoveredCard === 'database' ? ['-100%', '200%'] : '0%',
-                }}
-                transition={{
-                  duration: 1.5,
-                  repeat: hoveredCard === 'database' ? Infinity : 0,
-                  ease: "linear"
-                }}
-                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-12"
-              />
-
-              {hoveredCard === 'database' && (
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="absolute -right-5 -top-5 w-20 h-20 rounded-full bg-gradient-to-br from-purple-500/30 to-indigo-500/30 blur-xl"
-                />
-              )}
-
-              <div className="relative z-10 flex items-center gap-6">
-                <motion.div 
-                  animate={{
-                    rotate: hoveredCard === 'database' ? [0, 5, -5, 0] : 0,
-                    scale: hoveredCard === 'database' ? [1, 1.1, 1] : 1,
-                  }}
-                  transition={{ duration: 0.5 }}
-                  className="w-14 h-14 rounded-xl flex items-center justify-center relative overflow-hidden"
-                  style={{
-                    background: 'linear-gradient(135deg, #2a2a3a, #1a1a2a)',
-                    boxShadow: 'inset 2px 2px 5px rgba(0,0,0,0.5), inset -2px -2px 5px rgba(255,255,255,0.05)'
-                  }}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-indigo-500 opacity-30" />
-                  <MdStorage className="w-7 h-7 text-white relative z-10" />
-                </motion.div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-semibold text-white">Database</h3>
-                  <p className="text-gray-400 mt-1">Secure database management</p>
-                  <div className="flex items-center gap-1 mt-2 text-purple-400 text-sm">
-                    <span>View all sent files</span>
-                    <MdArrowForward className="w-4 h-4" />
-                  </div>
-                </div>
-              </div>
-            </motion.button>
-          </motion.div>
-        </div>
-
-        {/* Right Column - File Status */}
+        {/* Right Column - File Processing Status (Latest File Status Only) */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="space-y-6"
+          transition={{ delay: 0.2 }}
         >
-          {/* File Processing Status Section */}
           <div
             className="rounded-2xl p-6 relative overflow-hidden"
             style={{
-              background: 'linear-gradient(145deg, rgba(30, 30, 40, 0.8), rgba(20, 20, 30, 0.9))',
-              backdropFilter: 'blur(10px)',
-              boxShadow: '25px 25px 50px -15px #050505, -25px -25px 50px -15px #1f1f2a, inset 0 1px 2px rgba(255,255,255,0.08)',
+              background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+              boxShadow: '30px 30px 60px -15px #050505, -30px -30px 60px -15px #1f1f2a, inset 0 1px 2px rgba(255,255,255,0.05)',
               border: '1px solid rgba(255,255,255,0.03)'
             }}
           >
-            <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-gradient-to-br from-orange-500/10 to-rose-500/10 blur-2xl" />
+            <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-gradient-to-br from-orange-500/10 to-pink-500/10 blur-2xl" />
             <div className="absolute -left-10 -bottom-10 w-40 h-40 rounded-full bg-gradient-to-tr from-purple-500/10 to-indigo-500/10 blur-2xl" />
             
             <div className="relative z-10">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                  <MdInsertDriveFile className="text-orange-400" />
+                  <MdPending className="text-orange-400" />
                   Latest File Status
                 </h2>
                 {allFiles.length > 0 && (
@@ -958,7 +803,7 @@ const getStatusInfo = (status) => {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => setShowAllFilesModal(true)}
-                    className="px-3 py-1.5 rounded-lg text-sm flex items-center gap-1 relative overflow-hidden"
+                    className="px-3 py-1.5 rounded-lg text-sm flex items-center gap-1"
                     style={{
                       background: 'linear-gradient(135deg, #f97316, #ec4899)',
                       boxShadow: '0 5px 15px -5px #f97316',
@@ -970,7 +815,7 @@ const getStatusInfo = (status) => {
                 )}
               </div>
               
-              {/* Show latest file info */}
+              {/* Latest File Status with 5 steps: SENT → CHECKED → RECEIVED → CHECKED → PROCESSED */}
               {latestFile ? (
                 <div className="space-y-4">
                   <StatusBar file={latestFile} />
@@ -979,15 +824,15 @@ const getStatusInfo = (status) => {
                 <motion.div 
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="p-6 rounded-xl text-center relative overflow-hidden"
+                  className="p-8 rounded-xl text-center"
                   style={{
-                    background: 'linear-gradient(145deg, rgba(30, 30, 40, 0.8), rgba(20, 20, 30, 0.9))',
+                    background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
                     border: '1px solid rgba(255,255,255,0.03)'
                   }}
                 >
-                  <MdInsertDriveFile className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-                  <p className="text-gray-400 text-sm">
-                    No files sent yet. Send your first file to see status tracking.
+                  <MdInsertDriveFile className="w-16 h-16 text-gray-600 mx-auto mb-3" />
+                  <p className="text-gray-400 text-lg">
+                    No files sent yet.
                   </p>
                 </motion.div>
               )}
@@ -997,14 +842,13 @@ const getStatusInfo = (status) => {
                 <motion.div 
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="mt-4 p-4 rounded-xl relative overflow-hidden"
+                  className="mt-4 p-4 rounded-xl"
                   style={{
-                    background: 'linear-gradient(145deg, rgba(30, 30, 40, 0.8), rgba(20, 20, 30, 0.9))',
+                    background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
                     border: '1px solid rgba(249, 115, 22, 0.1)'
                   }}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-orange-500/5 to-purple-500/5" />
-                  <p className="text-sm text-gray-300 relative z-10">
+                  <p className="text-sm text-gray-300">
                     {getStatusDescription(latestFile)}
                   </p>
                 </motion.div>
@@ -1023,7 +867,7 @@ const getStatusInfo = (status) => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowAllFilesModal(false)}
-              className="fixed inset-0 bg-black/80 backdrop-blur-md z-50"
+              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
             />
 
             <motion.div
@@ -1036,13 +880,12 @@ const getStatusInfo = (status) => {
               <div
                 className="w-full max-w-4xl max-h-[80vh] rounded-2xl overflow-hidden relative"
                 style={{
-                  background: 'linear-gradient(145deg, rgba(30, 30, 40, 0.95), rgba(20, 20, 30, 0.98))',
-                  backdropFilter: 'blur(20px)',
-                  boxShadow: '30px 30px 60px -15px #050505, -30px -30px 60px -15px #1f1f2a, inset 0 1px 2px rgba(255,255,255,0.08)',
+                  background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+                  boxShadow: '30px 30px 60px -15px #050505, -30px -30px 60px -15px #1f1f2a, inset 0 1px 2px rgba(255,255,255,0.05)',
                   border: '1px solid rgba(255,255,255,0.03)'
                 }}
               >
-                <div className="absolute -right-20 -top-20 w-60 h-60 rounded-full bg-gradient-to-br from-orange-500/10 to-rose-500/10 blur-3xl" />
+                <div className="absolute -right-20 -top-20 w-60 h-60 rounded-full bg-gradient-to-br from-orange-500/10 to-pink-500/10 blur-3xl" />
                 <div className="absolute -left-20 -bottom-20 w-60 h-60 rounded-full bg-gradient-to-tr from-purple-500/10 to-indigo-500/10 blur-3xl" />
                 
                 <div className="relative z-10 flex justify-between items-center p-6 border-b border-white/5">
@@ -1050,16 +893,18 @@ const getStatusInfo = (status) => {
                     <MdInsertDriveFile className="text-orange-400" />
                     All Files Status
                   </h2>
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.1, rotate: 90 }}
+                    whileTap={{ scale: 0.9 }}
                     onClick={() => setShowAllFilesModal(false)}
-                    className="w-10 h-10 rounded-lg flex items-center justify-center relative overflow-hidden hover:opacity-80 transition-opacity"
+                    className="w-10 h-10 rounded-lg flex items-center justify-center"
                     style={{
-                      background: 'linear-gradient(145deg, #2a2a3a, #1a1a2a)',
-                      boxShadow: '5px 5px 10px #050505, -5px -5px 10px #2a2a3a',
+                      background: 'linear-gradient(145deg, #1a1a2a, #0a0a0f)',
+                      boxShadow: '5px 5px 10px #050505, -5px -5px 10px #1f1f2a',
                     }}
                   >
                     <MdClose className="text-gray-400" size={20} />
-                  </button>
+                  </motion.button>
                 </div>
                 
                 <div className="relative z-10 p-6 overflow-y-auto max-h-[60vh]">
@@ -1072,7 +917,7 @@ const getStatusInfo = (status) => {
                     <div className="space-y-6">
                       {allFiles.map((file, index) => (
                         <div key={file.id}>
-                          <StatusBar file={file} showFileName={true} isModal={true} />
+                          <StatusBar file={file} showFileName={true} />
                         </div>
                       ))}
                     </div>
@@ -1080,16 +925,18 @@ const getStatusInfo = (status) => {
                 </div>
                 
                 <div className="relative z-10 flex justify-end p-6 border-t border-white/5">
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => setShowAllFilesModal(false)}
-                    className="px-6 py-2.5 rounded-xl text-white font-medium relative overflow-hidden hover:opacity-90 transition-opacity"
+                    className="px-6 py-2.5 rounded-xl text-white font-medium"
                     style={{
                       background: 'linear-gradient(135deg, #f97316, #ec4899)',
                       boxShadow: '0 10px 20px -5px #f97316',
                     }}
                   >
                     Close
-                  </button>
+                  </motion.button>
                 </div>
               </div>
             </motion.div>
@@ -1100,4 +947,4 @@ const getStatusInfo = (status) => {
   )
 }
 
-export default Dashboard
+export default Budget
